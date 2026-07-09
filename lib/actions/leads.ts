@@ -213,7 +213,6 @@ export async function updateLeadStage(
   );
 
   revalidatePath("/leads");
-  revalidatePath("/leads");
   revalidatePath("/dashboard");
   return { success: true, data: data as Lead };
 }
@@ -248,7 +247,6 @@ export async function deleteLead(id: string): Promise<ActionResult> {
     );
   }
 
-  revalidatePath("/leads");
   revalidatePath("/leads");
   revalidatePath("/dashboard");
   return { success: true, data: undefined };
