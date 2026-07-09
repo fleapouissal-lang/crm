@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LoginBrandLogo } from "@/components/auth/login-brand-logo";
+import { LoginStaticBackground } from "@/components/auth/login-static-bg";
 import { LoginVisualPanel } from "@/components/auth/login-visual-panel";
 import { LoginMobileDashboardPreview } from "@/components/auth/login-mobile-dashboard-preview";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
@@ -17,6 +18,7 @@ export function NotFoundView() {
 
   return (
     <div className="login-split">
+      <LoginStaticBackground />
       <section className="login-split__panel" dir="ltr">
         <header className="login-split__top">
           <LoginBrandLogo variant="split" className="login-split__logo" />

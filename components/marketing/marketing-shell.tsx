@@ -27,27 +27,30 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 
       <header className="marketing__header">
         <Link href="/login" className="marketing__logo">
-          <LoginBrandLogo variant="split" />
+          <LoginBrandLogo variant="plain" className="marketing__logo-img" />
         </Link>
 
-        <nav className="marketing__nav" aria-label="Navigation">
-          {NAV.map(({ href, key }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "marketing__nav-link",
-                pathname === href && "marketing__nav-link--active"
-              )}
-            >
-              {m.nav[key]}
-            </Link>
-          ))}
-        </nav>
+        <div className="marketing__header-end">
+          <nav className="marketing__nav" aria-label="Navigation">
+            {NAV.map(({ href, key }) => (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "marketing__nav-link",
+                  pathname === href && "marketing__nav-link--active"
+                )}
+              >
+                {m.nav[key]}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="marketing__header-actions">
-          <ThemeToggle className="marketing__icon-btn" />
-          <LocaleSwitcher variant="icon" iconClassName="marketing__icon-btn" />
+          <div className="marketing__header-tools">
+            <ThemeToggle className="marketing__icon-btn" />
+            <LocaleSwitcher variant="icon" iconClassName="marketing__icon-btn" />
+          </div>
+
           <Link href="/login" className="marketing__nav-login">
             {m.nav.login}
           </Link>

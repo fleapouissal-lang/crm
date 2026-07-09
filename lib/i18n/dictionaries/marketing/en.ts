@@ -90,31 +90,34 @@ export const marketingEn: MarketingDictionary = {
   faq: {
     metaTitle: "FAQ",
     title: "Frequently asked questions",
-    subtitle: "Everything you need to know before you start.",
+    subtitle:
+      "The essentials about Fusion Leap CRM — trial, pricing, multi-company and support.",
+    contactPrompt: "Can't find your answer?",
+    contactLink: "Contact us",
     items: [
       {
         q: "How does the free month work?",
-        a: "You get full access to your chosen plan for 30 days with no commitment. No credit card required to start.",
+        a: "30 days of full access to your chosen plan, no credit card required. When it ends, continue, switch plans or stop — your data stays exportable.",
       },
       {
         q: "Can I manage multiple companies (STE)?",
-        a: "Yes. The Enterprise plan lets a global admin create and manage multiple STEs, each with an isolated CRM.",
+        a: "Yes. The Enterprise plan lets you create multiple STEs (Fusion Leap, Autolog, etc.) each with an isolated CRM: separate leads, clients, quotes and teams.",
       },
       {
-        q: "Is data separated per company?",
-        a: "Yes. Each STE has its own workspace. Users only see their company's data.",
+        q: "Is data isolated between companies?",
+        a: "Yes. Each STE has its own space with server-side access rules. Users only see data from their organization.",
       },
       {
-        q: "Can I change plans later?",
-        a: "Yes. Upgrade or downgrade anytime. Billing adjusts pro-rata.",
+        q: "Can I change plans anytime?",
+        a: "Yes. Upgrades apply immediately with pro-rated billing. Downgrades take effect at the next renewal. Monthly pricing, no hidden fees.",
       },
       {
-        q: "Who can access finance (quotes/invoices)?",
-        a: "By default, Director and Manager. Other roles see only what matches their job.",
+        q: "How do roles and permissions work?",
+        a: "Directors and managers access finance and admin. Sales, dev and other profiles see only their assigned modules — configurable per STE.",
       },
       {
-        q: "How do I reach support?",
-        a: "Use the Contact page or email contact@fusionleap.com. Business and Enterprise get priority support.",
+        q: "How do I contact support?",
+        a: "Via the Contact page or at contact@fusionleap.com. We reply within one business day. Guided demos and custom quotes available.",
       },
     ],
   },

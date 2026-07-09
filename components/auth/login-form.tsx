@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { signIn } from "@/lib/actions/auth";
 import { LoginBrandLogo } from "@/components/auth/login-brand-logo";
+import { LoginStaticBackground } from "@/components/auth/login-static-bg";
 import { LoginVisualPanel } from "@/components/auth/login-visual-panel";
 import { LoginMobileDashboardPreview } from "@/components/auth/login-mobile-dashboard-preview";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
@@ -119,6 +120,7 @@ export function LoginForm() {
 
   return (
     <div className="login-split">
+      <LoginStaticBackground />
       {formSection}
       {visualSection}
     </div>

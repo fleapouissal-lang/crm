@@ -88,31 +88,34 @@ export const marketingFr = {
   faq: {
     metaTitle: "FAQ",
     title: "Questions fréquentes",
-    subtitle: "Tout ce qu'il faut savoir avant de démarrer.",
+    subtitle:
+      "L'essentiel sur Fusion Leap CRM — essai, tarifs, multi-entreprises et support.",
+    contactPrompt: "Vous ne trouvez pas votre réponse ?",
+    contactLink: "Contactez-nous",
     items: [
       {
         q: "Comment fonctionne le mois gratuit ?",
-        a: "Vous accédez à toutes les fonctionnalités du pack choisi pendant 30 jours, sans engagement. Aucune carte n'est requise pour démarrer.",
+        a: "30 jours d'accès complet au pack choisi, sans carte bancaire. À la fin, vous continuez, changez de formule ou arrêtez — vos données restent exportables.",
       },
       {
         q: "Puis-je gérer plusieurs entreprises (STE) ?",
-        a: "Oui. Le pack Entreprise permet à un administrateur global de créer et gérer plusieurs STE, chacune avec son CRM isolé.",
+        a: "Oui. Le pack Entreprise permet de créer plusieurs STE (Fusion Leap, Autolog, etc.) avec un CRM isolé pour chacune : leads, clients, devis et équipes séparés.",
       },
       {
-        q: "Les données sont-elles séparées par entreprise ?",
-        a: "Oui. Chaque STE dispose de son propre espace. Les utilisateurs ne voient que les données de leur entreprise.",
+        q: "Les données sont-elles isolées entre entreprises ?",
+        a: "Oui. Chaque STE dispose de son propre espace avec des règles d'accès côté serveur. Les utilisateurs ne voient que les données de leur organisation.",
       },
       {
-        q: "Puis-je changer de pack plus tard ?",
-        a: "Oui, vous pouvez upgrader ou downgrader à tout moment. La facturation s'ajuste au prorata.",
+        q: "Puis-je changer de pack à tout moment ?",
+        a: "Oui. Upgrade immédiat avec facturation au prorata. Downgrade au renouvellement suivant. Tarifs mensuels, sans frais cachés.",
       },
       {
-        q: "Qui peut accéder à la finance (devis/factures) ?",
-        a: "Par défaut, le Directeur et le Gérant. Les autres rôles voient uniquement ce qui correspond à leur métier.",
+        q: "Comment fonctionnent les rôles et permissions ?",
+        a: "Directeur et gérant accèdent à la finance et à l'administration. Commerciaux, dev et autres profils voient uniquement les modules qui leur sont assignés, configurables par STE.",
       },
       {
         q: "Comment contacter le support ?",
-        a: "Via la page Contact ou par email à contact@fusionleap.com. Les clients Business et Entreprise bénéficient d'un support prioritaire.",
+        a: "Via la page Contact ou à contact@fusionleap.com. Réponse sous 24 h ouvrées. Démo guidée et devis sur mesure disponibles.",
       },
     ],
   },

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const LOGO_LIGHT = "/brand/fusion-leap-logo-light.png";
-const LOGO_BLACK = "/brand/fusion-leap-logo-black.png";
+const LOGO_BLACK = "/brand/fusion-leap-logo-black.png?v=4";
 const LOGO_ALT = "Fusion Leap — Intelligent Systems. Limitless Impact.";
 
 export function LoginBrandLogo({
@@ -20,10 +20,12 @@ export function LoginBrandLogo({
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = mounted ? resolvedTheme === "dark" : true;
+  const isDark = mounted ? resolvedTheme === "dark" : false;
   const src =
     variant === "split"
-      ? LOGO_LIGHT
+      ? isDark
+        ? LOGO_LIGHT
+        : LOGO_BLACK
       : variant === "plain"
         ? isDark
           ? LOGO_LIGHT
