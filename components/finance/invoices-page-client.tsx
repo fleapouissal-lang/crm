@@ -9,7 +9,6 @@ import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine, FlDelta } from "@/components/fusion/primitives";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
 import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
-import { InvoiceDetailDialog } from "@/components/finance/invoice-detail-dialog";
 import {
   INVOICE_STATUS_BADGE,
   formatMoney,
@@ -17,23 +16,24 @@ import {
 } from "@/lib/finance/types";
 import {
   loadInvoices,
+  loadQuotes,
   loadTemplates,
   saveInvoices,
 } from "@/lib/finance/storage";
-
 export function InvoicesPageClient() {
   const dict = useDict();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
   const b = dict.fusion.badges;
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [quotes, setQuotes] = useState(loadQuotes());
   const [templates, setTemplates] = useState(loadTemplates());
   const [formOpen, setFormOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [active, setActive] = useState<InvoiceRecord | null>(null);
 
   useEffect(() => {
     setInvoices(loadInvoices());
+    setQuotes(loadQuotes());
     setTemplates(loadTemplates());
   }, []);
 
@@ -74,9 +74,9 @@ export function InvoicesPageClient() {
     toast.success(f.invoiceDeleted);
   }
 
-  const activeTemplate = active?.templateId
-    ? templates.find((t) => t.id === active.templateId)
-    : undefined;
+  function viewInvoicePdf(row: InvoiceRecord) {
+    window.open(`/finance/invoices/${row.id}`, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <div className="space-y-[18px]">
@@ -142,7 +142,7 @@ export function InvoicesPageClient() {
                   <td>
                     <FinanceRowActions
                       label={row.number}
-                      onView={() => { setActive(row); setDetailOpen(true); }}
+                      onView={() => viewInvoicePdf(row)}
                       onEdit={() => { setActive(row); setFormOpen(true); }}
                       onDelete={() => handleDelete(row.id)}
                     />
@@ -161,13 +161,6 @@ export function InvoicesPageClient() {
         templates={templates}
         existingInvoices={invoices}
         onSave={handleSave}
-      />
-      <InvoiceDetailDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        invoice={active}
-        template={activeTemplate}
-        onEdit={() => { setDetailOpen(false); setFormOpen(true); }}
       />
     </div>
   );

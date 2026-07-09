@@ -4,12 +4,15 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Pencil } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
+import { InvoicePdfExportButton } from "@/components/finance/pdf-export-button";
 import {
   INVOICE_STATUS_BADGE,
   formatMoney,
   type DocumentTemplate,
   type InvoiceRecord,
+  type QuoteRecord,
 } from "@/lib/finance/types";
+import { renderInvoiceTemplate } from "@/lib/finance/render-template";
 import {
   Dialog,
   DialogContent,
@@ -17,17 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-function renderTemplate(content: string, invoice: InvoiceRecord): string {
-  return content
-    .replace(/\{\{numero\}\}/g, invoice.number)
-    .replace(/\{\{client\}\}/g, invoice.clientName)
-    .replace(/\{\{montant\}\}/g, invoice.amount.toLocaleString("fr-FR"))
-    .replace(/\{\{devise\}\}/g, invoice.currency)
-    .replace(/\{\{echeance\}\}/g, invoice.dueDate)
-    .replace(/\{\{prestation\}\}/g, invoice.notes || "—")
-    .replace(/\{\{iban\}\}/g, "—");
-}
 
 function statusLabel(
   inv: InvoiceRecord,
@@ -42,18 +34,21 @@ export function InvoiceDetailDialog({
   onOpenChange,
   invoice,
   template,
+  linkedQuote,
   onEdit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: InvoiceRecord | null;
   template?: DocumentTemplate;
+  linkedQuote?: QuoteRecord;
   onEdit: () => void;
 }) {
   const dict = useDict();
   const inv = dict.fusion.invoices;
   if (!invoice) return null;
 
+  const service = linkedQuote?.service || invoice.notes || undefined;
   const badge = INVOICE_STATUS_BADGE[invoice.status];
 
   return (
@@ -93,7 +88,7 @@ export function InvoiceDetailDialog({
           </dl>
           {template ? (
             <pre className="max-h-[240px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-              {renderTemplate(template.content, invoice)}
+              {renderInvoiceTemplate(template.content, invoice, service)}
             </pre>
           ) : null}
           {invoice.notes ? (
@@ -104,6 +99,12 @@ export function InvoiceDetailDialog({
           <button type="button" className="fl-btn sm ghost" onClick={() => onOpenChange(false)}>
             {dict.common.cancel}
           </button>
+          <InvoicePdfExportButton
+            invoice={invoice}
+            template={template}
+            linkedQuote={linkedQuote}
+            variant="ghost"
+          />
           <button type="button" className="fl-btn sm primary" onClick={onEdit}>
             <Pencil className="size-4" />
             {dict.common.edit}

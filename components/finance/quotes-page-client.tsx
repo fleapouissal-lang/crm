@@ -7,7 +7,6 @@ import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine, FlDelta } from "@/components/fusion/primitives";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
 import { QuoteFormDialog } from "@/components/finance/quote-form-dialog";
-import { QuoteDetailDialog } from "@/components/finance/quote-detail-dialog";
 import {
   QUOTE_STATUS_BADGE,
   formatMoney,
@@ -18,7 +17,6 @@ import {
   loadTemplates,
   saveQuotes,
 } from "@/lib/finance/storage";
-
 export function QuotesPageClient() {
   const dict = useDict();
   const q = dict.fusion.quotes;
@@ -26,7 +24,6 @@ export function QuotesPageClient() {
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [templates, setTemplates] = useState(loadTemplates());
   const [formOpen, setFormOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [active, setActive] = useState<QuoteRecord | null>(null);
 
   useEffect(() => {
@@ -64,9 +61,9 @@ export function QuotesPageClient() {
     toast.success(f.quoteDeleted);
   }
 
-  const activeTemplate = active?.templateId
-    ? templates.find((t) => t.id === active.templateId)
-    : undefined;
+  function viewQuotePdf(row: QuoteRecord) {
+    window.open(`/finance/quotes/${row.id}`, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <div className="space-y-[18px]">
@@ -130,7 +127,7 @@ export function QuotesPageClient() {
                   <td>
                     <FinanceRowActions
                       label={row.number}
-                      onView={() => { setActive(row); setDetailOpen(true); }}
+                      onView={() => viewQuotePdf(row)}
                       onEdit={() => { setActive(row); setFormOpen(true); }}
                       onDelete={() => handleDelete(row.id)}
                     />
@@ -149,13 +146,6 @@ export function QuotesPageClient() {
         templates={templates}
         existingQuotes={quotes}
         onSave={handleSave}
-      />
-      <QuoteDetailDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        quote={active}
-        template={activeTemplate}
-        onEdit={() => { setDetailOpen(false); setFormOpen(true); }}
       />
     </div>
   );

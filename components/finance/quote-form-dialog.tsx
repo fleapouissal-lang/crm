@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
-import type { DocumentTemplate, QuoteRecord, QuoteStatus } from "@/lib/finance/types";
+import type { DocumentTemplate, QuoteRecord, QuoteStatus, ClientType } from "@/lib/finance/types";
 import { nextQuoteNumber } from "@/lib/finance/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,8 +28,11 @@ import { cn } from "@/lib/utils";
 
 const STATUSES: QuoteStatus[] = ["draft", "sent", "accepted", "expired", "refused"];
 
+const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
+
 const schema = z.object({
   clientName: z.string().min(1),
+  clientType: z.enum(["pro", "particulier"]),
   service: z.string().min(1),
   amount: z.string().min(1),
   currency: z.string().min(1),
@@ -101,6 +104,7 @@ export function QuoteFormDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       clientName: "",
+      clientType: "pro",
       service: "",
       amount: "",
       currency: "MAD",
@@ -113,11 +117,13 @@ export function QuoteFormDialog({
 
   const status = watch("status");
   const templateId = watch("templateId");
+  const clientType = watch("clientType");
 
   useEffect(() => {
     if (!open) return;
     reset({
       clientName: quote?.clientName ?? "",
+      clientType: quote?.clientType ?? "pro",
       service: quote?.service ?? "",
       amount: quote ? String(quote.amount) : "",
       currency: quote?.currency ?? "MAD",
@@ -136,6 +142,7 @@ export function QuoteFormDialog({
       id,
       number,
       clientName: values.clientName.trim(),
+      clientType: values.clientType as ClientType,
       service: values.service.trim(),
       amount: Number(values.amount.replace(/,/g, "")),
       currency: values.currency,
@@ -161,9 +168,25 @@ export function QuoteFormDialog({
               {q.reference} <span className="fl-mono font-medium text-foreground">{quote?.number}</span>
             </p>
           ) : null}
-          <Field label={q.client} htmlFor="q-client" error={errors.clientName?.message}>
-            <Input id="q-client" className="fl-inp" {...register("clientName")} />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={q.client} htmlFor="q-client" error={errors.clientName?.message}>
+              <Input id="q-client" className="fl-inp" {...register("clientName")} />
+            </Field>
+            <Field label={f.clientType}>
+              <Select value={clientType} onValueChange={(v) => v && setValue("clientType", v as ClientType)}>
+                <SelectTrigger className="fl-inp h-auto w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLIENT_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {f[type === "pro" ? "clientPro" : "clientParticulier"]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
           <Field label={q.service} htmlFor="q-service" error={errors.service?.message}>
             <Input id="q-service" className="fl-inp" {...register("service")} />
           </Field>

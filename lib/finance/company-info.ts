@@ -1,0 +1,18 @@
+export const FUSION_COMPANY = {
+  name: "Fusion Leap",
+  legalForm: "SARL AU",
+  addressLine1: "123 Boulevard Zerktouni",
+  addressLine2: "Casablanca 20100",
+  country: "Maroc",
+  ice: "ICE 000000000000000",
+  rc: "RC 123456",
+  taxId: "IF 12345678",
+  capital: "Capital 100 000 MAD",
+  phone: "+212 6 00 00 00 00",
+  email: "contact@fusionleap.ma",
+  website: "www.fusionleap.ma",
+  iban: "MA00 0000 0000 0000 0000 0000",
+  bank: "Bank of Africa",
+  tvaRate: 0.2,
+  logoPath: "/brand/fusion-leap-logo-dark.png",
+} as const;

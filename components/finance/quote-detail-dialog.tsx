@@ -4,12 +4,14 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Pencil } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
+import { QuotePdfExportButton } from "@/components/finance/pdf-export-button";
 import {
   QUOTE_STATUS_BADGE,
   formatMoney,
   type DocumentTemplate,
   type QuoteRecord,
 } from "@/lib/finance/types";
+import { renderQuoteTemplate } from "@/lib/finance/render-template";
 import {
   Dialog,
   DialogContent,
@@ -17,16 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-function renderTemplate(content: string, quote: QuoteRecord): string {
-  return content
-    .replace(/\{\{numero\}\}/g, quote.number)
-    .replace(/\{\{client\}\}/g, quote.clientName)
-    .replace(/\{\{prestation\}\}/g, quote.service)
-    .replace(/\{\{montant\}\}/g, quote.amount.toLocaleString("fr-FR"))
-    .replace(/\{\{devise\}\}/g, quote.currency)
-    .replace(/\{\{validite\}\}/g, String(quote.validityDays));
-}
 
 export function QuoteDetailDialog({
   open,
@@ -86,7 +78,7 @@ export function QuoteDetailDialog({
           </dl>
           {template ? (
             <pre className="max-h-[240px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-              {renderTemplate(template.content, quote)}
+              {renderQuoteTemplate(template.content, quote)}
             </pre>
           ) : null}
           {quote.notes ? (
@@ -100,6 +92,7 @@ export function QuoteDetailDialog({
           <button type="button" className="fl-btn sm ghost" onClick={() => onOpenChange(false)}>
             {dict.common.cancel}
           </button>
+          <QuotePdfExportButton quote={quote} template={template} variant="ghost" />
           <button type="button" className="fl-btn sm primary" onClick={onEdit}>
             <Pencil className="size-4" />
             {dict.common.edit}

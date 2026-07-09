@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
-import type { DocumentTemplate, InvoiceRecord, InvoiceStatus } from "@/lib/finance/types";
+import type { DocumentTemplate, InvoiceRecord, InvoiceStatus, ClientType } from "@/lib/finance/types";
 import { nextInvoiceNumber } from "@/lib/finance/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,8 +28,11 @@ import { cn } from "@/lib/utils";
 
 const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
 
+const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
+
 const schema = z.object({
   clientName: z.string().min(1),
+  clientType: z.enum(["pro", "particulier"]),
   amount: z.string().min(1),
   currency: z.string().min(1),
   dueDate: z.string().min(1),
@@ -97,6 +100,7 @@ export function InvoiceFormDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       clientName: "",
+      clientType: "pro",
       amount: "",
       currency: "MAD",
       dueDate: "",
@@ -108,11 +112,13 @@ export function InvoiceFormDialog({
 
   const status = watch("status");
   const templateId = watch("templateId");
+  const clientType = watch("clientType");
 
   useEffect(() => {
     if (!open) return;
     reset({
       clientName: invoice?.clientName ?? "",
+      clientType: invoice?.clientType ?? "pro",
       amount: invoice ? String(invoice.amount) : "",
       currency: invoice?.currency ?? "MAD",
       dueDate: invoice?.dueDate ?? "",
@@ -130,6 +136,7 @@ export function InvoiceFormDialog({
       id,
       number,
       clientName: values.clientName.trim(),
+      clientType: values.clientType as ClientType,
       amount: Number(values.amount.replace(/,/g, "")),
       currency: values.currency,
       dueDate: values.dueDate,
@@ -156,9 +163,25 @@ export function InvoiceFormDialog({
               <span className="fl-mono font-medium text-foreground">{invoice?.number}</span>
             </p>
           ) : null}
-          <Field label={inv.client} htmlFor="inv-client" error={errors.clientName?.message}>
-            <Input id="inv-client" className="fl-inp" {...register("clientName")} />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={inv.client} htmlFor="inv-client" error={errors.clientName?.message}>
+              <Input id="inv-client" className="fl-inp" {...register("clientName")} />
+            </Field>
+            <Field label={f.clientType}>
+              <Select value={clientType} onValueChange={(v) => v && setValue("clientType", v as ClientType)}>
+                <SelectTrigger className="fl-inp h-auto w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLIENT_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {f[type === "pro" ? "clientPro" : "clientParticulier"]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={inv.amount} htmlFor="inv-amount" error={errors.amount?.message}>
               <Input id="inv-amount" className="fl-inp" {...register("amount")} />

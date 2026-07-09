@@ -4,6 +4,8 @@ export type QuoteStatus = "draft" | "sent" | "accepted" | "expired" | "refused";
 
 export type InvoiceStatus = "draft" | "pending" | "paid" | "overdue";
 
+export type ClientType = "particulier" | "pro";
+
 export interface DocumentTemplate {
   id: string;
   name: string;
@@ -19,6 +21,7 @@ export interface QuoteRecord {
   id: string;
   number: string;
   clientName: string;
+  clientType: ClientType;
   service: string;
   amount: number;
   currency: string;
@@ -34,6 +37,7 @@ export interface InvoiceRecord {
   id: string;
   number: string;
   clientName: string;
+  clientType: ClientType;
   amount: number;
   currency: string;
   dueDate: string;

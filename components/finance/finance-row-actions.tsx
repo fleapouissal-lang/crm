@@ -20,11 +20,13 @@ export function FinanceRowActions({
   onView,
   onEdit,
   onDelete,
+  viewLoading,
 }: {
   label: string;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  viewLoading?: boolean;
 }) {
   const dict = useDict();
   const f = dict.fusion.financeDocs;
@@ -36,6 +38,7 @@ export function FinanceRowActions({
       label: dict.common.viewDetails,
       icon: <Eye className="size-4" />,
       onClick: onView,
+      disabled: viewLoading,
     },
     {
       label: dict.common.edit,
