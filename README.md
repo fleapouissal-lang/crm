@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fusion Leap CRM
 
-## Getting Started
+CRM moderne pour équipes commerciales — Dashboard, Leads, Tâches.  
+Modern CRM for sales teams — Dashboard, Leads, Tasks.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 16 · React 19 · TypeScript · Tailwind v4 · shadcn/ui
+- Supabase (Auth, PostgreSQL, Storage, Realtime)
+- i18n **Français / English** (langue par défaut : FR)
+
+## Configuration Supabase
+
+Vos identifiants sont configurés dans `.env.local` :
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://abxgsuuyqplvcqescwbb.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...  (serveur uniquement, ne jamais exposer côté client)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **Important :** La clé `service_role` ne doit jamais être commitée ni partagée publiquement. Si elle a été exposée, régénérez-la dans le [dashboard Supabase](https://supabase.com/dashboard/project/abxgsuuyqplvcqescwbb/settings/api).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Migrations automatiques
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Les migrations s'exécutent **automatiquement** :
+- avant `npm run dev` (`predev`)
+- avant `npm run build` (`prebuild`)
+- au démarrage du serveur Next.js (`instrumentation.ts`)
 
-## Learn More
+### Configuration requise
 
-To learn more about Next.js, take a look at the following resources:
+Ajoutez le **mot de passe PostgreSQL** dans `.env.local` :
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+SUPABASE_DB_PASSWORD=votre_mot_de_passe
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Trouvez-le dans Supabase → **Settings → Database → Database password**  
+[https://supabase.com/dashboard/project/abxgsuuyqplvcqescwbb/database/settings](https://supabase.com/dashboard/project/abxgsuuyqplvcqescwbb/database/settings)
 
-## Deploy on Vercel
+Les migrations sont suivies dans la table `_schema_migrations` (pas de double exécution).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Commandes manuelles
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run db:migrate          # Appliquer les migrations
+SKIP_DB_MIGRATE=true npm run dev   # Démarrer sans migration
+```
+
+## Étape obligatoire — Migration base de données
+
+~~Les tables n'existent pas encore~~ — **Automatique** avec `SUPABASE_DB_PASSWORD` configuré.
+
+Si vous préférez le SQL manuel :
+
+1. Ouvrez l'éditeur SQL :  
+   [https://supabase.com/dashboard/project/abxgsuuyqplvcqescwbb/sql/new](https://supabase.com/dashboard/project/abxgsuuyqplvcqescwbb/sql/new)
+
+2. Copiez-collez le contenu de [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
+
+3. Cliquez **Run**
+
+**Alternative CLI** (si vous avez le mot de passe PostgreSQL) :
+
+```bash
+# Ajoutez dans .env.local :
+# DATABASE_URL=postgresql://postgres:[MOT_DE_PASSE]@db.abxgsuuyqplvcqescwbb.supabase.co:5432/postgres
+
+npm run db:migrate
+```
+
+## Démarrage
+
+```bash
+npm install
+npm run dev
+```
+
+Ouvrez [http://localhost:3000](http://localhost:3000) → **Inscription** pour créer votre organisation (premier utilisateur = admin).
+
+## Langues
+
+- Sélecteur **FR / EN** dans l'en-tête (dashboard) et pages auth
+- Langue par défaut : **Français**
+- Préférence sauvegardée dans un cookie
+
+## Fonctionnalités (Phase 1)
+
+| Module | FR | EN |
+|--------|----|----|
+| Auth | Connexion / Inscription | Login / Signup |
+| Dashboard | KPIs, graphiques, activité | KPIs, charts, activity |
+| Leads | Kanban + tableau, CRUD, Realtime | Kanban + table, CRUD, Realtime |
+| Tâches | Liste + calendrier, CRUD | List + calendar, CRUD |
+
+## Données de test (optionnel)
+
+Après inscription, exécutez [`supabase/seed.sql`](supabase/seed.sql) en remplaçant `YOUR_ORG_ID` et `YOUR_USER_ID`.

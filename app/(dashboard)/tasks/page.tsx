@@ -1,0 +1,42 @@
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { getTasks } from "@/lib/actions/tasks";
+import { getLeads } from "@/lib/actions/leads";
+import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { TasksPageClient } from "@/components/tasks/tasks-page-client";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; lead_id?: string; project_id?: string }>;
+}) {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) redirect("/login");
+
+  const params = await searchParams;
+  const [tasks, profiles, leads] = await Promise.all([
+    getTasks({ status: params.status }),
+    getOrgProfiles(),
+    getLeads(),
+  ]);
+
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
+      <TasksPageClient
+        tasks={tasks}
+        profiles={profiles}
+        leads={leads}
+        organizationId={profile.organization_id}
+        role={profile.role}
+      />
+    </Suspense>
+  );
+}
