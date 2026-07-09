@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 
-const PACK_ORDER = ["starter", "business", "enterprise"] as const;
+const PACK_ORDER = ["free", "starter", "business", "enterprise"] as const;
 
 export function PricingCards() {
   const p = useDict().marketing.pricing;
@@ -14,6 +14,7 @@ export function PricingCards() {
       {PACK_ORDER.map((key) => {
         const pack = p.packs[key];
         const isPopular = key === "business";
+        const isFree = key === "free";
 
         return (
           <article
@@ -23,12 +24,25 @@ export function PricingCards() {
             {isPopular ? (
               <span className="marketing-pricing__badge">{p.popular}</span>
             ) : null}
-            <span className="marketing-pricing__trial">{p.trialBadge}</span>
+            {isFree ? (
+              <span className="marketing-pricing__free">{p.freeBadge}</span>
+            ) : (
+              <span className="marketing-pricing__trial">{p.trialBadge}</span>
+            )}
             <h3>{pack.name}</h3>
             <p className="marketing-pricing__desc">{pack.description}</p>
             <div className="marketing-pricing__price">
-              <span className="marketing-pricing__amount">€{pack.price}</span>
-              <span className="marketing-pricing__period">{p.perMonth}</span>
+              {isFree ? (
+                <>
+                  <span className="marketing-pricing__amount">{p.priceFree}</span>
+                  <span className="marketing-pricing__period">{p.freeForever}</span>
+                </>
+              ) : (
+                <>
+                  <span className="marketing-pricing__amount">€{pack.price}</span>
+                  <span className="marketing-pricing__period">{p.perMonth}</span>
+                </>
+              )}
             </div>
             <ul className="marketing-pricing__features">
               {pack.features.map((feature) => (
@@ -46,7 +60,7 @@ export function PricingCards() {
                   : "marketing-pricing__cta"
               }
             >
-              {key === "enterprise" ? p.ctaContact : p.cta}
+              {isFree ? p.ctaFree : key === "enterprise" ? p.ctaContact : p.cta}
             </Link>
           </article>
         );

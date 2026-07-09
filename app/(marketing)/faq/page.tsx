@@ -12,8 +12,11 @@ export default async function FaqPage() {
 
   return (
     <section className="marketing-page marketing-page--faq">
-      <div className="marketing-page__hero">
-        <h1>{f.title}</h1>
+      <div className="marketing-page__hero marketing-page__hero--faq">
+        <h1>
+          {f.title}{" "}
+          <span className="marketing-page__accent">{f.titleAccent}</span>
+        </h1>
         <p>{f.subtitle}</p>
       </div>
       <FaqList />

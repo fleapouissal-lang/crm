@@ -4,9 +4,11 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const LOGO_LIGHT = "/brand/fusion-leap-logo-light.png";
-const LOGO_BLACK = "/brand/fusion-leap-logo-black.png?v=4";
+const LOGO_LIGHT = "/brand/fusion-leap-logo-light.png?v=5";
+const LOGO_BLACK = "/brand/fusion-leap-logo-black.png?v=5";
 const LOGO_ALT = "Fusion Leap — Intelligent Systems. Limitless Impact.";
+const LOGO_WIDTH = 762;
+const LOGO_HEIGHT = 147;
 
 export function LoginBrandLogo({
   className,
@@ -22,15 +24,11 @@ export function LoginBrandLogo({
 
   const isDark = mounted ? resolvedTheme === "dark" : false;
   const src =
-    variant === "split"
+    variant === "split" || variant === "plain"
       ? isDark
         ? LOGO_LIGHT
         : LOGO_BLACK
-      : variant === "plain"
-        ? isDark
-          ? LOGO_LIGHT
-          : LOGO_BLACK
-        : LOGO_BLACK;
+      : LOGO_BLACK;
 
   return (
     <div
@@ -48,6 +46,8 @@ export function LoginBrandLogo({
       <img
         src={src}
         alt={LOGO_ALT}
+        width={LOGO_WIDTH}
+        height={LOGO_HEIGHT}
         className="login-brand-logo__img"
         decoding="async"
         fetchPriority="high"

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { LoginBrandLogo } from "@/components/auth/login-brand-logo";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -19,13 +21,49 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
   const dict = useDict();
   const m = dict.marketing;
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const scrollRoot = document.querySelector(".marketing-layout");
+    if (!scrollRoot) return;
+
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRoot;
+      const maxScroll = scrollHeight - clientHeight;
+      const progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
+      setScrollProgress(progress);
+      setScrolled(scrollTop > 12);
+    };
+
+    onScroll();
+    scrollRoot.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      scrollRoot.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [pathname]);
 
   return (
     <div className="marketing">
+      <div className="marketing__scroll-track" aria-hidden />
+      <div
+        className="marketing__scroll-progress"
+        style={{ width: `${scrollProgress * 100}%` }}
+        aria-hidden
+      />
+
       <div className="marketing__glow" aria-hidden />
       <div className="marketing__glow marketing__glow--2" aria-hidden />
 
-      <header className="marketing__header">
+      <header
+        className={cn(
+          "marketing__header",
+          scrolled && "marketing__header--scrolled"
+        )}
+      >
         <Link href="/login" className="marketing__logo">
           <LoginBrandLogo variant="plain" className="marketing__logo-img" />
         </Link>
@@ -51,20 +89,15 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             <LocaleSwitcher variant="icon" iconClassName="marketing__icon-btn" />
           </div>
 
-          <Link href="/login" className="marketing__nav-login">
+          <Link href="/login" className="marketing__nav-cta">
             {m.nav.login}
-          </Link>
-          <Link href="/signup" className="marketing__nav-cta">
-            {m.nav.signup}
           </Link>
         </div>
       </header>
 
       <main className="marketing__main">{children}</main>
 
-      <footer className="marketing__footer">
-        <p>© {new Date().getFullYear()} Fusion Leap. {m.footer.rights}</p>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

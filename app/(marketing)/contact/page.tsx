@@ -1,5 +1,5 @@
 import { getLocalizedDict } from "@/lib/i18n/server";
-import { ContactForm } from "@/components/marketing/contact-form";
+import { ContactBody } from "@/components/marketing/contact-body";
 
 export async function generateMetadata() {
   const dict = await getLocalizedDict();
@@ -12,25 +12,16 @@ export default async function ContactPage() {
 
   return (
     <section className="marketing-page marketing-page--contact">
-      <div className="marketing-page__hero">
-        <h1>{c.title}</h1>
-        <p>{c.subtitle}</p>
-      </div>
+      <ContactBody />
 
-      <div className="marketing-contact__layout">
-        <ContactForm />
-
-        <aside className="marketing-contact__info">
-          <h2>{c.infoTitle}</h2>
-          <div className="marketing-contact__info-block">
-            <span>{c.emailLabel}</span>
-            <a href={`mailto:${c.emailValue}`}>{c.emailValue}</a>
-          </div>
-          <div className="marketing-contact__info-block">
-            <span>{c.hoursTitle}</span>
-            <p>{c.hoursValue}</p>
-          </div>
-        </aside>
+      <div className="marketing-contact-map" aria-label={c.mapLabel}>
+        <iframe
+          title={c.mapLabel}
+          className="marketing-contact-map__frame"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=-7.6500%2C33.5600%2C-7.5800%2C33.6000&layer=mapnik&marker=33.5731%2C-7.5898"
+        />
       </div>
     </section>
   );
