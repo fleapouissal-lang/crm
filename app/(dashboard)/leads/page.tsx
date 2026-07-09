@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getLeads } from "@/lib/actions/leads";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { canAccessLeads } from "@/lib/permissions";
 import { LeadsPageClient } from "@/components/leads/leads-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,6 +13,7 @@ export default async function LeadsPage({
 }) {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
+  if (!canAccessLeads(profile)) redirect("/dashboard");
 
   const params = await searchParams;
   const [leads, profiles] = await Promise.all([

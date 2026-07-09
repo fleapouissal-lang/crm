@@ -64,7 +64,8 @@ export function SignupForm() {
             </div>
             <div className="fl-field">
               <label htmlFor="email">{dict.common.email}</label>
-              <input id="email" name="email" type="email" className="fl-inp" placeholder="you@company.com" required autoComplete="email" />
+              <input id="email" name="email" type="email" className="fl-inp" placeholder="ouissal@fusionleap.com" required autoComplete="email" />
+              <p className="mt-1 text-xs fl-faint">{dict.auth.companyEmailHint}</p>
             </div>
             <div className="fl-field">
               <label htmlFor="password">{dict.common.password}</label>

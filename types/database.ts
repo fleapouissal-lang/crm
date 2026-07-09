@@ -1,4 +1,4 @@
-export type Role = "admin" | "manager" | "member";
+export type Role = "platform_admin" | "admin" | "manager" | "member";
 
 export type LeadStage =
   | "new"
@@ -27,6 +27,18 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  email_domain: string | null;
+  director_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface OrgJobRole {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  is_default: boolean;
   created_at: string;
 }
 
@@ -38,9 +50,11 @@ export interface Profile {
   job_title: string | null;
   role: Role;
   organization_id: string | null;
+  job_role_id: string | null;
   email: string | null;
   created_at: string;
   updated_at: string;
+  job_role?: OrgJobRole | null;
 }
 
 export interface Lead {

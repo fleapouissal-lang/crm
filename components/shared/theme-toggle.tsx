@@ -3,16 +3,19 @@
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
+  const btnClass = cn("fusion-icon-btn", className);
+
   if (!mounted) {
     return (
-      <button type="button" className="fusion-icon-btn" aria-label="Toggle theme">
+      <button type="button" className={btnClass} aria-label="Toggle theme">
         <Moon />
       </button>
     );
@@ -21,7 +24,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className="fusion-icon-btn"
+      className={btnClass}
       title="Toggle theme"
       aria-label="Toggle theme"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

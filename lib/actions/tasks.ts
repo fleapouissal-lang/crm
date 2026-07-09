@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
-import { canDeleteTask } from "@/lib/permissions";
+import {
+  canCreateTask,
+  canDeleteTaskForProfile,
+  canModifyTask,
+  canViewAllTasks,
+} from "@/lib/permissions";
 import { taskSchema } from "@/lib/validations/task";
 import type {
   ActionResult,
@@ -31,6 +36,16 @@ async function logActivity(
   });
 }
 
+async function fetchTaskForAccess(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("id, assigned_to, created_by, organization_id, title")
+    .eq("id", id)
+    .single();
+  return data;
+}
+
 export async function getTasks(filters?: {
   status?: string;
   due_date?: string;
@@ -47,6 +62,10 @@ export async function getTasks(filters?: {
     .eq("organization_id", profile.organization_id)
     .order("due_date", { ascending: true, nullsFirst: false });
 
+  if (!canViewAllTasks(profile)) {
+    query = query.or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`);
+  }
+
   if (filters?.status && filters.status !== "all") {
     query = query.eq("status", filters.status);
   }
@@ -60,6 +79,9 @@ export async function getTasks(filters?: {
 }
 
 export async function getTask(id: string): Promise<Task | null> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) return null;
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
@@ -68,16 +90,31 @@ export async function getTask(id: string): Promise<Task | null> {
     )
     .eq("id", id)
     .single();
-  return data as Task | null;
+
+  const task = data as Task | null;
+  if (!task || task.organization_id !== profile.organization_id) return null;
+  if (!canViewAllTasks(profile) && !canModifyTask(profile, task)) return null;
+
+  return task;
 }
 
 export async function getTasksForLead(leadId: string): Promise<Task[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) return [];
+
+  let query = supabase
     .from("tasks")
     .select("*, assigned_profile:profiles!tasks_assigned_to_fkey(*)")
     .eq("lead_id", leadId)
+    .eq("organization_id", profile.organization_id)
     .order("due_date", { ascending: true });
+
+  if (!canViewAllTasks(profile)) {
+    query = query.or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`);
+  }
+
+  const { data } = await query;
   return (data as Task[]) ?? [];
 }
 
@@ -94,7 +131,15 @@ export async function createTask(
     return { success: false, error: "Not authenticated" };
   }
 
+  if (!canCreateTask(profile)) {
+    return { success: false, error: "You don't have permission to create tasks" };
+  }
+
   const values = parsed.data;
+  const assignedTo = canViewAllTasks(profile)
+    ? values.assigned_to || null
+    : profile.id;
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -106,7 +151,7 @@ export async function createTask(
       status: values.status as TaskStatus,
       priority: values.priority as TaskPriority,
       due_date: values.due_date || null,
-      assigned_to: values.assigned_to || null,
+      assigned_to: assignedTo,
       lead_id: values.lead_id || null,
       created_by: profile.id,
     })
@@ -127,7 +172,6 @@ export async function createTask(
   revalidatePath("/dashboard");
   if (values.lead_id) {
     revalidatePath(`/leads/${values.lead_id}`);
-    revalidatePath(`/leads/${values.lead_id}`);
   }
   return { success: true, data: data as Task };
 }
@@ -146,6 +190,14 @@ export async function updateTask(
     return { success: false, error: "Not authenticated" };
   }
 
+  const existing = await fetchTaskForAccess(id);
+  if (!existing || existing.organization_id !== profile.organization_id) {
+    return { success: false, error: "Task not found" };
+  }
+  if (!canModifyTask(profile, existing)) {
+    return { success: false, error: "You don't have permission to edit this task" };
+  }
+
   const values = parsed.data;
   const supabase = await createClient();
 
@@ -157,7 +209,9 @@ export async function updateTask(
       status: values.status as TaskStatus,
       priority: values.priority as TaskPriority,
       due_date: values.due_date || null,
-      assigned_to: values.assigned_to || null,
+      assigned_to: canViewAllTasks(profile)
+        ? values.assigned_to || null
+        : profile.id,
       lead_id: values.lead_id || null,
     })
     .eq("id", id)
@@ -193,6 +247,14 @@ export async function updateTaskStatus(
     return { success: false, error: "Not authenticated" };
   }
 
+  const existing = await fetchTaskForAccess(id);
+  if (!existing || existing.organization_id !== profile.organization_id) {
+    return { success: false, error: "Task not found" };
+  }
+  if (!canModifyTask(profile, existing)) {
+    return { success: false, error: "You don't have permission to update this task" };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
@@ -224,29 +286,26 @@ export async function deleteTask(id: string): Promise<ActionResult> {
     return { success: false, error: "Not authenticated" };
   }
 
-  if (!canDeleteTask(profile.role)) {
+  const existing = await fetchTaskForAccess(id);
+  if (!existing || existing.organization_id !== profile.organization_id) {
+    return { success: false, error: "Task not found" };
+  }
+
+  if (!canDeleteTaskForProfile(profile, existing)) {
     return { success: false, error: "You don't have permission to delete tasks" };
   }
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("tasks")
-    .select("title")
-    .eq("id", id)
-    .single();
-
   const { error } = await supabase.from("tasks").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
 
-  if (existing) {
-    await logActivity(
-      profile.organization_id,
-      profile.id,
-      "task_deleted",
-      id,
-      `Deleted task "${existing.title}"`
-    );
-  }
+  await logActivity(
+    profile.organization_id,
+    profile.id,
+    "task_deleted",
+    id,
+    `Deleted task "${existing.title}"`
+  );
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");

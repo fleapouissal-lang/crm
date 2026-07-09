@@ -10,9 +10,13 @@ const force = process.argv.includes("--force");
 runSeed({ force })
   .then((result) => {
     if (result.status === "success") {
-      console.log(`[seed] ✅ ${result.message}`);
-      console.log(`[seed] Login: ${result.email}`);
-      console.log(`[seed] Password: ${result.password}`);
+      console.log(`[seed] ✅ ${result.message}\n`);
+      console.log("[seed] Comptes créés :\n");
+      for (const account of result.accounts) {
+        console.log(
+          `  • ${account.company} — ${account.role}: ${account.email} / ${account.password}`
+        );
+      }
       return;
     }
     if (result.status === "skipped") {

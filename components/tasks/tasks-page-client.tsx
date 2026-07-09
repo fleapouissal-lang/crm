@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
-import type { Lead, Profile, Role, Task } from "@/types/database";
+import type { Lead, Profile, Task } from "@/types/database";
 import { TASK_STATUSES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import {
@@ -25,13 +25,13 @@ export function TasksPageClient({
   profiles,
   leads,
   organizationId,
-  role,
+  profile,
 }: {
   tasks: Task[];
   profiles: Profile[];
   leads: Lead[];
   organizationId: string;
-  role: Role;
+  profile: Profile;
 }) {
   const dict = useDict();
   const [formOpen, setFormOpen] = useState(false);
@@ -133,7 +133,7 @@ export function TasksPageClient({
           organizationId={organizationId}
           profiles={profiles}
           leads={leads}
-          role={role}
+          profile={profile}
           projects={projects}
           projectFilter={projectFilter}
         />

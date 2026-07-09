@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 const LOCALE_OPTIONS: {
   key: Locale;
@@ -37,8 +38,10 @@ function localeLabel(key: Locale) {
 
 export function LocaleSwitcher({
   variant = "select",
+  iconClassName,
 }: {
   variant?: "default" | "icon" | "select";
+  iconClassName?: string;
 }) {
   const { locale, dict } = useI18n();
   const [pending, startTransition] = useTransition();
@@ -93,7 +96,7 @@ export function LocaleSwitcher({
     variant === "icon" ? (
       <button
         type="button"
-        className="fusion-icon-btn"
+        className={cn("fusion-icon-btn", iconClassName)}
         disabled={pending}
         aria-label={dict.common.language}
       >

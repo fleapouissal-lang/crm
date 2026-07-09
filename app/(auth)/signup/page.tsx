@@ -1,11 +1,6 @@
-import { getLocalizedDict } from "@/lib/i18n/server";
-import { SignupForm } from "@/components/auth/signup-form";
+import { redirect } from "next/navigation";
 
-export async function generateMetadata() {
-  const dict = await getLocalizedDict();
-  return { title: dict.auth.signup };
-}
-
+/** Public signup disabled — companies are created by the platform administrator. */
 export default function SignupPage() {
-  return <SignupForm />;
+  redirect("/login");
 }

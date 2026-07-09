@@ -12,11 +12,15 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import type { Profile } from "@/types/database";
 
+import { isPlatformAdmin } from "@/lib/permissions";
+
 export function AppHeader({
   profile,
+  organizationName,
   activityCount = 0,
 }: {
   profile: Profile;
+  organizationName?: string | null;
   activityCount?: number;
 }) {
   const router = useRouter();
@@ -48,13 +52,24 @@ export function AppHeader({
     setGreeting(firstName ? `${dateStr} · ${greet}, ${firstName}` : dateStr);
   }, [locale, firstName, pathname, staticSub]);
 
+  const platformAdmin = isPlatformAdmin(profile.role);
+
   return (
     <header className="fusion-topbar">
       <div className="fusion-page-head">
-        <h1>{title}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1>{title}</h1>
+          {organizationName && !platformAdmin ? (
+            <span className="fl-badge b-gray text-[11px]">{organizationName} CRM</span>
+          ) : null}
+          {platformAdmin ? (
+            <span className="fl-badge b-gray text-[11px]">{dict.auth.globalPortal}</span>
+          ) : null}
+        </div>
         <p>{greeting || staticSub}</p>
       </div>
 
+      {!platformAdmin ? (
       <form
         className="fusion-search"
         onSubmit={(e) => {
@@ -67,6 +82,7 @@ export function AppHeader({
         <input name="q" placeholder={dict.nav.searchPlaceholder} />
         <kbd>⌘K</kbd>
       </form>
+      ) : null}
 
       <div className="fusion-top-actions">
         <ThemeToggle />

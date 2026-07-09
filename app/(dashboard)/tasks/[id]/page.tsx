@@ -26,7 +26,7 @@ export default async function TaskDetailPage({
       task={task}
       profiles={profiles}
       leads={leads}
-      role={profile.role}
+      profile={profile}
     />
   );
 }

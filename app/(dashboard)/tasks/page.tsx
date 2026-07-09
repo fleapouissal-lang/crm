@@ -1,8 +1,9 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { getTasks } from "@/lib/actions/tasks";
 import { getLeads } from "@/lib/actions/leads";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { canAccessTasks } from "@/lib/permissions";
 import { TasksPageClient } from "@/components/tasks/tasks-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,6 +14,7 @@ export default async function TasksPage({
 }) {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
+  if (!canAccessTasks(profile)) redirect("/dashboard");
 
   const params = await searchParams;
   const [tasks, profiles, leads] = await Promise.all([
@@ -35,7 +37,7 @@ export default async function TasksPage({
         profiles={profiles}
         leads={leads}
         organizationId={profile.organization_id}
-        role={profile.role}
+        profile={profile}
       />
     </Suspense>
   );

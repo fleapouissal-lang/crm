@@ -13,20 +13,22 @@ import {
   workspaceNav,
   operationsNav,
   systemNav,
+  platformAdminNav,
   type NavItem,
 } from "@/lib/navigation";
+import { isPlatformAdmin, hasNavCapability, canViewFinanceDocumentsForRole } from "@/lib/permissions";
 import { signOut } from "@/lib/actions/auth";
 import { FusionLeapBrand } from "@/components/brand/fusion-leap-logo";
 import { SidebarLuxuryBg } from "@/components/layout/sidebar-luxury-bg";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useDict } from "@/components/shared/i18n-provider";
-import type { Profile, Role } from "@/types/database";
+import type { Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
 
 function NavSection({
   items,
   pathname,
-  role,
+  profile,
   leadCount,
   quoteCount,
   notificationCount,
@@ -35,7 +37,7 @@ function NavSection({
 }: {
   items: NavItem[];
   pathname: string;
-  role: Role;
+  profile: Profile;
   leadCount?: number;
   quoteCount?: number;
   notificationCount?: number;
@@ -43,7 +45,11 @@ function NavSection({
   onClose?: () => void;
 }) {
   const dict = useDict();
-  const visibleItems = items.filter((item) => !item.adminOnly || role === "admin");
+  const visibleItems = items.filter((item) => {
+    if (item.adminOnly && !canViewFinanceDocumentsForRole(profile.role)) return false;
+    if (item.capability && !hasNavCapability(profile, item.capability)) return false;
+    return true;
+  });
 
   if (visibleItems.length === 0) return null;
 
@@ -123,6 +129,11 @@ export function AppSidebar({
   const dict = useDict();
   const [pending, startTransition] = useTransition();
   const displayName = profile.full_name ?? dict.common.user;
+  const platformAdmin = isPlatformAdmin(profile.role);
+  const navSections = platformAdmin
+    ? [platformAdminNav]
+    : [workspaceNav, operationsNav, systemNav.filter((item) => item.id !== "settings")];
+  const showSettingsInFoot = !platformAdmin;
 
   const handleSidebarDoubleClick = useCallback(
     (e: MouseEvent<HTMLElement>) => {
@@ -171,57 +182,67 @@ export function AppSidebar({
         </div>
 
         <nav className="fusion-nav">
-          <NavSection
-            items={workspaceNav}
-            pathname={pathname}
-            role={profile.role}
-            leadCount={leadCount}
-            quoteCount={quoteCount}
-            notificationCount={notificationCount}
-            collapsed={collapsed}
-            onClose={onClose}
-          />
-          <NavSection
-            items={operationsNav}
-            pathname={pathname}
-            role={profile.role}
-            leadCount={leadCount}
-            quoteCount={quoteCount}
-            collapsed={collapsed}
-            onClose={onClose}
-          />
-          <NavSection
-            items={systemNav}
-            pathname={pathname}
-            role={profile.role}
-            notificationCount={notificationCount}
-            collapsed={collapsed}
-            onClose={onClose}
-          />
+          {navSections.map((items, index) => (
+            <NavSection
+              key={index}
+              items={items}
+              pathname={pathname}
+              profile={profile}
+              leadCount={leadCount}
+              quoteCount={quoteCount}
+              notificationCount={notificationCount}
+              collapsed={collapsed}
+              onClose={onClose}
+            />
+          ))}
+          {!platformAdmin ? (
+            <NavSection
+              items={systemNav.filter((item) => item.id === "settings")}
+              pathname={pathname}
+              profile={profile}
+              notificationCount={notificationCount}
+              collapsed={collapsed}
+              onClose={onClose}
+            />
+          ) : null}
         </nav>
 
         <div className="fusion-side-foot">
-          <Link
-            href="/settings"
-            className="fusion-user-card"
-            onClick={onClose}
-            title={displayName}
-          >
-            <UserAvatar
-              name={displayName}
-              avatarUrl={profile.avatar_url}
-              variant="sidebar"
-            />
-            <div className="fusion-user-meta">
-              <b>{displayName}</b>
-              <small>{dict.roles[profile.role]}</small>
+          {showSettingsInFoot ? (
+            <Link
+              href="/settings"
+              className="fusion-user-card"
+              onClick={onClose}
+              title={displayName}
+            >
+              <UserAvatar
+                name={displayName}
+                avatarUrl={profile.avatar_url}
+                variant="sidebar"
+              />
+              <div className="fusion-user-meta">
+                <b>{displayName}</b>
+                <small>{dict.roles[profile.role]}</small>
+              </div>
+              {!collapsed ? (
+                <span className="fusion-nav-icon-wrap fusion-user-settings">
+                  <Settings className="fusion-nav-svg" strokeWidth={1.5} />
+                </span>
+              ) : null}
+            </Link>
+          ) : (
+            <div className="fusion-user-card cursor-default">
+              <UserAvatar
+                name={displayName}
+                avatarUrl={profile.avatar_url}
+                variant="sidebar"
+              />
+              <div className="fusion-user-meta">
+                <b>{displayName}</b>
+                <small>{dict.roles[profile.role]}</small>
+              </div>
             </div>
-            {!collapsed ? (
-              <span className="fusion-nav-icon-wrap fusion-user-settings">
-                <Settings className="fusion-nav-svg" strokeWidth={1.5} />
-              </span>
-            ) : null}
-          </Link>
+          )}
 
           <button
             type="button"

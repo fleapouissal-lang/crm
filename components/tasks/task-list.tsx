@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CheckSquare, Circle, Eye, Pencil, Trash2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
-import type { Lead, Profile, Role, Task, TaskStatus } from "@/types/database";
+import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import {
   loadTaskProjectLinks,
@@ -20,7 +20,7 @@ import {
 import { EmptyState } from "@/components/shared/page-header";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { TaskFormDialog } from "@/components/tasks/task-form";
-import { canDeleteTask } from "@/lib/permissions";
+import { canDeleteTaskForProfile } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -37,12 +37,12 @@ import {
 
 function TaskRowActions({
   task,
-  role,
+  profile,
   onEdit,
   onToggleDone,
 }: {
   task: Task;
-  role: Role;
+  profile: Profile;
   onEdit: () => void;
   onToggleDone: () => void;
 }) {
@@ -67,7 +67,7 @@ function TaskRowActions({
       icon: <Check className="size-4" />,
       onClick: onToggleDone,
     },
-    ...(canDeleteTask(role)
+    ...(canDeleteTaskForProfile(profile, task)
       ? ([
           { separator: true },
           {
@@ -124,7 +124,7 @@ export function TaskList({
   organizationId,
   profiles,
   leads,
-  role,
+  profile,
   projects = [],
   projectFilter = "all",
 }: {
@@ -132,7 +132,7 @@ export function TaskList({
   organizationId: string;
   profiles: Profile[];
   leads: Lead[];
-  role: Role;
+  profile: Profile;
   projects?: ProjectRecord[];
   projectFilter?: string;
 }) {
@@ -347,7 +347,7 @@ export function TaskList({
                     </div>
                     <TaskRowActions
                       task={task}
-                      role={role}
+                      profile={profile}
                       onEdit={() => setEditTask(task)}
                       onToggleDone={() => toggleDone(task)}
                     />

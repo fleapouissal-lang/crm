@@ -11,6 +11,7 @@ import {
   Lock,
   Moon,
   Palette,
+  Plus,
   Sun,
   Trash2,
   User,
@@ -37,6 +38,7 @@ import {
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { CellMain, FlChip, StatLine } from "@/components/fusion/primitives";
 import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor";
+import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Input } from "@/components/ui/input";
 import {
@@ -137,6 +139,9 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [jobTitle, setJobTitle] = useState(data.profile.job_title ?? "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(data.profile.avatar_url);
   const [orgName, setOrgName] = useState(data.organization?.name ?? "");
+  const [emailDomain, setEmailDomain] = useState(data.organization?.email_domain ?? "");
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const platformAdmin = data.profile.role === "platform_admin";
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -147,10 +152,16 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
 
   const tabs: { key: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { key: "profile", label: s.profile, icon: <User className="size-3.5" /> },
-    { key: "workspace", label: s.workspace, icon: <Building2 className="size-3.5" /> },
+    ...(platformAdmin
+      ? []
+      : [
+          { key: "workspace" as const, label: s.workspace, icon: <Building2 className="size-3.5" /> },
+          { key: "team" as const, label: s.team, icon: <Users className="size-3.5" /> },
+        ]),
     { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
-    { key: "notifications", label: s.notifications, icon: <Bell className="size-3.5" /> },
-    { key: "team", label: s.team, icon: <Users className="size-3.5" /> },
+    ...(platformAdmin
+      ? []
+      : [{ key: "notifications" as const, label: s.notifications, icon: <Bell className="size-3.5" /> }]),
   ];
 
   function updatePrefs(patch: Partial<WorkspacePreferences>) {
@@ -197,6 +208,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
     startTransition(async () => {
       const fd = new FormData();
       fd.set("name", orgName);
+      fd.set("email_domain", emailDomain);
       const result = await updateOrganization(fd);
       if (!result.success) {
         toast.error(result.error);
@@ -443,7 +455,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "workspace" ? (
+      {activeTab === "workspace" && !platformAdmin ? (
         <div className="space-y-[18px]">
           <div className="grid g-4">
             <div className="fl-card fl-pad">
@@ -482,6 +494,17 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                   disabled={!data.isAdmin}
                   className="fl-input"
                 />
+              </div>
+              <div className="fl-field">
+                <label className="fl-field-label">{s.emailDomain}</label>
+                <Input
+                  value={emailDomain}
+                  onChange={(e) => setEmailDomain(e.target.value.replace(/^@+/, ""))}
+                  disabled={!data.isAdmin}
+                  className="fl-input"
+                  placeholder="fusionleap.com"
+                />
+                <small className="mt-1 block text-xs fl-faint">{s.emailDomainHint}</small>
               </div>
               <div className="fl-field">
                 <label className="fl-field-label">{s.orgSlug}</label>
@@ -601,7 +624,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "notifications" ? (
+      {activeTab === "notifications" && !platformAdmin ? (
         <div className="fl-card fl-pad">
           <h3 className="text-[15px] font-semibold">{s.notifications}</h3>
           <p className="mt-1 text-sm fl-faint">{l.appearanceHint}</p>
@@ -634,13 +657,23 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "team" ? (
+      {activeTab === "team" && !platformAdmin ? (
         <div className="fl-card">
           <div className="fl-card-head">
             <div>
               <h3>{s.teamTitle}</h3>
               <div className="ch-sub">{s.teamSub}</div>
             </div>
+            {data.isAdmin ? (
+              <button
+                type="button"
+                className="fl-btn primary sm"
+                onClick={() => setMemberDialogOpen(true)}
+              >
+                <Plus strokeWidth={2} />
+                {s.addMember}
+              </button>
+            ) : null}
           </div>
           <div className="fl-tbl-wrap">
             <table className="fl-tbl">
@@ -648,6 +681,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 <tr>
                   <th>{l.person}</th>
                   <th>{dict.common.email}</th>
+                  <th>{s.jobFunction}</th>
                   <th>{s.role}</th>
                   <th>{s.joined}</th>
                 </tr>
@@ -655,13 +689,17 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               <tbody>
                 {data.team.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-sm fl-faint">
+                    <td colSpan={5} className="py-10 text-center text-sm fl-faint">
                       {s.noTeam}
                     </td>
                   </tr>
                 ) : (
                   data.team.map((member, i) => {
                     const name = member.full_name ?? member.email ?? dict.common.user;
+                    const jobRoleName =
+                      (member.job_role as { name?: string } | null | undefined)?.name ??
+                      member.job_title ??
+                      "—";
                     return (
                       <tr key={member.id}>
                         <td>
@@ -675,6 +713,9 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                           />
                         </td>
                         <td className="fl-muted">{member.email ?? "—"}</td>
+                        <td>
+                          <FlChip>{jobRoleName}</FlChip>
+                        </td>
                         <td>
                           <FlChip>
                             {dict.roles[member.role]}
@@ -692,6 +733,12 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               </tbody>
             </table>
           </div>
+          <TeamMemberDialog
+            open={memberDialogOpen}
+            onOpenChange={setMemberDialogOpen}
+            jobRoles={data.jobRoles}
+            emailDomain={data.organization?.email_domain ?? null}
+          />
         </div>
       ) : null}
 

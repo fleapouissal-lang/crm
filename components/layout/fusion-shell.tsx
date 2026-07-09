@@ -12,12 +12,14 @@ const SIDEBAR_COLLAPSED_KEY = "fusion-sidebar-collapsed";
 
 export function FusionShell({
   profile,
+  organizationName,
   activityCount,
   leadCount,
   quoteCount,
   children,
 }: {
   profile: Profile;
+  organizationName?: string | null;
   activityCount: number;
   leadCount: number;
   quoteCount: number;
@@ -81,6 +83,7 @@ export function FusionShell({
         <div className="fusion-main">
           <AppHeader
             profile={profile}
+            organizationName={organizationName}
             activityCount={activityCount}
           />
           <div className="fusion-scroll">

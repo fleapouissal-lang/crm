@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isCompanyOnlyPath } from "@/lib/permissions";
+import type { Role } from "@/types/database";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,6 +34,12 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isMarketingRoute =
+    pathname === "/pricing" ||
+    pathname === "/about" ||
+    pathname === "/faq" ||
+    pathname === "/contact";
+  const isPublicRoute = isAuthRoute || isMarketingRoute;
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -41,7 +49,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -51,6 +59,35 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  if (user && !isAuthRoute && !isMarketingRoute && !pathname.startsWith("/finance/")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, organization_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const role = profile?.role as Role | undefined;
+
+    if (role === "platform_admin") {
+      if (isCompanyOnlyPath(pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    } else if (profile) {
+      if (pathname.startsWith("/admin")) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+      if (!profile.organization_id && !isPublicRoute) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

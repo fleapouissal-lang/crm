@@ -6,8 +6,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import type { Lead, Profile, Role, Task } from "@/types/database";
-import { canDeleteTask } from "@/lib/permissions";
+import type { Lead, Profile, Task } from "@/types/database";
+import { canDeleteTaskForProfile, canModifyTask } from "@/lib/permissions";
 import { deleteTask } from "@/lib/actions/tasks";
 import { TaskFormDialog } from "@/components/tasks/task-form";
 import {
@@ -25,12 +25,12 @@ export function TaskDetailClient({
   task,
   profiles,
   leads,
-  role,
+  profile,
 }: {
   task: Task;
   profiles: Profile[];
   leads: Lead[];
-  role: Role;
+  profile: Profile;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -63,11 +63,13 @@ export function TaskDetailClient({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Pencil className="mr-2 size-4" />
-            {c.edit}
-          </Button>
-          {canDeleteTask(role) && (
+          {canModifyTask(profile, task) && (
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 size-4" />
+              {c.edit}
+            </Button>
+          )}
+          {canDeleteTaskForProfile(profile, task) && (
             <ConfirmDialog
               trigger={
                 <Button variant="destructive" disabled={pending}>

@@ -6,77 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getLocalizedDict } from "@/lib/i18n/server";
 import type { ActionResult, Profile } from "@/types/database";
 
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") +
-    "-" +
-    Math.random().toString(36).slice(2, 7)
-  );
-}
-
-export async function signUp(formData: FormData): Promise<ActionResult> {
+export async function signUp(_formData: FormData): Promise<ActionResult> {
   const dict = await getLocalizedDict();
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const fullName = String(formData.get("full_name") ?? "").trim();
-  const orgName = String(formData.get("organization_name") ?? "").trim();
-
-  if (!email || !password || !fullName || !orgName) {
-    return { success: false, error: dict.auth.errors.required };
-  }
-
-  if (password.length < 6) {
-    return { success: false, error: dict.auth.errors.passwordMin };
-  }
-
-  const supabase = await createClient();
-
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name: fullName },
-    },
-  });
-
-  if (authError) {
-    return { success: false, error: authError.message };
-  }
-
-  if (!authData.user) {
-    return { success: false, error: dict.auth.errors.authFailed };
-  }
-
-  const slug = slugify(orgName);
-
-  const { data: org, error: orgError } = await supabase
-    .from("organizations")
-    .insert({ name: orgName, slug })
-    .select()
-    .single();
-
-  if (orgError) {
-    return { success: false, error: orgError.message };
-  }
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({
-      organization_id: org.id,
-      role: "admin",
-      full_name: fullName,
-      email,
-    })
-    .eq("id", authData.user.id);
-
-  if (profileError) {
-    return { success: false, error: profileError.message };
-  }
-
-  redirect("/dashboard");
+  return { success: false, error: dict.auth.companyCreatedByAdmin };
 }
 
 export async function signIn(formData: FormData): Promise<ActionResult> {
@@ -114,7 +46,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("*")
+    .select("*, job_role:org_job_roles(*)")
     .eq("id", user.id)
     .single();
 
@@ -128,7 +60,7 @@ export async function getOrgProfiles(): Promise<Profile[]> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("*")
+    .select("*, job_role:org_job_roles(*)")
     .eq("organization_id", profile.organization_id)
     .order("full_name");
 

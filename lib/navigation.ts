@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
+import type { NavCapability } from "@/lib/permissions/capabilities";
 import {
   LayoutDashboard,
+  Building2,
   UserPlus,
   Users,
   FolderKanban,
@@ -25,7 +27,9 @@ export type NavItem = {
   icon: LucideIcon;
   labelKey: keyof typeof navLabelKeys;
   badge?: NavBadge;
+  /** Devis & factures — directeur + gérant */
   adminOnly?: boolean;
+  capability?: NavCapability;
 };
 
 export const navLabelKeys = {
@@ -45,24 +49,31 @@ export const navLabelKeys = {
   reports: "reports",
   notifications: "notifications",
   settings: "settings",
+  companies: "companies",
   workspace: "workspace",
   operations: "operations",
   system: "system",
 } as const;
 
-export const workspaceNav: NavItem[] = [
+export const platformAdminNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard" },
-  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads" },
-  { id: "clients", href: "/clients", icon: Users, labelKey: "clients" },
-  { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects" },
-  { id: "tasks", href: "/tasks", icon: Columns3, labelKey: "kanbanTasks" },
-  { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar" },
+  { id: "companies", href: "/admin/companies", icon: Building2, labelKey: "companies" },
+  { id: "settings", href: "/settings", icon: Settings, labelKey: "settings" },
+];
+
+export const workspaceNav: NavItem[] = [
+  { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard", capability: "always" },
+  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leadership" },
+  { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
+  { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
+  { id: "tasks", href: "/tasks", icon: Columns3, labelKey: "kanbanTasks", capability: "tasks" },
+  { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "leadership" },
 ];
 
 export const operationsNav: NavItem[] = [
-  { id: "sales", href: "/sales", icon: TrendingUp, labelKey: "sales" },
-  { id: "marketing", href: "/marketing", icon: Megaphone, labelKey: "marketing" },
-  { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance" },
+  { id: "sales", href: "/sales", icon: TrendingUp, labelKey: "sales", capability: "leadership" },
+  { id: "marketing", href: "/marketing", icon: Megaphone, labelKey: "marketing", capability: "leadership" },
+  { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance", capability: "leadership" },
   {
     id: "quotes",
     href: "/finance/quotes",
@@ -70,6 +81,7 @@ export const operationsNav: NavItem[] = [
     labelKey: "quotes",
     badge: "quotes",
     adminOnly: true,
+    capability: "finance_docs",
   },
   {
     id: "invoices",
@@ -77,14 +89,15 @@ export const operationsNav: NavItem[] = [
     icon: Receipt,
     labelKey: "invoices",
     adminOnly: true,
+    capability: "finance_docs",
   },
-  { id: "hr", href: "/hr", icon: UserCircle, labelKey: "hr" },
-  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports" },
+  { id: "hr", href: "/hr", icon: UserCircle, labelKey: "hr", capability: "leadership" },
+  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
 ];
 
 export const systemNav: NavItem[] = [
-  { id: "notifications", href: "/notifications", icon: Bell, labelKey: "notifications", badge: "notifications" },
-  { id: "settings", href: "/settings", icon: Settings, labelKey: "settings" },
+  { id: "notifications", href: "/notifications", icon: Bell, labelKey: "notifications", badge: "notifications", capability: "leadership" },
+  { id: "settings", href: "/settings", icon: Settings, labelKey: "settings", capability: "always" },
 ];
 
 export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys; subtitleKey: string }> = {
@@ -104,9 +117,11 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/reports": { titleKey: "reports", subtitleKey: "reportsSub" },
   "/notifications": { titleKey: "notifications", subtitleKey: "notificationsSub" },
   "/settings": { titleKey: "settings", subtitleKey: "settingsSub" },
+  "/admin/companies": { titleKey: "companies", subtitleKey: "companiesSub" },
 };
 
 export function matchPageMeta(pathname: string) {
+  if (pathname.startsWith("/admin/companies")) return pageMetaKeys["/admin/companies"];
   if (pathname.startsWith("/leads")) return pageMetaKeys["/leads"];
   if (pathname.startsWith("/crm")) return pageMetaKeys["/leads"];
   if (pathname.startsWith("/tasks")) return pageMetaKeys["/tasks"];
