@@ -127,7 +127,7 @@ export async function createTask(
   revalidatePath("/dashboard");
   if (values.lead_id) {
     revalidatePath(`/leads/${values.lead_id}`);
-    revalidatePath(`/crm/${values.lead_id}`);
+    revalidatePath(`/leads/${values.lead_id}`);
   }
   return { success: true, data: data as Task };
 }

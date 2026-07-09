@@ -43,7 +43,7 @@ export function LeadsPageClient({
     const params = new URLSearchParams(searchParams.toString());
     if (!value || value === "all") params.delete(key);
     else params.set(key, value);
-    router.push(`/crm?${params.toString()}`);
+    router.push(`/leads?${params.toString()}`);
   }
 
   return (
@@ -51,7 +51,7 @@ export function LeadsPageClient({
       <CrmKpiRow />
 
       <div className="fl-sec-title !mt-0">
-        <h2>{dict.fusion.crm.dealPipeline}</h2>
+        <h2>{dict.leads.title}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div className="fl-seg">
             <button
@@ -77,7 +77,7 @@ export function LeadsPageClient({
           </div>
           <button type="button" className="fl-btn primary sm" onClick={() => setFormOpen(true)}>
             <Plus strokeWidth={2} />
-            {dict.fusion.crm.newDeal}
+            {dict.leads.newLead}
           </button>
         </div>
       </div>

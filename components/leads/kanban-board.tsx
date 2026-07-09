@@ -64,7 +64,7 @@ function LeadCard({
       )}
       <h4>
         <Link
-          href={`/crm/${lead.id}`}
+          href={`/leads/${lead.id}`}
           className="hover:underline"
           onClick={(e) => e.stopPropagation()}
         >

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
-  GitBranch,
+  UserPlus,
   Users,
   FolderKanban,
   Columns3,
@@ -11,7 +11,6 @@ import {
   Wallet,
   FileText,
   Receipt,
-  LayoutTemplate,
   UserCircle,
   BarChart3,
   Bell,
@@ -31,7 +30,7 @@ export type NavItem = {
 
 export const navLabelKeys = {
   dashboard: "dashboard",
-  crmPipeline: "crmPipeline",
+  leads: "leads",
   clients: "clients",
   projects: "projects",
   kanbanTasks: "kanbanTasks",
@@ -53,7 +52,7 @@ export const navLabelKeys = {
 
 export const workspaceNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard" },
-  { id: "crm", href: "/crm", icon: GitBranch, labelKey: "crmPipeline", badge: "leads" },
+  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects" },
   { id: "tasks", href: "/tasks", icon: Columns3, labelKey: "kanbanTasks" },
@@ -79,13 +78,6 @@ export const operationsNav: NavItem[] = [
     labelKey: "invoices",
     adminOnly: true,
   },
-  {
-    id: "templates",
-    href: "/finance/templates",
-    icon: LayoutTemplate,
-    labelKey: "templates",
-    adminOnly: true,
-  },
   { id: "hr", href: "/hr", icon: UserCircle, labelKey: "hr" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports" },
 ];
@@ -97,7 +89,7 @@ export const systemNav: NavItem[] = [
 
 export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys; subtitleKey: string }> = {
   "/dashboard": { titleKey: "dashboard", subtitleKey: "dashboardSub" },
-  "/crm": { titleKey: "crmPipeline", subtitleKey: "crmSub" },
+  "/leads": { titleKey: "leads", subtitleKey: "leadsSub" },
   "/clients": { titleKey: "clients", subtitleKey: "clientsSub" },
   "/projects": { titleKey: "projects", subtitleKey: "projectsSub" },
   "/tasks": { titleKey: "kanbanTasks", subtitleKey: "tasksSub" },
@@ -115,8 +107,8 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
 };
 
 export function matchPageMeta(pathname: string) {
-  if (pathname.startsWith("/crm")) return pageMetaKeys["/crm"];
-  if (pathname.startsWith("/leads")) return pageMetaKeys["/crm"];
+  if (pathname.startsWith("/leads")) return pageMetaKeys["/leads"];
+  if (pathname.startsWith("/crm")) return pageMetaKeys["/leads"];
   if (pathname.startsWith("/tasks")) return pageMetaKeys["/tasks"];
   if (pathname.startsWith("/hr/")) return pageMetaKeys["/hr"];
   if (pathname.startsWith("/finance/quotes")) return pageMetaKeys["/finance/quotes"];

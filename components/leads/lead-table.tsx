@@ -52,7 +52,7 @@ function LeadRowActions({
     {
       label: dict.common.viewDetails,
       icon: <Eye className="size-4" />,
-      onClick: () => router.push(`/crm/${lead.id}`),
+      onClick: () => router.push(`/leads/${lead.id}`),
     },
     {
       label: dict.common.edit,
@@ -153,7 +153,7 @@ export function LeadTable({
               {leads.map((lead) => (
                 <tr key={lead.id}>
                   <td>
-                    <Link href={`/crm/${lead.id}`} className="font-medium hover:underline">
+                    <Link href={`/leads/${lead.id}`} className="font-medium hover:underline">
                       {lead.title}
                     </Link>
                     {lead.company && (
@@ -204,7 +204,7 @@ export function LeadTable({
         <ul className="divide-y divide-[var(--border)] md:hidden">
           {leads.map((lead) => (
             <li key={lead.id} className="flex items-start gap-2 p-4">
-              <Link href={`/crm/${lead.id}`} className="block min-w-0 flex-1 space-y-2">
+              <Link href={`/leads/${lead.id}`} className="block min-w-0 flex-1 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{lead.title}</p>

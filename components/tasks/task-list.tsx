@@ -328,7 +328,7 @@ export function TaskList({
                         )}
                         {task.lead && (
                           <Link
-                            href={`/crm/${task.lead.id}`}
+                            href={`/leads/${task.lead.id}`}
                             className="hover:text-primary hover:underline"
                           >
                             {task.lead.title}

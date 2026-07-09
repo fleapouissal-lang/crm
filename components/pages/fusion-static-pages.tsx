@@ -126,7 +126,7 @@ export function SalesPage() {
       <div className="fl-card">
         <div className="fl-card-head">
           <div><h3>{s.recentDeals}</h3><div className="ch-sub">{s.recentDealsSub}</div></div>
-          <Link href="/crm" className="fl-btn sm ghost">{l.openCrm}</Link>
+          <Link href="/leads" className="fl-btn sm ghost">{l.openCrm}</Link>
         </div>
         <div className="fl-tbl-wrap">
           <table className="fl-tbl">

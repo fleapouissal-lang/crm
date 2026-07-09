@@ -79,6 +79,7 @@ export const ar = {
     settings: "الإعدادات",
     dashboardSub: "نظرة عامة على العمليات",
     crmSub: "7 صفقات نشطة بقيمة 1.24M SAR",
+    leadsSub: "إدارة خط المبيعات والفرص.",
     clientsSub: "18 حساباً في المغرب والخليج",
     projectsSub: "12 مشروعاً قيد التنفيذ",
     tasksSub: "السبرنت 14 · ينتهي 18 يوليو",

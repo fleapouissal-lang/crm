@@ -79,6 +79,7 @@ export const fr = {
     settings: "Paramètres",
     dashboardSub: "Vue d'ensemble des opérations",
     crmSub: "7 deals actifs · 1,24M SAR",
+    leadsSub: "Gérez votre pipeline commercial et vos opportunités.",
     clientsSub: "18 comptes au Maroc et dans le Golfe",
     projectsSub: "12 projets en cours",
     tasksSub: "Sprint 14 · fin 18 juillet",

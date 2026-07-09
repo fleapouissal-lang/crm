@@ -142,7 +142,7 @@ export function TaskDetailClient({
               <div>
                 <p className="text-xs font-medium text-muted-foreground">{c.linkedLead}</p>
                 <Link
-                  href={`/crm/${task.lead.id}`}
+                  href={`/leads/${task.lead.id}`}
                   className="mt-1 block text-sm text-primary hover:underline"
                 >
                   {task.lead.title}

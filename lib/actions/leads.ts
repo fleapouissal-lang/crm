@@ -115,7 +115,6 @@ export async function createLead(
   );
 
   revalidatePath("/leads");
-  revalidatePath("/crm");
   revalidatePath("/dashboard");
   return { success: true, data: data as Lead };
 }
@@ -181,9 +180,7 @@ export async function updateLead(
   }
 
   revalidatePath("/leads");
-  revalidatePath("/crm");
   revalidatePath(`/leads/${id}`);
-  revalidatePath(`/crm/${id}`);
   revalidatePath("/dashboard");
   return { success: true, data: data as Lead };
 }
@@ -216,7 +213,7 @@ export async function updateLeadStage(
   );
 
   revalidatePath("/leads");
-  revalidatePath("/crm");
+  revalidatePath("/leads");
   revalidatePath("/dashboard");
   return { success: true, data: data as Lead };
 }
@@ -252,7 +249,7 @@ export async function deleteLead(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/leads");
-  revalidatePath("/crm");
+  revalidatePath("/leads");
   revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }

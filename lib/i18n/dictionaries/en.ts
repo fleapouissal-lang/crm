@@ -79,6 +79,7 @@ export const en = {
     settings: "Settings",
     dashboardSub: "Operations overview",
     crmSub: "7 active deals worth 1.24M SAR",
+    leadsSub: "Manage your sales pipeline and opportunities.",
     clientsSub: "18 accounts across Morocco and the Gulf",
     projectsSub: "12 engagements in flight",
     tasksSub: "Sprint 14 · ends 18 July",

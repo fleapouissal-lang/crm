@@ -52,8 +52,7 @@ function NavSection({
       {visibleItems.map((item) => {
         const active =
           pathname === item.href ||
-          (item.href !== "/dashboard" && pathname.startsWith(item.href)) ||
-          (item.href === "/crm" && pathname.startsWith("/leads"));
+          (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
         let badge: number | undefined;
         if (item.badge === "notifications") badge = notificationCount;
