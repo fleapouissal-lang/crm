@@ -30,6 +30,7 @@ import {
 } from "@/lib/settings/storage";
 import {
   CURRENCY_OPTIONS,
+  DEFAULT_PREFERENCES,
   TIMEZONE_OPTIONS,
   type CurrencyCode,
   type TimezoneId,
@@ -147,10 +148,13 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [prefs, setPrefs] = useState<WorkspacePreferences>(loadPreferences);
+  const [prefs, setPrefs] = useState<WorkspacePreferences>(DEFAULT_PREFERENCES);
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setPrefs(loadPreferences());
+  }, []);
 
   const tabs: { key: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { key: "profile", label: s.profile, icon: <User className="size-3.5" /> },

@@ -11,7 +11,10 @@ import {
 } from "react";
 import type { Activity } from "@/types/database";
 import { loadPreferences } from "@/lib/settings/storage";
-import type { WorkspacePreferences } from "@/lib/settings/types";
+import {
+  DEFAULT_PREFERENCES,
+  type WorkspacePreferences,
+} from "@/lib/settings/types";
 import {
   loadReadIds,
   markIdsRead,
@@ -89,9 +92,8 @@ export function NotificationsProvider({
   children: ReactNode;
 }) {
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
-  const [prefs, setPrefsState] = useState<WorkspacePreferences>(() =>
-    loadPreferences()
-  );
+  const [prefs, setPrefsState] =
+    useState<WorkspacePreferences>(DEFAULT_PREFERENCES);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
