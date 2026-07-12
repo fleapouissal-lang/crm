@@ -197,10 +197,19 @@ function drawPageFooter(
   labels: PdfLabels,
   pageIndex: number,
   totalPages: number,
-  footerNote: string,
-  dueLabel?: string,
-  dueValue?: string
+  options: {
+    showBankDetails?: boolean;
+    footerNote?: string;
+    dueLabel?: string;
+    dueValue?: string;
+  } = {}
 ) {
+  const {
+    showBankDetails = false,
+    footerNote = "",
+    dueLabel,
+    dueValue,
+  } = options;
   const rtl = labels.rtl;
   const footerTop = M + FOOTER_HEIGHT;
   const leftX = rtl ? PAGE_W - M : M;
@@ -210,43 +219,45 @@ function drawPageFooter(
 
   drawLine(page, M, footerTop, PAGE_W - M, footerTop, BORDER, 0.5);
 
-  drawAlignedText(page, labels.bankDetails.toUpperCase(), {
-    x: leftX,
-    y: footerTop - 12,
-    size: 6.5,
-    font: fonts.bold,
-    color: SLATE,
-    align: leftAlign,
-  });
-  drawAlignedText(page, `${FUSION_COMPANY.bank}  ·  IBAN ${FUSION_COMPANY.iban}`, {
-    x: leftX,
-    y: footerTop - 24,
-    size: 7.5,
-    font: fonts.regular,
-    color: INK,
-    align: leftAlign,
-  });
-
-  const legal = `${FUSION_COMPANY.name} ${FUSION_COMPANY.legalForm}  ·  ${FUSION_COMPANY.website}`;
-  drawAlignedText(page, legal, {
-    x: leftX,
-    y: footerTop - 36,
-    size: 6.5,
-    font: fonts.regular,
-    color: MUTED,
-    align: leftAlign,
-  });
-
-  if (footerNote.trim()) {
-    const note = wrapLines(footerNote, fonts.regular, 6.5, CONTENT_W * 0.5)[0] ?? "";
-    drawAlignedText(page, note, {
+  if (showBankDetails) {
+    drawAlignedText(page, labels.bankDetails.toUpperCase(), {
       x: leftX,
-      y: footerTop - 48,
+      y: footerTop - 12,
+      size: 6.5,
+      font: fonts.bold,
+      color: SLATE,
+      align: leftAlign,
+    });
+    drawAlignedText(page, `${FUSION_COMPANY.bank}  ·  IBAN ${FUSION_COMPANY.iban}`, {
+      x: leftX,
+      y: footerTop - 24,
+      size: 7.5,
+      font: fonts.regular,
+      color: INK,
+      align: leftAlign,
+    });
+
+    const legal = `${FUSION_COMPANY.name} ${FUSION_COMPANY.legalForm}  ·  ${FUSION_COMPANY.website}`;
+    drawAlignedText(page, legal, {
+      x: leftX,
+      y: footerTop - 36,
       size: 6.5,
       font: fonts.regular,
       color: MUTED,
       align: leftAlign,
     });
+
+    if (footerNote.trim()) {
+      const note = wrapLines(footerNote, fonts.regular, 6.5, CONTENT_W * 0.5)[0] ?? "";
+      drawAlignedText(page, note, {
+        x: leftX,
+        y: footerTop - 48,
+        size: 6.5,
+        font: fonts.regular,
+        color: MUTED,
+        align: leftAlign,
+      });
+    }
   }
 
   if (dueLabel && dueValue) {
@@ -289,10 +300,13 @@ class PdfWriter {
     private readonly labels: PdfLabels,
     private readonly docTitle: string,
     private readonly docNumber: string,
-    private readonly footerNote: string,
     private readonly logo: PDFImage | null,
-    private readonly dueLabel?: string,
-    private readonly dueValue?: string
+    private readonly footer: {
+      showBankDetails?: boolean;
+      footerNote?: string;
+      dueLabel?: string;
+      dueValue?: string;
+    } = {}
   ) {
     this.newPage();
   }
@@ -311,16 +325,13 @@ class PdfWriter {
   finalize() {
     const total = this.pages.length;
     this.pages.forEach((page, index) => {
-      drawPageFooter(
-        page,
-        this.fonts,
-        this.labels,
-        index + 1,
-        total,
-        this.footerNote,
-        index === total - 1 ? this.dueLabel : undefined,
-        index === total - 1 ? this.dueValue : undefined
-      );
+      const last = index === total - 1;
+      drawPageFooter(page, this.fonts, this.labels, index + 1, total, {
+        showBankDetails: this.footer.showBankDetails,
+        footerNote: this.footer.footerNote,
+        dueLabel: last ? this.footer.dueLabel : undefined,
+        dueValue: last ? this.footer.dueValue : undefined,
+      });
     });
   }
 
@@ -459,15 +470,32 @@ class PdfWriter {
     this.y -= blockH + 12;
   }
 
-  drawItemsTable(description: string, amountTtc: number, currency: string) {
+  drawItemsTable(items: { description: string; quantity: number; unitPriceTtc: number }[], currency: string) {
+    const rows =
+      items.length > 0
+        ? items
+        : [{ description: "—", quantity: 1, unitPriceTtc: 0 }];
     const colX = [M, M + 268, M + 318, M + 398, M + CONTENT_W];
     const headerH = 24;
-    const rowH = 28;
-    this.ensureSpace(headerH + rowH + 8);
+    const baseRowH = 22;
+
+    const prepared = rows.map((row) => {
+      const lineTtc = Math.round(row.quantity * row.unitPriceTtc * 100) / 100;
+      const { ht } = splitTtcAmount(lineTtc);
+      const unitHt =
+        row.quantity > 0
+          ? Math.round((ht / row.quantity) * 100) / 100
+          : ht;
+      const descLines = wrapLines(row.description || "—", this.fonts.regular, 9, 248);
+      const rowH = Math.max(baseRowH, descLines.length * 12 + 10);
+      return { descLines, quantity: row.quantity, unitHt, totalHt: ht, rowH };
+    });
+
+    const bodyH = prepared.reduce((s, r) => s + r.rowH, 0);
+    this.ensureSpace(headerH + bodyH + 8);
 
     const tableTop = this.y;
 
-    /* Black header row */
     this.page.drawRectangle({
       x: M,
       y: tableTop - headerH,
@@ -488,42 +516,57 @@ class PdfWriter {
       });
     });
 
-    const { ht } = splitTtcAmount(amountTtc);
-    const descLines = wrapLines(description, this.fonts.regular, 9, 248);
-    const dataY = tableTop - headerH - 18;
+    let cursorY = tableTop - headerH;
+    prepared.forEach((row, index) => {
+      const rowTop = cursorY;
+      cursorY -= row.rowH;
+      if (index % 2 === 1) {
+        this.page.drawRectangle({
+          x: M,
+          y: cursorY,
+          width: CONTENT_W,
+          height: row.rowH,
+          color: SURFACE,
+        });
+      }
 
-    this.page.drawRectangle({
-      x: M,
-      y: tableTop - headerH - rowH,
-      width: CONTENT_W,
-      height: rowH,
-      color: WHITE,
+      let textY = rowTop - 14;
+      for (const line of row.descLines) {
+        this.page.drawText(line, {
+          x: colX[0] + 10,
+          y: textY,
+          size: 9,
+          font: this.fonts.regular,
+          color: INK,
+        });
+        textY -= 12;
+      }
+
+      const valueY = rowTop - 14;
+      this.page.drawText(String(row.quantity), {
+        x: colX[1] + 10,
+        y: valueY,
+        size: 9,
+        font: this.fonts.regular,
+        color: INK,
+      });
+      this.page.drawText(t(formatMoneyPdf(row.unitHt, currency)), {
+        x: colX[2] + 10,
+        y: valueY,
+        size: 9,
+        font: this.fonts.regular,
+        color: INK,
+      });
+      this.page.drawText(t(formatMoneyPdf(row.totalHt, currency)), {
+        x: colX[3] + 10,
+        y: valueY,
+        size: 9,
+        font: this.fonts.bold,
+        color: BLACK,
+      });
     });
 
-    this.page.drawText(descLines[0] ?? "", {
-      x: colX[0] + 10,
-      y: dataY,
-      size: 9,
-      font: this.fonts.regular,
-      color: INK,
-    });
-    this.page.drawText("1", { x: colX[1] + 10, y: dataY, size: 9, font: this.fonts.regular, color: INK });
-    this.page.drawText(t(formatMoneyPdf(ht, currency)), {
-      x: colX[2] + 10,
-      y: dataY,
-      size: 9,
-      font: this.fonts.regular,
-      color: INK,
-    });
-    this.page.drawText(t(formatMoneyPdf(ht, currency)), {
-      x: colX[3] + 10,
-      y: dataY,
-      size: 9,
-      font: this.fonts.bold,
-      color: BLACK,
-    });
-
-    const tableBottom = tableTop - headerH - rowH;
+    const tableBottom = cursorY;
     drawLine(this.page, M, tableTop, PAGE_W - M, tableTop, BLACK, 0.5);
     drawLine(this.page, M, tableBottom, PAGE_W - M, tableBottom, BORDER, 0.5);
     drawLine(this.page, M, tableTop, M, tableBottom, BORDER, 0.5);
@@ -647,7 +690,6 @@ export async function buildQuotePdfBytes(
   const validUntil = formatDateFr(
     new Date(new Date(quote.createdAt).getTime() + quote.validityDays * 86400000).toISOString()
   );
-  const footerNote = template?.footerNote ?? "Merci pour votre confiance";
   const clientType = resolveClientType(quote.clientType);
 
   const writer = new PdfWriter(
@@ -656,8 +698,8 @@ export async function buildQuotePdfBytes(
     labels,
     labels.docQuote,
     quote.number,
-    footerNote,
-    logo
+    logo,
+    { showBankDetails: false }
   );
 
   writer.drawMetaStrip([
@@ -668,7 +710,7 @@ export async function buildQuotePdfBytes(
     },
   ]);
   writer.drawClientBlock(quote.clientName, clientType);
-  writer.drawItemsTable(quote.service, quote.amount, quote.currency);
+  writer.drawItemsTable(quote.items ?? [], quote.currency);
   writer.drawTotals(quote.amount, quote.currency);
 
   const body = template ? renderQuoteTemplate(template.content, quote) : "";
@@ -692,6 +734,18 @@ export async function buildInvoicePdfBytes(
   const service = linkedQuote?.service || invoice.notes || "Prestation";
   const footerNote = template?.footerNote ?? "Merci pour votre confiance";
   const clientType = resolveClientType(invoice.clientType ?? linkedQuote?.clientType);
+  const items =
+    invoice.items?.length
+      ? invoice.items
+      : linkedQuote?.items?.length
+        ? linkedQuote.items
+        : [
+            {
+              description: service,
+              quantity: 1,
+              unitPriceTtc: invoice.amount,
+            },
+          ];
 
   const writer = new PdfWriter(
     doc,
@@ -699,10 +753,13 @@ export async function buildInvoicePdfBytes(
     labels,
     labels.docInvoice,
     invoice.number,
-    footerNote,
     logo,
-    labels.dueDate,
-    formatDateFr(invoice.dueDate)
+    {
+      showBankDetails: true,
+      footerNote,
+      dueLabel: labels.dueDate,
+      dueValue: formatDateFr(invoice.dueDate),
+    }
   );
 
   writer.drawMetaStrip([
@@ -710,7 +767,7 @@ export async function buildInvoicePdfBytes(
     { label: labels.dueDate, value: formatDateFr(invoice.dueDate) },
   ]);
   writer.drawClientBlock(invoice.clientName, clientType);
-  writer.drawItemsTable(service, invoice.amount, invoice.currency);
+  writer.drawItemsTable(items, invoice.currency);
   writer.drawTotals(invoice.amount, invoice.currency);
 
   writer.finalize();

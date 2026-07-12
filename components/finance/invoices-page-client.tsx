@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Plus } from "lucide-react";
@@ -20,20 +21,19 @@ import {
   loadTemplates,
   saveInvoices,
 } from "@/lib/finance/storage";
+
 export function InvoicesPageClient() {
   const dict = useDict();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
   const b = dict.fusion.badges;
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-  const [quotes, setQuotes] = useState(loadQuotes());
   const [templates, setTemplates] = useState(loadTemplates());
   const [formOpen, setFormOpen] = useState(false);
   const [active, setActive] = useState<InvoiceRecord | null>(null);
 
   useEffect(() => {
     setInvoices(loadInvoices());
-    setQuotes(loadQuotes());
     setTemplates(loadTemplates());
   }, []);
 
@@ -44,8 +44,12 @@ export function InvoicesPageClient() {
 
   const issuedMonth = invoices.length;
   const issuedTotal = invoices.reduce((s, x) => s + x.amount, 0);
-  const paidTotal = invoices.filter((x) => x.status === "paid").reduce((s, x) => s + x.amount, 0);
-  const overdueTotal = invoices.filter((x) => x.status === "overdue").reduce((s, x) => s + x.amount, 0);
+  const paidTotal = invoices
+    .filter((x) => x.status === "paid")
+    .reduce((s, x) => s + x.amount, 0);
+  const overdueTotal = invoices
+    .filter((x) => x.status === "overdue")
+    .reduce((s, x) => s + x.amount, 0);
   const outstanding = invoices
     .filter((x) => x.status === "pending" || x.status === "overdue")
     .reduce((s, x) => s + x.amount, 0);
@@ -84,17 +88,23 @@ export function InvoicesPageClient() {
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.issuedMonth}</div>
           <StatLine value={String(issuedMonth)} />
-          <div className="k-foot fl-faint mt-2">{formatMoney(issuedTotal, "MAD")}</div>
+          <div className="k-foot fl-faint mt-2">
+            {formatMoney(issuedTotal, "MAD")}
+          </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.paidMonth}</div>
           <StatLine value={Math.round(paidTotal / 1000) + "K"} unit="MAD" />
-          <div className="k-foot mt-2"><FlDelta up>18%</FlDelta></div>
+          <div className="k-foot mt-2">
+            <FlDelta up>18%</FlDelta>
+          </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.overdue}</div>
           <StatLine value={Math.round(overdueTotal / 1000) + "K"} unit="MAD" />
-          <div className="k-foot mt-2"><span className="fl-badge b-amber">{b.overdueCount}</span></div>
+          <div className="k-foot mt-2">
+            <span className="fl-badge b-amber">{b.overdueCount}</span>
+          </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.outstanding}</div>
@@ -108,10 +118,10 @@ export function InvoicesPageClient() {
             <h3>{inv.recentInvoices}</h3>
             <div className="ch-sub">{inv.recentInvoicesSub}</div>
           </div>
-          <button type="button" className="fl-btn primary sm" onClick={() => { setActive(null); setFormOpen(true); }}>
+          <Link href="/finance/invoices/new" className="fl-btn primary sm">
             <Plus strokeWidth={2} />
             {inv.newInvoice}
-          </button>
+          </Link>
         </div>
         <div className="fl-tbl-wrap">
           <table className="fl-tbl">
@@ -129,13 +139,21 @@ export function InvoicesPageClient() {
               {sorted.map((row) => (
                 <tr key={row.id}>
                   <td className="fl-mono">{row.number}</td>
-                  <td><b>{row.clientName}</b></td>
-                  <td className="fl-mono">{formatMoney(row.amount, row.currency)}</td>
+                  <td>
+                    <b>{row.clientName}</b>
+                  </td>
+                  <td className="fl-mono">
+                    {formatMoney(row.amount, row.currency)}
+                  </td>
                   <td className="fl-muted">
-                    {format(new Date(row.dueDate), "d MMM yyyy", { locale: fr })}
+                    {format(new Date(row.dueDate), "d MMM yyyy", {
+                      locale: fr,
+                    })}
                   </td>
                   <td>
-                    <span className={`fl-badge ${INVOICE_STATUS_BADGE[row.status]}`}>
+                    <span
+                      className={`fl-badge ${INVOICE_STATUS_BADGE[row.status]}`}
+                    >
                       {statusLabel(row)}
                     </span>
                   </td>
@@ -143,7 +161,10 @@ export function InvoicesPageClient() {
                     <FinanceRowActions
                       label={row.number}
                       onView={() => viewInvoicePdf(row)}
-                      onEdit={() => { setActive(row); setFormOpen(true); }}
+                      onEdit={() => {
+                        setActive(row);
+                        setFormOpen(true);
+                      }}
                       onDelete={() => handleDelete(row.id)}
                     />
                   </td>

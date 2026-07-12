@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/shared/theme-provider";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 

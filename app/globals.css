@@ -1624,6 +1624,32 @@ a.fusion-user-card:hover .fusion-user-meta b {
   background: var(--accent-muted);
 }
 
+/* Inline status picker (projects table) — badge-looking select */
+.fl-status-select {
+  height: auto !important;
+  min-height: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  gap: 5px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  cursor: pointer;
+  padding-inline-end: 6px !important;
+}
+.fl-status-select:hover,
+.fl-status-select:focus,
+.fl-status-select[data-state="open"] {
+  opacity: 0.92;
+  box-shadow: none !important;
+}
+.fl-status-select svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+  color: currentColor;
+}
+
 .fl-delta {
   display: inline-flex;
   align-items: center;

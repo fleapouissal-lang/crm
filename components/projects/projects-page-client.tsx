@@ -4,14 +4,15 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { Plus, Search, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
-import type { FusionDictionary } from "@/lib/i18n/dictionaries/fusion/en";
 import type { Profile } from "@/types/database";
-import { AvatarStack, FlChip, FlProgress } from "@/components/fusion/primitives";
+import { AvatarStack, FlProgress } from "@/components/fusion/primitives";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectDetailDialog } from "@/components/projects/project-detail-dialog";
 import {
+  PROJECT_FORM_STATUSES,
   PROJECT_STATUS_FILTERS,
+  badgeClassForStatus,
   matchesProjectTab,
   projectMatchesMember,
   type ProjectRecord,
@@ -22,7 +23,6 @@ import { loadProjects, saveProjects } from "@/lib/projects/storage";
 import {
   buildTeamOptions,
   getTeamMembers,
-  type TeamMemberOption,
 } from "@/lib/team/members";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -88,7 +88,7 @@ function ProjectRowActions({
     <>
       <RowActionsMenu actions={actions} />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="fl-dialog-content ring-0">
           <AlertDialogHeader>
             <AlertDialogTitle>{p.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -96,11 +96,11 @@ function ProjectRowActions({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>
+            <AlertDialogCancel className="fl-btn sm" disabled={pending}>
               {dict.common.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
-              variant="destructive"
+              className="fl-btn sm destructive"
               disabled={pending}
               onClick={(e) => {
                 e.preventDefault();
@@ -176,6 +176,12 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
     [p, counts]
   );
 
+  const phaseLabels = {
+    inProgress: p.tabInProgress,
+    review: p.tabReview,
+    delivered: p.tabDelivered,
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return projects.filter((project) => {
@@ -201,16 +207,19 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
 
   function openCreate() {
     setActiveProject(null);
+    setDetailOpen(false);
     setFormOpen(true);
   }
 
   function openEdit(project: ProjectRecord) {
     setActiveProject(project);
+    setDetailOpen(false);
     setFormOpen(true);
   }
 
   function openView(project: ProjectRecord) {
     setActiveProject(project);
+    setFormOpen(false);
     setDetailOpen(true);
   }
 
@@ -220,12 +229,40 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
       ? projects.map((x) => (x.id === record.id ? record : x))
       : [record, ...projects];
     persist(next);
+    setActiveProject(record);
     toast.success(exists ? p.updatedProject : p.createdProject);
   }
 
   function handleDelete(id: string) {
     persist(projects.filter((x) => x.id !== id));
+    if (activeProject?.id === id) {
+      setActiveProject(null);
+      setDetailOpen(false);
+      setFormOpen(false);
+    }
     toast.success(p.deletedProject);
+  }
+
+  function handleStatusChange(project: ProjectRecord, statusKey: ProjectStatusKey) {
+    if (project.statusKey === statusKey) return;
+    const next = projects.map((row) =>
+      row.id === project.id
+        ? {
+            ...row,
+            statusKey,
+            badgeClass: badgeClassForStatus(statusKey),
+          }
+        : row
+    );
+    persist(next);
+    if (activeProject?.id === project.id) {
+      setActiveProject({
+        ...activeProject,
+        statusKey,
+        badgeClass: badgeClassForStatus(statusKey),
+      });
+    }
+    toast.success(p.updatedProject);
   }
 
   function clearFilters() {
@@ -301,7 +338,12 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
                 onValueChange={(v) => setMemberFilter(v ?? "all")}
               >
                 <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue placeholder={p.filterByMember} />
+                  <SelectValue>
+                    {memberFilter === "all"
+                      ? p.allMembers
+                      : teamOptions.find((m) => m.id === memberFilter)?.name ??
+                        p.filterByMember}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="fl-select-panel" align="end">
                   <SelectItem value="all">{p.allMembers}</SelectItem>
@@ -322,7 +364,9 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
                 }
               >
                 <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue placeholder={p.filterStatus} />
+                  <SelectValue>
+                    {statusFilter === "all" ? p.allStatuses : b[statusFilter]}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="fl-select-panel" align="end">
                   <SelectItem value="all">{p.allStatuses}</SelectItem>
@@ -358,34 +402,135 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
           </div>
         </div>
 
-        <div className="fl-pad">
-          {filtered.length === 0 ? (
-            <p className="py-16 text-center text-sm fl-faint">{p.noProjectsFound}</p>
-          ) : (
-            <div className="fl-project-list flex flex-col gap-3">
-              {filtered.map((proj) => (
-                <ProjectListCard
-                  key={proj.id}
-                  project={proj}
-                  teamOptions={teamOptions}
-                  badges={b}
-                  progressLabel={l.progress}
-                  teamLabel={l.team}
-                  leadLabel={p.leadMember}
-                  onView={() => openView(proj)}
-                  onEdit={() => openEdit(proj)}
-                  onDelete={() => handleDelete(proj.id)}
-                />
-              ))}
-            </div>
-          )}
+        <div className="fl-tbl-wrap">
+          <table className="fl-tbl">
+            <thead>
+              <tr>
+                <th>{dict.common.title}</th>
+                <th>{p.phase}</th>
+                <th>{dict.common.status}</th>
+                <th>{l.progress}</th>
+                <th>{l.team}</th>
+                <th>{p.milestone}</th>
+                <th className="w-12" aria-label={dict.common.moreActions} />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm fl-faint">
+                    {p.noProjectsFound}
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((proj) => {
+                  const members = getTeamMembers(proj.teamMemberIds, teamOptions);
+                  const lead = members[0];
+                  return (
+                    <tr key={proj.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="grid size-9 shrink-0 place-items-center rounded-lg text-[11px] font-semibold text-white"
+                            style={{ background: proj.gradient }}
+                          >
+                            {proj.initials}
+                          </span>
+                          <div className="min-w-0">
+                            <b className="block truncate">{proj.title}</b>
+                            {proj.subtitle ? (
+                              <span className="fl-muted fl-tny line-clamp-1">
+                                {proj.subtitle}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="fl-muted">{phaseLabels[proj.phase]}</td>
+                      <td>
+                        <Select
+                          value={proj.statusKey}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            handleStatusChange(proj, v as ProjectStatusKey);
+                          }}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              "fl-status-select",
+                              `fl-badge ${proj.badgeClass}`
+                            )}
+                            aria-label={dict.common.status}
+                          >
+                            <SelectValue>{b[proj.statusKey]}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="fl-select-panel" align="start">
+                            {PROJECT_FORM_STATUSES.map((key) => (
+                              <SelectItem key={key} value={key}>
+                                {b[key]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td>
+                        <div className="min-w-[7rem] max-w-[9rem]">
+                          <div className="mb-1 flex justify-between text-[11px]">
+                            <span className="fl-mono fl-faint">
+                              {proj.progress}%
+                            </span>
+                          </div>
+                          <FlProgress value={proj.progress} />
+                        </div>
+                      </td>
+                      <td>
+                        {members.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <AvatarStack
+                              items={members.map((m) => ({
+                                initials: m.initials,
+                                bg: m.color,
+                              }))}
+                            />
+                            <span className="fl-muted fl-tny hidden lg:inline">
+                              {lead?.name}
+                              {members.length > 1 ? ` +${members.length - 1}` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="fl-faint">—</span>
+                        )}
+                      </td>
+                      <td className="fl-muted">
+                        <span
+                          className={
+                            proj.chipRose ? "text-[var(--rose)]" : undefined
+                          }
+                        >
+                          {b[proj.chipKey]}
+                        </span>
+                      </td>
+                      <td>
+                        <ProjectRowActions
+                          project={proj}
+                          onView={() => openView(proj)}
+                          onEdit={() => openEdit(proj)}
+                          onDelete={() => handleDelete(proj.id)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       <ProjectFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        project={activeProject}
+        project={activeProject && formOpen ? activeProject : null}
         teamOptions={teamOptions}
         onSave={handleSave}
       />
@@ -398,128 +543,5 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
         onEdit={() => activeProject && openEdit(activeProject)}
       />
     </div>
-  );
-}
-
-function ProjectListCard({
-  project: proj,
-  teamOptions,
-  badges,
-  progressLabel,
-  teamLabel,
-  leadLabel,
-  onView,
-  onEdit,
-  onDelete,
-}: {
-  project: ProjectRecord;
-  teamOptions: TeamMemberOption[];
-  badges: FusionDictionary["badges"];
-  progressLabel: string;
-  teamLabel: string;
-  leadLabel: string;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const members = getTeamMembers(proj.teamMemberIds, teamOptions);
-  const lead = members[0];
-  const namesLabel = members.map((m) => m.name).join(" · ");
-
-  return (
-    <article className="fl-project-card group">
-      <div
-        className="fl-project-card__stripe"
-        style={{ background: proj.gradient }}
-        aria-hidden
-      />
-
-      <div className="fl-project-card__main">
-        <div className="fl-project-card__head">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[15px] font-semibold leading-snug">{proj.title}</h3>
-              <span className={`fl-badge shrink-0 ${proj.badgeClass}`}>
-                {badges[proj.statusKey]}
-              </span>
-            </div>
-            <p className="mt-1 fl-faint fl-tny line-clamp-1">{proj.subtitle}</p>
-          </div>
-          <div className="shrink-0 opacity-80 transition-opacity group-hover:opacity-100">
-            <ProjectRowActions
-              project={proj}
-              onView={onView}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          </div>
-        </div>
-
-        <div className="fl-project-card__meta">
-          <div className="fl-project-card__progress-block">
-            <div className="mb-1.5 flex justify-between text-[11px]">
-              <span className="fl-muted">{progressLabel}</span>
-              <span className="fl-mono fl-faint">{proj.progress}%</span>
-            </div>
-            <FlProgress value={proj.progress} />
-          </div>
-
-          <div className="fl-project-card__ring">
-            <svg viewBox="0 0 36 36" className="size-11 -rotate-90">
-              <circle
-                cx="18"
-                cy="18"
-                r="15.5"
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="3"
-              />
-              <circle
-                cx="18"
-                cy="18"
-                r="15.5"
-                fill="none"
-                stroke="var(--iris-2)"
-                strokeWidth="3"
-                strokeDasharray={`${(proj.progress / 100) * 97.4} 97.4`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="fl-project-card__ring-val">{proj.progress}</span>
-          </div>
-        </div>
-
-        <div className="fl-project-card__foot">
-          <div className="min-w-0 flex items-center gap-2">
-            <span className="fl-tny fl-faint shrink-0">{teamLabel}</span>
-            {members.length > 0 ? (
-              <>
-                <AvatarStack
-                  items={members.map((m) => ({
-                    initials: m.initials,
-                    bg: m.color,
-                  }))}
-                />
-                <span className="fl-project-card__team-names" title={namesLabel}>
-                  {lead ? (
-                    <>
-                      <span className="fl-muted">{leadLabel}:</span> {lead.name}
-                      {members.length > 1 ? ` +${members.length - 1}` : ""}
-                    </>
-                  ) : null}
-                </span>
-              </>
-            ) : (
-              <span className="fl-tny fl-faint">—</span>
-            )}
-          </div>
-          <FlChip>
-            <span className={proj.chipRose ? "text-[var(--rose)]" : ""}>
-              {badges[proj.chipKey]}
-            </span>
-          </FlChip>
-        </div>
-      </div>
-    </article>
   );
 }

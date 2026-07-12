@@ -1,9 +1,10 @@
 import type { DocumentTemplate, InvoiceRecord, QuoteRecord } from "./types";
+import { normalizeInvoice, normalizeQuote } from "./types";
 import { SEED_INVOICES, SEED_QUOTES, SEED_TEMPLATES } from "./seed";
 
 const TEMPLATES_KEY = "fusion-finance-templates-v1";
-const QUOTES_KEY = "fusion-finance-quotes-v1";
-const INVOICES_KEY = "fusion-finance-invoices-v1";
+const QUOTES_KEY = "fusion-finance-quotes-v2";
+const INVOICES_KEY = "fusion-finance-invoices-v2";
 
 function load<T>(key: string, seed: T[]): T[] {
   if (typeof window === "undefined") return seed;
@@ -31,19 +32,19 @@ export function saveTemplates(templates: DocumentTemplate[]): void {
 }
 
 export function loadQuotes(): QuoteRecord[] {
-  return load(QUOTES_KEY, SEED_QUOTES);
+  return load(QUOTES_KEY, SEED_QUOTES).map(normalizeQuote);
 }
 
 export function saveQuotes(quotes: QuoteRecord[]): void {
-  save(QUOTES_KEY, quotes);
+  save(QUOTES_KEY, quotes.map(normalizeQuote));
 }
 
 export function loadInvoices(): InvoiceRecord[] {
-  return load(INVOICES_KEY, SEED_INVOICES);
+  return load(INVOICES_KEY, SEED_INVOICES).map(normalizeInvoice);
 }
 
 export function saveInvoices(invoices: InvoiceRecord[]): void {
-  save(INVOICES_KEY, invoices);
+  save(INVOICES_KEY, invoices.map(normalizeInvoice));
 }
 
 export function getTemplateById(id: string | null): DocumentTemplate | undefined {

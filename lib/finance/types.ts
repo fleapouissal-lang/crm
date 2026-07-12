@@ -17,18 +17,28 @@ export interface DocumentTemplate {
   updatedAt: string;
 }
 
+export interface FinanceLineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPriceTtc: number;
+}
+
 export interface QuoteRecord {
   id: string;
   number: string;
   clientName: string;
   clientType: ClientType;
+  /** Summary of line descriptions (search / templates). */
   service: string;
+  /** Sum of line totals TTC. */
   amount: number;
   currency: string;
   validityDays: number;
   status: QuoteStatus;
   templateId: string | null;
   notes: string;
+  items: FinanceLineItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +55,7 @@ export interface InvoiceRecord {
   templateId: string | null;
   quoteId: string | null;
   notes: string;
+  items: FinanceLineItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +77,115 @@ export const INVOICE_STATUS_BADGE: Record<InvoiceStatus, string> = {
 
 export function formatMoney(amount: number, currency: string): string {
   return `${amount.toLocaleString("fr-FR")} ${currency}`;
+}
+
+export function createEmptyLineItem(
+  partial?: Partial<FinanceLineItem>
+): FinanceLineItem {
+  return {
+    id: `li-${Math.random().toString(36).slice(2, 10)}`,
+    description: "",
+    quantity: 1,
+    unitPriceTtc: 0,
+    ...partial,
+  };
+}
+
+export function lineItemTotalTtc(item: FinanceLineItem): number {
+  const q = Number(item.quantity) || 0;
+  const p = Number(item.unitPriceTtc) || 0;
+  return Math.round(q * p * 100) / 100;
+}
+
+export function documentAmountTtc(items: FinanceLineItem[]): number {
+  return Math.round(items.reduce((s, i) => s + lineItemTotalTtc(i), 0) * 100) / 100;
+}
+
+export function summarizeService(items: FinanceLineItem[]): string {
+  return items
+    .map((i) => i.description.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function syncDocumentFromItems<
+  T extends { items: FinanceLineItem[]; amount: number; service?: string },
+>(doc: T): T {
+  const amount = documentAmountTtc(doc.items);
+  if ("service" in doc) {
+    return {
+      ...doc,
+      amount,
+      service: summarizeService(doc.items) || doc.service || "",
+    };
+  }
+  return { ...doc, amount };
+}
+
+export function normalizeQuote(quote: QuoteRecord): QuoteRecord {
+  if (quote.items?.length) {
+    return syncDocumentFromItems(quote);
+  }
+  return syncDocumentFromItems({
+    ...quote,
+    items: [
+      createEmptyLineItem({
+        id: `li-${quote.id}`,
+        description: quote.service || "Prestation",
+        quantity: 1,
+        unitPriceTtc: quote.amount || 0,
+      }),
+    ],
+  });
+}
+
+export function normalizeInvoice(invoice: InvoiceRecord): InvoiceRecord {
+  if (invoice.items?.length) {
+    return syncDocumentFromItems(invoice);
+  }
+  const description = invoice.notes?.trim() || "Prestation";
+  return syncDocumentFromItems({
+    ...invoice,
+    items: [
+      createEmptyLineItem({
+        id: `li-${invoice.id}`,
+        description,
+        quantity: 1,
+        unitPriceTtc: invoice.amount || 0,
+      }),
+    ],
+  });
+}
+
+/** Expiry date = createdAt + validityDays (end of that day). */
+export function quoteExpiresAt(quote: Pick<QuoteRecord, "createdAt" | "validityDays">): Date {
+  const d = new Date(quote.createdAt);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + Math.max(0, quote.validityDays));
+  return d;
+}
+
+export function quoteExpiryIso(quote: Pick<QuoteRecord, "createdAt" | "validityDays">): string {
+  return quoteExpiresAt(quote).toISOString().slice(0, 10);
+}
+
+export function isQuoteExpiringSoon(
+  quote: QuoteRecord,
+  withinDays = 7
+): boolean {
+  if (quote.status !== "sent" && quote.status !== "draft") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expires = quoteExpiresAt(quote);
+  const diff = Math.ceil((expires.getTime() - today.getTime()) / 86_400_000);
+  return diff >= 0 && diff <= withinDays;
+}
+
+export function isQuotePastExpiry(quote: QuoteRecord): boolean {
+  if (quote.status === "accepted" || quote.status === "refused") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return quoteExpiresAt(quote) < today;
 }
 
 export function nextQuoteNumber(quotes: QuoteRecord[]): string {

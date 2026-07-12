@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/shared/theme-provider";
 import { format } from "date-fns";
 import {
   Bell,

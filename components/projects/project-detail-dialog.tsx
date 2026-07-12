@@ -44,26 +44,19 @@ export function ProjectDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-md">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
         <DialogHeader className="fl-dialog-header">
-          <DialogTitle>{dict.common.viewDetails}</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>{project.title}</span>
+            <span className={`fl-badge ${project.badgeClass}`}>
+              {f.badges[project.statusKey]}
+            </span>
+          </DialogTitle>
         </DialogHeader>
-        <div className="fl-dialog-body">
-          <div
-            className="fl-project-detail-hero mb-4 rounded-xl p-4"
-            style={{ background: project.gradient }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-2xl font-bold text-white/95">{project.initials}</div>
-                <h3 className="mt-2 text-[16px] font-semibold text-white">{project.title}</h3>
-                <p className="mt-1 text-[12.5px] text-white/75">{project.subtitle}</p>
-              </div>
-              <span className={`fl-badge shrink-0 ${project.badgeClass}`}>
-                {f.badges[project.statusKey]}
-              </span>
-            </div>
-          </div>
+        <div className="fl-dialog-body space-y-4">
+          {project.subtitle ? (
+            <p className="text-sm text-muted-foreground">{project.subtitle}</p>
+          ) : null}
 
           <dl className="grid gap-3 text-sm">
             <DetailRow label={l.progress} value={`${project.progress}%`} mono />
@@ -72,22 +65,21 @@ export function ProjectDetailDialog({
               {members.length === 0 ? (
                 <span className="fl-faint">{p.noMembersSelected}</span>
               ) : (
-                <AvatarStack
-                  items={members.map((m) => ({
-                    initials: m.initials,
-                    bg: m.color,
-                  }))}
-                />
+                <div className="flex flex-col items-end gap-2">
+                  <AvatarStack
+                    items={members.map((m) => ({
+                      initials: m.initials,
+                      bg: m.color,
+                    }))}
+                  />
+                  <span className="text-right text-xs font-medium">
+                    {members.map((m) => m.name).join(" · ")}
+                  </span>
+                </div>
               )}
             </DetailRow>
             {lead ? (
               <DetailRow label={p.leadMember} value={lead.name} />
-            ) : null}
-            {members.length > 1 ? (
-              <DetailRow
-                label={p.assignTeam}
-                value={members.map((m) => m.name).join(" · ")}
-              />
             ) : null}
             <DetailRow label={p.milestone}>
               <FlChip>
@@ -98,7 +90,7 @@ export function ProjectDetailDialog({
             </DetailRow>
           </dl>
 
-          <div className="mt-4">
+          <div>
             <div className="mb-2 flex justify-between text-xs">
               <span className="fl-muted">{l.progress}</span>
               <span className="fl-mono fl-faint">{project.progress}%</span>
@@ -108,7 +100,11 @@ export function ProjectDetailDialog({
         </div>
 
         <DialogFooter className="fl-dialog-footer">
-          <button type="button" className="fl-btn sm" onClick={() => onOpenChange(false)}>
+          <button
+            type="button"
+            className="fl-btn sm ghost"
+            onClick={() => onOpenChange(false)}
+          >
             {dict.common.cancel}
           </button>
           <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Receipt, Trash2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import {
@@ -20,12 +20,16 @@ export function FinanceRowActions({
   onView,
   onEdit,
   onDelete,
+  onConvert,
+  convertLabel,
   viewLoading,
 }: {
   label: string;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onConvert?: () => void;
+  convertLabel?: string;
   viewLoading?: boolean;
 }) {
   const dict = useDict();
@@ -45,6 +49,15 @@ export function FinanceRowActions({
       icon: <Pencil className="size-4" />,
       onClick: onEdit,
     },
+    ...(onConvert
+      ? [
+          {
+            label: convertLabel ?? dict.fusion.quotes.convertToInvoice,
+            icon: <Receipt className="size-4" />,
+            onClick: onConvert,
+          } satisfies RowActionItem,
+        ]
+      : []),
     { separator: true },
     {
       label: dict.common.delete,

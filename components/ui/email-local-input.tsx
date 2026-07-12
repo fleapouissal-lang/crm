@@ -27,7 +27,7 @@ export function EmailLocalInput({
   function handleChange(raw: string) {
     onChange(
       raw
-        .replace(/@.*$/s, "")
+        .replace(/@.*$/, "")
         .replace(/\s+/g, "")
         .toLowerCase()
     );

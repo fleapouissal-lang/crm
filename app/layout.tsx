@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/components/shared/i18n-provider";
-import { ThemeProvider } from "@/components/shared/theme-provider";
+import { ThemeProvider, THEME_BOOTSTRAP_SCRIPT } from "@/components/shared/theme-provider";
 import { getLocale } from "@/lib/i18n/locale";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { isRtlLocale } from "@/lib/i18n/locale-utils";
@@ -55,6 +55,9 @@ export default async function RootLayout({
       className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className="min-h-full overflow-hidden">
         <ThemeProvider>
           <I18nProvider locale={locale} dict={dict}>

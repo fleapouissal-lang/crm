@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
-import type { DocumentTemplate, InvoiceRecord, InvoiceStatus, ClientType } from "@/lib/finance/types";
-import { nextInvoiceNumber } from "@/lib/finance/types";
+import { LineItemsEditor } from "@/components/finance/line-items-editor";
+import type {
+  ClientType,
+  DocumentTemplate,
+  FinanceLineItem,
+  InvoiceRecord,
+  InvoiceStatus,
+} from "@/lib/finance/types";
+import {
+  createEmptyLineItem,
+  documentAmountTtc,
+  nextInvoiceNumber,
+} from "@/lib/finance/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -27,13 +38,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
-
 const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
 
 const schema = z.object({
   clientName: z.string().min(1),
   clientType: z.enum(["pro", "particulier"]),
-  amount: z.string().min(1),
   currency: z.string().min(1),
   dueDate: z.string().min(1),
   status: z.string(),
@@ -86,6 +95,8 @@ export function InvoiceFormDialog({
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
   const isEdit = Boolean(invoice?.id);
+  const [items, setItems] = useState<FinanceLineItem[]>([createEmptyLineItem()]);
+  const [linesError, setLinesError] = useState<string | null>(null);
 
   const invoiceTemplates = templates.filter((t) => t.kind === "invoice");
 
@@ -101,7 +112,6 @@ export function InvoiceFormDialog({
     defaultValues: {
       clientName: "",
       clientType: "pro",
-      amount: "",
       currency: "MAD",
       dueDate: "",
       status: "draft",
@@ -113,37 +123,73 @@ export function InvoiceFormDialog({
   const status = watch("status");
   const templateId = watch("templateId");
   const clientType = watch("clientType");
+  const currency = watch("currency") || "MAD";
 
   useEffect(() => {
     if (!open) return;
     reset({
       clientName: invoice?.clientName ?? "",
       clientType: invoice?.clientType ?? "pro",
-      amount: invoice ? String(invoice.amount) : "",
       currency: invoice?.currency ?? "MAD",
       dueDate: invoice?.dueDate ?? "",
       status: invoice?.status ?? "draft",
       templateId: invoice?.templateId ?? invoiceTemplates[0]?.id ?? "",
       notes: invoice?.notes ?? "",
     });
+    setItems(
+      invoice?.items?.length
+        ? invoice.items.map((row) => ({ ...row }))
+        : [
+            createEmptyLineItem({
+              description: invoice?.notes || "Prestation",
+              unitPriceTtc: invoice?.amount ?? 0,
+            }),
+          ]
+    );
+    setLinesError(null);
   }, [open, invoice, reset, invoiceTemplates]);
 
+  function statusLabel(key: string) {
+    if (key === "overdue") return inv.overdueStatus;
+    return inv[key as keyof typeof inv] as string;
+  }
+
   function onSubmit(values: FormValues) {
+    const validItems = items.filter(
+      (row) =>
+        row.description.trim() &&
+        (Number(row.quantity) || 0) > 0 &&
+        (Number(row.unitPriceTtc) || 0) > 0
+    );
+    if (validItems.length === 0) {
+      setLinesError(f.linesRequired);
+      return;
+    }
+    setLinesError(null);
+
     const now = new Date().toISOString();
     const id = invoice?.id ?? `inv-${crypto.randomUUID().slice(0, 8)}`;
     const number = invoice?.number ?? nextInvoiceNumber(existingInvoices);
+    const cleaned = validItems.map((row) => ({
+      ...row,
+      description: row.description.trim(),
+      quantity: Number(row.quantity) || 1,
+      unitPriceTtc: Number(row.unitPriceTtc) || 0,
+    }));
+
     onSave({
       id,
       number,
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
-      amount: Number(values.amount.replace(/,/g, "")),
+      amount: documentAmountTtc(cleaned),
       currency: values.currency,
       dueDate: values.dueDate,
       status: values.status as InvoiceStatus,
       templateId: values.templateId || null,
       quoteId: invoice?.quoteId ?? null,
       notes: values.notes?.trim() ?? "",
+      items: cleaned,
       createdAt: invoice?.createdAt ?? now,
       updatedAt: now,
     });
@@ -152,25 +198,49 @@ export function InvoiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-2xl">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{isEdit ? f.editInvoice : inv.newInvoice}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="fl-dialog-body space-y-4">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="fl-dialog-body max-h-[70vh] space-y-4 overflow-y-auto"
+        >
           {isEdit ? (
             <p className="text-sm text-muted-foreground">
               {inv.number}{" "}
-              <span className="fl-mono font-medium text-foreground">{invoice?.number}</span>
+              <span className="fl-mono font-medium text-foreground">
+                {invoice?.number}
+              </span>
             </p>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={inv.client} htmlFor="inv-client" error={errors.clientName?.message}>
-              <Input id="inv-client" className="fl-inp" {...register("clientName")} />
+            <Field
+              label={inv.client}
+              htmlFor="inv-client"
+              error={errors.clientName?.message}
+            >
+              <Input
+                id="inv-client"
+                className="fl-inp"
+                {...register("clientName")}
+              />
             </Field>
             <Field label={f.clientType}>
-              <Select value={clientType} onValueChange={(v) => v && setValue("clientType", v as ClientType)}>
+              <Select
+                value={clientType}
+                onValueChange={(v) =>
+                  v && setValue("clientType", v as ClientType)
+                }
+              >
                 <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {
+                      f[
+                        clientType === "pro" ? "clientPro" : "clientParticulier"
+                      ]
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {CLIENT_TYPES.map((type) => (
@@ -182,27 +252,38 @@ export function InvoiceFormDialog({
               </Select>
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={inv.amount} htmlFor="inv-amount" error={errors.amount?.message}>
-              <Input id="inv-amount" className="fl-inp" {...register("amount")} />
-            </Field>
+          <div className="grid gap-4 sm:grid-cols-3">
             <Field label={f.currency} htmlFor="inv-currency">
-              <Input id="inv-currency" className="fl-inp" {...register("currency")} />
+              <Input
+                id="inv-currency"
+                className="fl-inp"
+                {...register("currency")}
+              />
             </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={inv.dueDate} htmlFor="inv-due" error={errors.dueDate?.message}>
-              <Input id="inv-due" type="date" className="fl-inp" {...register("dueDate")} />
+            <Field
+              label={inv.dueDate}
+              htmlFor="inv-due"
+              error={errors.dueDate?.message}
+            >
+              <Input
+                id="inv-due"
+                type="date"
+                className="fl-inp"
+                {...register("dueDate")}
+              />
             </Field>
             <Field label={inv.status}>
-              <Select value={status} onValueChange={(v) => v && setValue("status", v)}>
+              <Select
+                value={status}
+                onValueChange={(v) => v && setValue("status", v)}
+              >
                 <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue />
+                  <SelectValue>{statusLabel(status)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s === "overdue" ? inv.overdueStatus : inv[s as keyof typeof inv] as string}
+                      {statusLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -212,10 +293,17 @@ export function InvoiceFormDialog({
           <Field label={f.applyTemplate}>
             <Select
               value={templateId || "none"}
-              onValueChange={(v) => setValue("templateId", !v || v === "none" ? "" : v)}
+              onValueChange={(v) =>
+                setValue("templateId", !v || v === "none" ? "" : v)
+              }
             >
               <SelectTrigger className="fl-inp h-auto w-full">
-                <SelectValue placeholder={f.noTemplate} />
+                <SelectValue>
+                  {templateId
+                    ? invoiceTemplates.find((t) => t.id === templateId)?.name ??
+                      f.noTemplate
+                    : f.noTemplate}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{f.noTemplate}</SelectItem>
@@ -227,15 +315,37 @@ export function InvoiceFormDialog({
               </SelectContent>
             </Select>
           </Field>
+
+          <LineItemsEditor
+            items={items}
+            currency={currency}
+            onChange={setItems}
+            error={linesError ?? undefined}
+          />
+
           <Field label={dict.common.notes} htmlFor="inv-notes">
-            <Textarea id="inv-notes" className="fl-inp min-h-[80px]" {...register("notes")} />
+            <Textarea
+              id="inv-notes"
+              className="fl-inp min-h-[80px]"
+              {...register("notes")}
+            />
           </Field>
           <DialogFooter className="fl-dialog-footer">
-            <button type="button" className="fl-btn sm ghost" onClick={() => onOpenChange(false)}>
+            <button
+              type="button"
+              className="fl-btn sm ghost"
+              onClick={() => onOpenChange(false)}
+            >
               {dict.common.cancel}
             </button>
-            <button type="submit" className="fl-btn sm primary" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+            <button
+              type="submit"
+              className="fl-btn sm primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
               {dict.common.save}
             </button>
           </DialogFooter>

@@ -129,7 +129,7 @@ export function ProjectFormDialog({
   const l = dict.fusion.labels;
   const badges = dict.fusion.badges as FusionDictionary["badges"];
   const [pending, startTransition] = useTransition();
-  const isEdit = !!project;
+  const isEdit = Boolean(project?.id);
 
   const {
     register,
@@ -155,6 +155,10 @@ export function ProjectFormDialog({
     });
   }
 
+  const phase = watch("phase");
+  const statusKey = watch("statusKey");
+  const chipKey = watch("chipKey");
+
   const phaseLabels: Record<ProjectPhase, string> = {
     inProgress: p.tabInProgress,
     review: p.tabReview,
@@ -163,134 +167,140 @@ export function ProjectFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-[34rem]">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{isEdit ? p.editProject : p.newProject}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="fl-dialog-body">
-            <div className="fl-form">
+          <div className="fl-dialog-body max-h-[70vh] space-y-4 overflow-y-auto">
+            <FormField
+              label={`${dict.common.title} *`}
+              htmlFor="project-title"
+              error={errors.title?.message}
+            >
+              <Input
+                id="project-title"
+                className="fl-inp"
+                {...register("title")}
+              />
+            </FormField>
+
+            <FormField label={p.subtitle} htmlFor="project-subtitle">
+              <Input
+                id="project-subtitle"
+                className="fl-inp"
+                {...register("subtitle")}
+              />
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
-                label={`${dict.common.title} *`}
-                htmlFor="project-title"
-                error={errors.title?.message}
+                label={l.progress}
+                htmlFor="project-progress"
+                error={errors.progress?.message}
               >
                 <Input
-                  id="project-title"
-                  className="fl-control"
-                  {...register("title")}
+                  id="project-progress"
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="fl-inp"
+                  {...register("progress")}
                 />
               </FormField>
 
-              <FormField label={p.subtitle} htmlFor="project-subtitle">
-                <Input
-                  id="project-subtitle"
-                  className="fl-control"
-                  {...register("subtitle")}
-                />
-              </FormField>
-
-              <div className="fl-form-row">
-                <FormField
-                  label={l.progress}
-                  htmlFor="project-progress"
-                  error={errors.progress?.message}
+              <FormField label={p.phase}>
+                <Select
+                  value={phase}
+                  onValueChange={(v) =>
+                    v && setValue("phase", v as ProjectFormValues["phase"])
+                  }
                 >
-                  <Input
-                    id="project-progress"
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="fl-control"
-                    {...register("progress")}
-                  />
-                </FormField>
-
-                <FormField label={p.phase}>
-                  <Select
-                    value={watch("phase")}
-                    onValueChange={(v) =>
-                      v && setValue("phase", v as ProjectFormValues["phase"])
-                    }
-                  >
-                    <SelectTrigger className="fl-select-trigger">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="fl-select-panel" align="start">
-                      {PHASES.map((ph) => (
-                        <SelectItem key={ph} value={ph}>
-                          {phaseLabels[ph]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-
-              <div className="fl-form-row">
-                <FormField label={dict.common.status}>
-                  <Select
-                    value={watch("statusKey")}
-                    onValueChange={(v) => v && setValue("statusKey", v)}
-                  >
-                    <SelectTrigger className="fl-select-trigger">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="fl-select-panel" align="start">
-                      {PROJECT_FORM_STATUSES.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {badges[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label={p.milestone}>
-                  <Select
-                    value={watch("chipKey")}
-                    onValueChange={(v) => v && setValue("chipKey", v)}
-                  >
-                    <SelectTrigger className="fl-select-trigger">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="fl-select-panel" align="start">
-                      {PROJECT_CHIP_KEYS.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {badges[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-
-              <FormField label={p.assignTeam}>
-                <Controller
-                  name="teamMemberIds"
-                  control={control}
-                  render={({ field }) => (
-                    <TeamMemberPicker
-                      options={teamOptions}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
+                  <SelectTrigger className="fl-inp h-auto w-full">
+                    <SelectValue>{phaseLabels[phase]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="start">
+                    {PHASES.map((ph) => (
+                      <SelectItem key={ph} value={ph}>
+                        {phaseLabels[ph]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormField>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label={dict.common.status}>
+                <Select
+                  value={statusKey}
+                  onValueChange={(v) => v && setValue("statusKey", v)}
+                >
+                  <SelectTrigger className="fl-inp h-auto w-full">
+                    <SelectValue>
+                      {badges[statusKey as ProjectStatusKey] ?? statusKey}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="start">
+                    {PROJECT_FORM_STATUSES.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {badges[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+
+              <FormField label={p.milestone}>
+                <Select
+                  value={chipKey}
+                  onValueChange={(v) => v && setValue("chipKey", v)}
+                >
+                  <SelectTrigger className="fl-inp h-auto w-full">
+                    <SelectValue>
+                      {badges[chipKey as ProjectStatusKey] ?? chipKey}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="start">
+                    {PROJECT_CHIP_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {badges[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+
+            <FormField label={p.assignTeam}>
+              <Controller
+                name="teamMemberIds"
+                control={control}
+                render={({ field }) => (
+                  <TeamMemberPicker
+                    options={teamOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </FormField>
           </div>
 
           <DialogFooter className="fl-dialog-footer">
             <button
               type="button"
-              className="fl-btn sm"
+              className="fl-btn sm ghost"
               onClick={() => onOpenChange(false)}
               disabled={pending}
             >
               {dict.common.cancel}
             </button>
-            <button type="submit" className="fl-btn primary sm" disabled={pending}>
+            <button
+              type="submit"
+              className="fl-btn primary sm"
+              disabled={pending}
+            >
               {pending ? (
                 <Loader2 className="size-4 animate-spin" strokeWidth={2} />
               ) : null}
