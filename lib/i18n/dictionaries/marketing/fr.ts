@@ -288,10 +288,13 @@ export const marketingFr = {
   },
   contact: {
     metaTitle: "Contact",
-    title: "Construisons quelque chose d'",
-    titleAccent: "exceptionnel ensemble",
+    title: "Contactez-",
+    titleAccent: "nous",
     touchDesc:
       "Une question sur Fusion Leap CRM, une idée de projet ou une démo — notre équipe est prête à vous accompagner.",
+    sidebarTitle: "Nos coordonnées",
+    sidebarIntro: "Réponse sous 24 h ouvrées · Lun – Ven, 9 h – 18 h (GMT+1)",
+    formTitle: "Envoyez-nous un message",
     nameLabel: "Nom complet",
     namePlaceholder: "Entrez votre nom complet",
     locationLabel: "Localisation",

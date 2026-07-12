@@ -12,17 +12,15 @@ export default async function ContactPage() {
 
   return (
     <section className="marketing-page marketing-page--contact">
-      <ContactBody />
-
-      <div className="marketing-contact-map" aria-label={c.mapLabel}>
-        <iframe
-          title={c.mapLabel}
-          className="marketing-contact-map__frame"
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=-7.6500%2C33.5600%2C-7.5800%2C33.6000&layer=mapnik&marker=33.5731%2C-7.5898"
-        />
+      <div className="marketing-page__hero marketing-page__hero--faq">
+        <h1>
+          {c.title}{" "}
+          <span className="marketing-page__accent">{c.titleAccent}</span>
+        </h1>
+        <p>{c.touchDesc}</p>
       </div>
+
+      <ContactBody />
     </section>
   );
 }

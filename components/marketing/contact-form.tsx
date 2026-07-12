@@ -36,12 +36,13 @@ export function ContactForm() {
 
   return (
     <form className="marketing-contact-form" onSubmit={handleSubmit}>
-      <div className="marketing-contact-form__row marketing-contact-form__row--2">
+      <div className="marketing-contact-form__grid">
         <div className="marketing-contact-form__field">
           <label htmlFor="contact-name">{c.nameLabel}</label>
           <input
             id="contact-name"
             name="name"
+            className="marketing-contact-form__input"
             placeholder={c.namePlaceholder}
             required
             autoComplete="name"
@@ -52,19 +53,18 @@ export function ContactForm() {
           <input
             id="contact-location"
             name="location"
+            className="marketing-contact-form__input"
             placeholder={c.locationPlaceholder}
             autoComplete="address-level2"
           />
         </div>
-      </div>
-
-      <div className="marketing-contact-form__row marketing-contact-form__row--2">
         <div className="marketing-contact-form__field">
           <label htmlFor="contact-email">{c.emailFieldLabel}</label>
           <input
             id="contact-email"
             name="email"
             type="email"
+            className="marketing-contact-form__input"
             placeholder={c.emailPlaceholder}
             required
             autoComplete="email"
@@ -76,6 +76,7 @@ export function ContactForm() {
             id="contact-phone"
             name="phone"
             type="tel"
+            className="marketing-contact-form__input"
             placeholder={c.phonePlaceholder}
             autoComplete="tel"
           />
@@ -87,6 +88,7 @@ export function ContactForm() {
         <input
           id="contact-project"
           name="project"
+          className="marketing-contact-form__input"
           placeholder={c.projectPlaceholder}
           autoComplete="off"
         />
@@ -97,6 +99,7 @@ export function ContactForm() {
         <textarea
           id="contact-message"
           name="message"
+          className="marketing-contact-form__input marketing-contact-form__textarea"
           rows={5}
           placeholder={c.messagePlaceholder}
           required

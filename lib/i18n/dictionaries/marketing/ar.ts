@@ -290,10 +290,13 @@ export const marketingAr: MarketingDictionary = {
   },
   contact: {
     metaTitle: "اتصل",
-    title: "لنبني شيئاً",
-    titleAccent: "استثنائياً معاً",
+    title: "تواصل",
+    titleAccent: "معنا",
     touchDesc:
       "سؤال حول Fusion Leap CRM، فكرة مشروع أو demo — فريقنا جاهز لمساعدتك.",
+    sidebarTitle: "معلومات الاتصال",
+    sidebarIntro: "رد خلال يوم عمل · الإثنين – الجمعة، 9 – 18 (GMT+1)",
+    formTitle: "أرسل لنا رسالة",
     nameLabel: "الاسم الكامل",
     namePlaceholder: "أدخل اسمك الكامل",
     locationLabel: "الموقع",
