@@ -1,10 +1,21 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import { canManageCompanies } from "@/lib/permissions";
 import { PLAN_PRICES_EUR, type PlanKey } from "@/lib/billing/plans";
-import type { Organization, PlatformPayment, Profile } from "@/types/database";
+import { seedOrgJobRoles } from "@/lib/actions/organizations";
+import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
+import { buildCompanyEmail } from "@/lib/organizations/domain";
+import type {
+  ActionResult,
+  OrgJobRole,
+  Organization,
+  PlatformPayment,
+  Profile,
+  Role,
+} from "@/types/database";
 
 export type PlatformUserRow = Profile & {
   organization?: Pick<Organization, "id" | "name" | "logo_url"> | null;
@@ -171,4 +182,174 @@ export async function getPlatformUsers(): Promise<PlatformUserRow[]> {
     .order("created_at", { ascending: false });
 
   return (data as PlatformUserRow[]) ?? [];
+}
+
+export async function getOrgJobRolesAsPlatformAdmin(
+  organizationId: string
+): Promise<OrgJobRole[]> {
+  const profile = await getCurrentProfile();
+  if (!profile || !canManageCompanies(profile.role) || !organizationId) {
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("org_job_roles")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  let roles = (data as OrgJobRole[]) ?? [];
+  if (roles.length === 0) {
+    try {
+      roles = await seedOrgJobRoles(organizationId, admin);
+    } catch {
+      roles = [];
+    }
+  }
+
+  return sortJobRolesByCatalog(roles);
+}
+
+export async function createPlatformManagedUser(input: {
+  mode: "platform" | "company";
+  fullName: string;
+  password: string;
+  /** Full email when mode === "platform" */
+  email?: string;
+  /** Local part when mode === "company" */
+  emailLocal?: string;
+  organizationId?: string;
+  role?: Role;
+  jobRoleId?: string;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile || !canManageCompanies(profile.role)) {
+    return { success: false, error: "Platform administrator access required" };
+  }
+
+  const fullName = input.fullName.trim();
+  const password = input.password;
+
+  if (!fullName || !password) {
+    return { success: false, error: "All fields are required" };
+  }
+  if (password.length < 6) {
+    return { success: false, error: "Password must be at least 6 characters" };
+  }
+
+  const admin = createAdminClient();
+
+  if (input.mode === "platform") {
+    const email = (input.email ?? "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      return { success: false, error: "A valid email is required" };
+    }
+
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName },
+    });
+
+    if (authError || !authData.user) {
+      return { success: false, error: authError?.message ?? "Could not create user" };
+    }
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({
+        organization_id: null,
+        role: "platform_admin",
+        full_name: fullName,
+        email,
+        job_role_id: null,
+        job_title: null,
+      })
+      .eq("id", authData.user.id);
+
+    if (profileError) {
+      await admin.auth.admin.deleteUser(authData.user.id);
+      return { success: false, error: profileError.message };
+    }
+
+    revalidatePath("/admin/users");
+    revalidatePath("/dashboard");
+    return { success: true, data: undefined };
+  }
+
+  const organizationId = input.organizationId ?? "";
+  const role = input.role ?? "member";
+  const jobRoleId = input.jobRoleId ?? "";
+
+  if (!organizationId || !jobRoleId) {
+    return { success: false, error: "Company and job role are required" };
+  }
+  if (role === "platform_admin") {
+    return { success: false, error: "Invalid role for a company user" };
+  }
+  if (!["admin", "manager", "member"].includes(role)) {
+    return { success: false, error: "Invalid role" };
+  }
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("id, email_domain, name")
+    .eq("id", organizationId)
+    .single();
+
+  if (!org?.email_domain) {
+    return { success: false, error: "Organization email domain is not configured" };
+  }
+
+  const emailLocal = (input.emailLocal ?? "").trim();
+  if (!emailLocal) {
+    return { success: false, error: "All fields are required" };
+  }
+
+  const email = buildCompanyEmail(emailLocal, org.email_domain);
+
+  const { data: jobRole } = await admin
+    .from("org_job_roles")
+    .select("id, name, organization_id")
+    .eq("id", jobRoleId)
+    .single();
+
+  if (!jobRole || jobRole.organization_id !== organizationId) {
+    return { success: false, error: "Invalid job role" };
+  }
+
+  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+
+  if (authError || !authData.user) {
+    return { success: false, error: authError?.message ?? "Could not create user" };
+  }
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({
+      organization_id: organizationId,
+      role,
+      full_name: fullName,
+      email,
+      job_role_id: jobRoleId,
+      job_title: jobRole.name,
+    })
+    .eq("id", authData.user.id);
+
+  if (profileError) {
+    await admin.auth.admin.deleteUser(authData.user.id);
+    return { success: false, error: profileError.message };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/companies");
+  revalidatePath("/dashboard");
+  revalidatePath("/settings");
+  return { success: true, data: undefined };
 }

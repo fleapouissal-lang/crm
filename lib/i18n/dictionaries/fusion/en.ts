@@ -884,6 +884,20 @@ export const fusionEn = {
     directorsCount: "Directors",
     companyUsersCount: "Company users",
     manageUsers: "Manage users",
+    addUser: "Add user",
+    createUser: "Create user",
+    createUserModePlatform: "CRM admin",
+    createUserModeCompany: "Company",
+    createUserPlatformHint:
+      "Creates a platform administrator for the global CRM console.",
+    createUserCompanyHint:
+      "Creates a team member inside a company CRM (director, manager or member).",
+    selectCompany: "Select company",
+    noCompanies: "No companies yet",
+    userCreated: "User created",
+    filterAllUsers: "All",
+    filterPlatformUsers: "Platform",
+    filterCompanyUsers: "Companies",
   },
   verticalNav: {
     digital: {

@@ -886,6 +886,20 @@ export const fusionFr: FusionDictionary = {
     directorsCount: "Directeurs",
     companyUsersCount: "Utilisateurs entreprises",
     manageUsers: "Gérer les utilisateurs",
+    addUser: "Ajouter un utilisateur",
+    createUser: "Créer l'utilisateur",
+    createUserModePlatform: "Admin CRM",
+    createUserModeCompany: "Entreprise",
+    createUserPlatformHint:
+      "Crée un administrateur de la console CRM globale.",
+    createUserCompanyHint:
+      "Crée un membre dans le CRM d'une entreprise (directeur, manager ou membre).",
+    selectCompany: "Choisir l'entreprise",
+    noCompanies: "Aucune entreprise",
+    userCreated: "Utilisateur créé",
+    filterAllUsers: "Tous",
+    filterPlatformUsers: "Plateforme",
+    filterCompanyUsers: "Entreprises",
   },
   verticalNav: {
     digital: {

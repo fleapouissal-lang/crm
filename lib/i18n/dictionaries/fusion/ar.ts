@@ -886,6 +886,19 @@ export const fusionAr: FusionDictionary = {
     directorsCount: "المديرون",
     companyUsersCount: "مستخدمو الشركات",
     manageUsers: "إدارة المستخدمين",
+    addUser: "إضافة مستخدم",
+    createUser: "إنشاء المستخدم",
+    createUserModePlatform: "مسؤول CRM",
+    createUserModeCompany: "شركة",
+    createUserPlatformHint: "ينشئ مسؤول منصة لوحدة تحكم CRM العالمية.",
+    createUserCompanyHint:
+      "ينشئ عضوًا داخل CRM الشركة (مدير أو مسؤول أو عضو).",
+    selectCompany: "اختر الشركة",
+    noCompanies: "لا توجد شركات بعد",
+    userCreated: "تم إنشاء المستخدم",
+    filterAllUsers: "الكل",
+    filterPlatformUsers: "المنصة",
+    filterCompanyUsers: "الشركات",
   },
   verticalNav: {
     digital: {

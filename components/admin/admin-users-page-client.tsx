@@ -2,18 +2,25 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Building2, Search, Shield, Users } from "lucide-react";
+import { Building2, Plus, Search, Shield, Users } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { UserAvatar } from "@/components/shared/user-avatar";
+import { CreatePlatformUserDialog } from "@/components/admin/create-platform-user-dialog";
 import { Input } from "@/components/ui/input";
 import type { PlatformUserRow } from "@/lib/actions/platform-admin";
+import type { Organization } from "@/types/database";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { cn } from "@/lib/utils";
 
+type UserFilter = "all" | "platform" | "company";
+
 export function AdminUsersPageClient({
   initialUsers,
+  organizations,
 }: {
   initialUsers: PlatformUserRow[];
+  organizations: Organization[];
 }) {
   const dict = useDict();
   const d = dict.fusion.platformAdmin;
@@ -21,9 +28,13 @@ export function AdminUsersPageClient({
   const { locale } = useI18n();
   const dateLocale = getDateFnsLocale(locale);
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<UserFilter>("all");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const stats = useMemo(() => {
-    const platformAdmins = initialUsers.filter((u) => u.role === "platform_admin").length;
+    const platformAdmins = initialUsers.filter(
+      (u) => u.role === "platform_admin"
+    ).length;
     const directors = initialUsers.filter((u) => u.role === "admin").length;
     const withCompany = initialUsers.filter((u) => u.organization_id).length;
     return {
@@ -36,8 +47,10 @@ export function AdminUsersPageClient({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return initialUsers;
     return initialUsers.filter((u) => {
+      if (filter === "platform" && u.role !== "platform_admin") return false;
+      if (filter === "company" && !u.organization_id) return false;
+      if (!q) return true;
       const hay = [
         u.full_name,
         u.email,
@@ -51,7 +64,13 @@ export function AdminUsersPageClient({
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [initialUsers, query, dict.roles]);
+  }, [initialUsers, query, dict.roles, filter]);
+
+  const filters: { key: UserFilter; label: string }[] = [
+    { key: "all", label: d.filterAllUsers },
+    { key: "platform", label: d.filterPlatformUsers },
+    { key: "company", label: d.filterCompanyUsers },
+  ];
 
   return (
     <div className="space-y-[18px]">
@@ -80,15 +99,40 @@ export function AdminUsersPageClient({
             <h3>{d.platformUsers}</h3>
             <div className="ch-sub">{d.platformUsersSub}</div>
           </div>
-          <div className="fl-clients-search-wrap max-w-xs">
-            <Search strokeWidth={2} />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="fl-toolbar-search"
-              placeholder={d.searchUsers}
-              aria-label={d.searchUsers}
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="fl-clients-search-wrap max-w-xs">
+              <Search strokeWidth={2} />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="fl-toolbar-search"
+                placeholder={d.searchUsers}
+                aria-label={d.searchUsers}
+              />
+            </div>
+            <button
+              type="button"
+              className="fl-btn primary sm shrink-0"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="size-3.5" strokeWidth={2} />
+              {d.addUser}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <div className="fl-seg">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                className={cn(filter === f.key && "on")}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -113,25 +157,20 @@ export function AdminUsersPageClient({
                   <tr key={user.id}>
                     <td>
                       <div className="flex items-center gap-2">
-                        {user.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={user.avatar_url}
-                            alt=""
-                            className="size-8 rounded-full object-cover border border-[var(--border)]"
-                          />
-                        ) : (
-                          <span
-                            className="grid size-8 place-items-center rounded-full text-white text-xs font-semibold"
-                            style={{ background: "var(--grad-brand)" }}
-                          >
-                            {(user.full_name ?? user.email ?? "?").charAt(0).toUpperCase()}
-                          </span>
-                        )}
+                        <UserAvatar
+                          name={user.full_name ?? user.email ?? "?"}
+                          avatarUrl={user.avatar_url}
+                          userId={user.id}
+                          variant="sidebar"
+                        />
                         <div className="min-w-0">
-                          <b className="block truncate">{user.full_name ?? "—"}</b>
+                          <b className="block truncate">
+                            {user.full_name ?? "—"}
+                          </b>
                           {user.job_title ? (
-                            <span className="fl-faint fl-tny block truncate">{user.job_title}</span>
+                            <span className="fl-faint fl-tny block truncate">
+                              {user.job_title}
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -165,7 +204,9 @@ export function AdminUsersPageClient({
                           ) : (
                             <Building2 className="size-3.5 fl-faint" />
                           )}
-                          <span className="truncate">{user.organization.name}</span>
+                          <span className="truncate">
+                            {user.organization.name}
+                          </span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 fl-faint">
@@ -186,6 +227,12 @@ export function AdminUsersPageClient({
           </div>
         )}
       </div>
+
+      <CreatePlatformUserDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        organizations={organizations}
+      />
     </div>
   );
 }
