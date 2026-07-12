@@ -11,17 +11,11 @@ import {
   TaskPriorityBadge,
   TaskStatusBadge,
 } from "@/components/shared/status-badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/components/shared/i18n-provider";
 
-export function TaskCalendar({
-  tasks,
-  onAddForDate,
-}: {
-  tasks: Task[];
-  onAddForDate: (date: string) => void;
-}) {
+export function TaskCalendar({ tasks }: { tasks: Task[] }) {
   const dict = useDict();
   const [selected, setSelected] = useState<Date>(new Date());
   const [month, setMonth] = useState<Date>(startOfMonth(new Date()));
@@ -69,14 +63,13 @@ export function TaskCalendar({
           <CardTitle className="text-base">
             {format(selected, "EEEE, MMM d")}
           </CardTitle>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onAddForDate(selectedKey)}
+          <Link
+            href={`/tasks/new?due_date=${selectedKey}`}
+            className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
           >
             <Plus className="mr-1 size-3.5" />
             {dict.tasks.addTask}
-          </Button>
+          </Link>
         </CardHeader>
         <CardContent>
           {dayTasks.length === 0 ? (

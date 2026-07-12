@@ -95,6 +95,7 @@ function NavSection({
         if (item.badge === "notifications") badge = notificationCount;
         else if (item.badge === "leads") badge = leadCount;
         else if (item.badge === "quotes") badge = quoteCount;
+        if (badge != null && badge <= 0) badge = undefined;
 
         const title = resolveNavTitle(item, preset, dict);
         const Icon =
@@ -145,7 +146,7 @@ export function AppSidebar({
   activityDomain,
   leadCount,
   quoteCount,
-  notificationCount = 4,
+  notificationCount,
   open,
   collapsed,
   onClose,

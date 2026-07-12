@@ -90,7 +90,7 @@ export function ReportsPageClient({ data }: { data: ReportsData }) {
 
   return (
     <div className="space-y-[18px]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="fl-filter-bar">
         <div className="fl-seg shrink-0">
           {periods.map((p) => (
             <button
@@ -103,7 +103,7 @@ export function ReportsPageClient({ data }: { data: ReportsData }) {
             </button>
           ))}
         </div>
-        <div className="fl-tny fl-faint">
+        <div className="fl-tny fl-faint shrink-0">
           {r.dataFromDb} · {format(new Date(), "PPP", { locale: dateLocale })}
         </div>
       </div>

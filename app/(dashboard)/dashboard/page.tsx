@@ -25,7 +25,7 @@ export default async function DashboardPage() {
 
   return (
     <PageTransition>
-      <FusionDashboardView activities={stats.activities} />
+      <FusionDashboardView stats={stats} profile={profile} />
     </PageTransition>
   );
 }

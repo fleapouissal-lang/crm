@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { Plus, Eye, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -179,11 +180,6 @@ export function ClientsPageClient() {
 
   const hasActiveFilters = search.trim() !== "" || statusFilter !== "all";
 
-  function openCreate() {
-    setActiveClient(null);
-    setFormOpen(true);
-  }
-
   function openEdit(client: ClientRecord) {
     setActiveClient(client);
     setFormOpen(true);
@@ -313,14 +309,10 @@ export function ClientsPageClient() {
               </button>
             ) : null}
 
-            <button
-              type="button"
-              className="fl-btn primary sm shrink-0"
-              onClick={openCreate}
-            >
+            <Link href="/clients/new" className="fl-btn primary sm shrink-0">
               <Plus strokeWidth={2} />
               <span className="hidden sm:inline">{l.addClient}</span>
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -395,8 +387,11 @@ export function ClientsPageClient() {
       </div>
 
       <ClientFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
+        open={formOpen && Boolean(activeClient)}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setActiveClient(null);
+        }}
         client={activeClient}
         onSave={handleSave}
       />

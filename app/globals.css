@@ -1517,8 +1517,10 @@ a.fusion-user-card:hover .fusion-user-meta b {
 }
 .fl-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem 1rem;
   padding: 18px 20px 0;
 }
 .fl-card-head h3 {
@@ -1878,6 +1880,110 @@ a.fusion-user-card:hover .fusion-user-meta b {
 .fl-clients-card {
   overflow: hidden;
 }
+
+/* Shared toolbar control height — inputs, selects, buttons, segments */
+:root {
+  --fl-toolbar-h: 2.125rem;
+}
+
+.fl-filter-bar,
+.fl-clients-toolbar__row,
+.fl-kanban-toolbar__left,
+.fl-kanban-toolbar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fl-filter-bar {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.fl-filter-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+  min-width: 0;
+}
+
+.fl-clients-toolbar,
+.fl-kanban-toolbar,
+.fl-filter-bar,
+.fl-sec-title,
+.fl-card-head {
+  --_tb: var(--fl-toolbar-h);
+}
+
+.fl-clients-toolbar .fl-btn.sm,
+.fl-kanban-toolbar .fl-btn.sm,
+.fl-filter-bar .fl-btn.sm,
+.fl-sec-title .fl-btn.sm,
+.fl-card-head .fl-btn.sm {
+  height: var(--_tb);
+  min-height: var(--_tb);
+  box-sizing: border-box;
+  padding-block: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fl-clients-toolbar .fl-seg,
+.fl-kanban-toolbar .fl-seg,
+.fl-filter-bar .fl-seg,
+.fl-sec-title .fl-seg {
+  height: var(--_tb);
+  box-sizing: border-box;
+  align-items: stretch;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fl-clients-toolbar .fl-seg::-webkit-scrollbar,
+.fl-kanban-toolbar .fl-seg::-webkit-scrollbar,
+.fl-filter-bar .fl-seg::-webkit-scrollbar,
+.fl-sec-title .fl-seg::-webkit-scrollbar {
+  display: none;
+}
+
+.fl-clients-toolbar .fl-seg button,
+.fl-kanban-toolbar .fl-seg button,
+.fl-filter-bar .fl-seg button,
+.fl-sec-title .fl-seg button {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0;
+  line-height: 1;
+}
+
+.fl-clients-toolbar .fl-select-trigger,
+.fl-kanban-toolbar .fl-select-trigger,
+.fl-filter-bar .fl-select-trigger,
+.fl-filter-bar .fl-inp,
+.fl-filter-bar .fl-input,
+.fl-filter-bar input.fl-control,
+.fl-sec-title .fl-select-trigger,
+.fl-sec-title .fl-inp,
+.fl-card-head .fl-toolbar-search,
+.fl-card-head .fl-select-trigger {
+  height: var(--_tb) !important;
+  min-height: var(--_tb) !important;
+  max-height: var(--_tb) !important;
+  box-sizing: border-box !important;
+  padding-block: 0 !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  line-height: 1.2 !important;
+}
+
 .fl-clients-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1896,21 +2002,8 @@ a.fusion-user-card:hover .fusion-user-meta b {
   flex-shrink: 0;
 }
 .fl-clients-toolbar__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
   flex: 1;
-  min-width: 0;
   justify-content: flex-end;
-}
-.fl-clients-toolbar .fl-seg {
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.fl-clients-toolbar .fl-seg::-webkit-scrollbar {
-  display: none;
 }
 .fl-clients-search-wrap {
   position: relative;
@@ -1927,38 +2020,66 @@ a.fusion-user-card:hover .fusion-user-meta b {
   height: 0.95rem;
   color: var(--text-faint);
   pointer-events: none;
+  z-index: 1;
 }
-.fl-clients-search {
-  height: 2.125rem !important;
+.fl-clients-search,
+.fl-toolbar-search {
+  height: var(--fl-toolbar-h) !important;
+  min-height: var(--fl-toolbar-h) !important;
+  max-height: var(--fl-toolbar-h) !important;
   width: 100% !important;
+  padding-block: 0 !important;
   padding-inline-start: 2.1rem !important;
+  padding-inline-end: 0.75rem !important;
   font-size: 13px !important;
+  line-height: 1.2 !important;
   border-radius: 10px !important;
   border: 1px solid var(--border) !important;
   background: var(--glass-solid) !important;
+  box-sizing: border-box !important;
 }
 .fl-clients-status {
   width: 9.5rem;
   flex-shrink: 0;
 }
 .fl-clients-status .fl-select-trigger {
-  height: 2.125rem !important;
+  height: var(--fl-toolbar-h) !important;
+  min-height: var(--fl-toolbar-h) !important;
+  max-height: var(--fl-toolbar-h) !important;
   font-size: 12.5px !important;
   border-radius: 10px !important;
+  padding-block: 0 !important;
+}
+.fl-filter-field {
+  width: 10rem;
+  flex-shrink: 0;
+}
+.fl-filter-field--lg {
+  width: 12.5rem;
+}
+.fl-filter-field .fl-select-trigger,
+.fl-filter-field .fl-inp,
+.fl-filter-field .fl-input {
+  width: 100% !important;
 }
 @media (max-width: 768px) {
   .fl-clients-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  .fl-clients-toolbar__row {
+  .fl-clients-toolbar__row,
+  .fl-filter-bar__actions {
     justify-content: stretch;
+    margin-inline-start: 0;
+    width: 100%;
   }
   .fl-clients-search-wrap {
     max-width: none;
     flex: 1 1 100%;
   }
-  .fl-clients-status {
+  .fl-clients-status,
+  .fl-filter-field,
+  .fl-filter-field--lg {
     flex: 1;
     min-width: 0;
     width: auto;
@@ -2051,15 +2172,8 @@ a.fusion-user-card:hover .fusion-user-meta b {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--border);
-}
-.fl-kanban-toolbar__left,
-.fl-kanban-toolbar__right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.625rem;
 }
 .fl-kanban-toolbar__right {
   margin-inline-start: auto;
@@ -2071,8 +2185,10 @@ a.fusion-user-card:hover .fusion-user-meta b {
     margin-inline-start: 0;
     justify-content: stretch;
   }
-  .fl-kanban-toolbar__right .fl-select-trigger {
+  .fl-kanban-toolbar__right .fl-filter-field {
     flex: 1;
+    min-width: 0;
+    width: auto;
   }
 }
 .fl-kanban-body {
@@ -2674,6 +2790,7 @@ textarea.fl-control {
 .fl-input-affix:focus-within .fl-input-affix__icon {
   color: var(--brand-orange, #ff7a3d);
 }
+
 .fl-logo-picker {
   display: flex;
   align-items: center;

@@ -201,7 +201,7 @@ export function LeadDetailClient({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{ld.linkedTasks}</CardTitle>
           <Link
-            href={`/tasks?lead_id=${lead.id}`}
+            href={`/tasks/new?lead_id=${lead.id}`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <Plus className="mr-1 size-3.5" />

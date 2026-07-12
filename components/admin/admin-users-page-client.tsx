@@ -80,12 +80,12 @@ export function AdminUsersPageClient({
             <h3>{d.platformUsers}</h3>
             <div className="ch-sub">{d.platformUsersSub}</div>
           </div>
-          <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 fl-faint" />
+          <div className="fl-clients-search-wrap max-w-xs">
+            <Search strokeWidth={2} />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="fl-input ps-9"
+              className="fl-toolbar-search"
               placeholder={d.searchUsers}
               aria-label={d.searchUsers}
             />

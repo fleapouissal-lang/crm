@@ -11,8 +11,12 @@ import type {
 
 export interface DashboardStats {
   totalLeads: number;
+  openLeads: number;
   pipelineValue: number;
+  wonValue: number;
   tasksDueToday: number;
+  openTasks: number;
+  overdueTasks: number;
   conversionRate: number;
   leadsByStage: { stage: LeadStage; count: number; value: number }[];
   recentLeads: Lead[];
@@ -27,8 +31,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const empty: DashboardStats = {
     totalLeads: 0,
+    openLeads: 0,
     pipelineValue: 0,
+    wonValue: 0,
     tasksDueToday: 0,
+    openTasks: 0,
+    overdueTasks: 0,
     conversionRate: 0,
     leadsByStage: [],
     recentLeads: [],
@@ -45,6 +53,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const [
     leadsRes,
     tasksTodayRes,
+    openTasksRes,
+    overdueTasksRes,
     recentLeadsRes,
     upcomingTasksRes,
     activitiesRes,
@@ -61,6 +71,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .neq("status", "done")
       .neq("status", "cancelled"),
     supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .neq("status", "done")
+      .neq("status", "cancelled"),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .lt("due_date", today)
+      .neq("status", "done")
+      .neq("status", "cancelled"),
+    supabase
       .from("leads")
       .select("*, assigned_profile:profiles!leads_assigned_to_fkey(*)")
       .eq("organization_id", orgId)
@@ -73,7 +96,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .neq("status", "done")
       .neq("status", "cancelled")
       .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(5),
+      .limit(6),
     supabase
       .from("activities")
       .select("*, profile:profiles!activities_user_id_fkey(*)")
@@ -84,8 +107,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const leads = leadsRes.data ?? [];
   const totalLeads = leads.length;
+  const openLeads = leads.filter(
+    (l) => l.stage !== "lost" && l.stage !== "won"
+  ).length;
   const pipelineValue = leads
     .filter((l) => l.stage !== "lost" && l.stage !== "won")
+    .reduce((sum, l) => sum + Number(l.value ?? 0), 0);
+  const wonValue = leads
+    .filter((l) => l.stage === "won")
     .reduce((sum, l) => sum + Number(l.value ?? 0), 0);
   const wonCount = leads.filter((l) => l.stage === "won").length;
   const closedCount = leads.filter(
@@ -107,7 +136,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     ([stage, data]) => ({ stage, ...data })
   );
 
-  // Pipeline trend: sum of lead values created per day (last 30 days)
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
   const trendMap = new Map<string, number>();
@@ -128,8 +156,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   return {
     totalLeads,
+    openLeads,
     pipelineValue,
+    wonValue,
     tasksDueToday: tasksTodayRes.count ?? 0,
+    openTasks: openTasksRes.count ?? 0,
+    overdueTasks: overdueTasksRes.count ?? 0,
     conversionRate,
     leadsByStage,
     recentLeads: (recentLeadsRes.data as Lead[]) ?? [],

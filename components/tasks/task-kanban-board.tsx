@@ -227,7 +227,7 @@ export function TaskKanbanBoard({
   projects,
   projectFilter,
   onProjectFilterChange,
-  onAddTask,
+  onAddTaskHref,
   onShowList,
 }: {
   initialTasks: Task[];
@@ -236,7 +236,7 @@ export function TaskKanbanBoard({
   projects: ProjectRecord[];
   projectFilter: string;
   onProjectFilterChange: (value: string) => void;
-  onAddTask: () => void;
+  onAddTaskHref: string;
   onShowList?: () => void;
 }) {
   const dict = useDict();
@@ -395,28 +395,30 @@ export function TaskKanbanBoard({
           </FlChip>
         </div>
         <div className="fl-kanban-toolbar__right">
-          <Select
-            value={projectFilter}
-            onValueChange={(v) => onProjectFilterChange(v ?? "all")}
-          >
-            <SelectTrigger className="fl-select-trigger h-9 w-full min-w-[180px] sm:w-[220px]">
-              <SelectValue placeholder={k.filterByProject} />
-            </SelectTrigger>
-            <SelectContent className="fl-select-panel" align="end">
-              <SelectItem value="all">{k.allProjects}</SelectItem>
-              <SelectItem value="none">{k.noProject}</SelectItem>
-              {projects.map((proj) => (
-                <SelectItem key={proj.id} value={proj.id}>
-                  {proj.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="fl-filter-field fl-filter-field--lg">
+            <Select
+              value={projectFilter}
+              onValueChange={(v) => onProjectFilterChange(v ?? "all")}
+            >
+              <SelectTrigger className="fl-select-trigger">
+                <SelectValue placeholder={k.filterByProject} />
+              </SelectTrigger>
+              <SelectContent className="fl-select-panel" align="end">
+                <SelectItem value="all">{k.allProjects}</SelectItem>
+                <SelectItem value="none">{k.noProject}</SelectItem>
+                {projects.map((proj) => (
+                  <SelectItem key={proj.id} value={proj.id}>
+                    {proj.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {teamAvatars.length > 0 ? <AvatarStack items={teamAvatars} /> : null}
-          <button type="button" className="fl-btn primary sm shrink-0" onClick={onAddTask}>
+          <Link href={onAddTaskHref} className="fl-btn primary sm shrink-0">
             <Plus strokeWidth={2} />
             <span className="hidden sm:inline">{k.addTask}</span>
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ export function canManageCompanies(role: Role): boolean {
 }
 
 export function canManageUsers(role: Role): boolean {
-  return role === "admin";
+  return role === "admin" || role === "manager";
 }
 
 export function canDeleteLead(role: Role): boolean {

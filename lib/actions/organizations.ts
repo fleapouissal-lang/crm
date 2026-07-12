@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
-import { canManageCompanies } from "@/lib/permissions";
+import { canManageCompanies, canManageUsers } from "@/lib/permissions";
+import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
 import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
 import {
@@ -52,19 +53,24 @@ export async function getOrgJobRoles(organizationId?: string): Promise<OrgJobRol
   const { data } = await supabase
     .from("org_job_roles")
     .select("*")
-    .eq("organization_id", orgId)
-    .order("name");
+    .eq("organization_id", orgId);
 
-  const roles = (data as OrgJobRole[]) ?? [];
-  if (roles.length === 0 && profile?.role === "admin" && profile.organization_id === orgId) {
+  let roles = (data as OrgJobRole[]) ?? [];
+
+  // Seed defaults when the org has none (director or manager can trigger).
+  if (
+    roles.length === 0 &&
+    profile?.organization_id === orgId &&
+    canManageUsers(profile.role)
+  ) {
     try {
-      return await seedOrgJobRoles(orgId);
+      roles = await seedOrgJobRoles(orgId);
     } catch {
-      return roles;
+      /* keep empty */
     }
   }
 
-  return roles;
+  return sortJobRolesByCatalog(roles);
 }
 
 export async function getCreatedOrganizations(): Promise<Organization[]> {
@@ -375,8 +381,14 @@ export async function createTeamMember(input: {
   if (!profile?.organization_id) {
     return { success: false, error: "No organization" };
   }
-  if (profile.role !== "admin") {
-    return { success: false, error: "Director access required" };
+  if (!canManageUsers(profile.role)) {
+    return { success: false, error: "Director or manager access required" };
+  }
+  if (input.role === "platform_admin") {
+    return { success: false, error: "Invalid role" };
+  }
+  if (profile.role === "manager" && input.role === "admin") {
+    return { success: false, error: "Managers cannot create director accounts" };
   }
 
   const supabase = await createClient();

@@ -3,8 +3,6 @@ import {
   Percent,
   Target,
   CheckSquare,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import type { Dictionary, Locale } from "@/lib/i18n/types";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
@@ -42,8 +40,6 @@ export function KpiCards({
       icon: DollarSign,
       iconColor: "var(--emerald)",
       foot: dict.dashboard.pipelineValueHint,
-      delta: "+12%",
-      deltaUp: true,
     },
     {
       label: dict.dashboard.totalLeads,
@@ -52,8 +48,6 @@ export function KpiCards({
       icon: Target,
       iconColor: "var(--iris)",
       foot: dict.dashboard.totalLeadsHint,
-      delta: undefined,
-      deltaUp: true,
     },
     {
       label: dict.dashboard.tasksDueToday,
@@ -62,8 +56,6 @@ export function KpiCards({
       icon: CheckSquare,
       iconColor: "var(--gold)",
       foot: dict.dashboard.tasksDueTodayHint,
-      delta: undefined,
-      deltaUp: true,
     },
     {
       label: dict.dashboard.conversionRate,
@@ -72,8 +64,6 @@ export function KpiCards({
       icon: Percent,
       iconColor: "var(--sky)",
       foot: dict.dashboard.conversionRateHint,
-      delta: undefined,
-      deltaUp: conversionRate >= 30,
     },
   ];
 
@@ -93,19 +83,7 @@ export function KpiCards({
               <item.icon style={{ color: item.iconColor }} strokeWidth={2} className="size-[19px]" />
             </div>
           </div>
-          <div className="k-foot">
-            {item.delta && (
-              <span className={`fl-delta ${item.deltaUp ? "up" : "down"}`}>
-                {item.deltaUp ? (
-                  <TrendingUp className="size-[13px]" strokeWidth={2.5} />
-                ) : (
-                  <TrendingDown className="size-[13px]" strokeWidth={2.5} />
-                )}
-                {item.delta}
-              </span>
-            )}
-            {item.foot}
-          </div>
+          <div className="k-foot">{item.foot}</div>
         </div>
       ))}
     </div>

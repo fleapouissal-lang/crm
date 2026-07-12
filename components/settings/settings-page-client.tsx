@@ -40,7 +40,9 @@ import { CellMain, FlChip, StatLine } from "@/components/fusion/primitives";
 import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { jobRoleAccessKey } from "@/lib/organizations/job-role-access";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -399,39 +401,36 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               <label className="fl-field-label" htmlFor="current_password">
                 {s.currentPassword}
               </label>
-              <Input
+              <PasswordInput
                 id="current_password"
-                type="password"
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="fl-input"
+                inputClassName="fl-input"
               />
             </div>
             <div className="fl-field">
               <label className="fl-field-label" htmlFor="new_password">
                 {s.newPassword}
               </label>
-              <Input
+              <PasswordInput
                 id="new_password"
-                type="password"
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="fl-input"
+                inputClassName="fl-input"
               />
             </div>
             <div className="fl-field">
               <label className="fl-field-label" htmlFor="confirm_password">
                 {s.confirmPassword}
               </label>
-              <Input
+              <PasswordInput
                 id="confirm_password"
-                type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="fl-input"
+                inputClassName="fl-input"
               />
             </div>
           </div>
@@ -658,87 +657,130 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
       ) : null}
 
       {activeTab === "team" && !platformAdmin ? (
-        <div className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{s.teamTitle}</h3>
-              <div className="ch-sub">{s.teamSub}</div>
+        <div className="space-y-[18px]">
+          <div className="fl-card fl-pad">
+            <h3 className="text-[15px] font-semibold">{s.functionsTitle}</h3>
+            <p className="mt-1 text-sm fl-faint">{s.functionsSub}</p>
+            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3.5 py-3 text-[12.5px] leading-relaxed fl-muted">
+              <b className="text-[var(--text)]">{s.functionsLogicTitle}</b>
+              <p className="mt-1">{s.functionsLogicBody}</p>
             </div>
-            {data.isAdmin ? (
-              <button
-                type="button"
-                className="fl-btn primary sm"
-                onClick={() => setMemberDialogOpen(true)}
-              >
-                <Plus strokeWidth={2} />
-                {s.addMember}
-              </button>
-            ) : null}
+            {data.jobRoles.length === 0 ? (
+              <p className="mt-4 py-6 text-center text-sm fl-faint">{s.noJobRoles}</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-[var(--border)]">
+                {data.jobRoles.map((jr) => {
+                  const key = jobRoleAccessKey(jr.slug);
+                  return (
+                    <li
+                      key={jr.id}
+                      className="flex flex-wrap items-start justify-between gap-2 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <b className="text-[13.5px]">{jr.name}</b>
+                        <p className="mt-0.5 text-[12px] fl-faint">
+                          {s.jobAccess[key]}
+                        </p>
+                      </div>
+                      <FlChip>{jr.slug}</FlChip>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-          <div className="fl-tbl-wrap">
-            <table className="fl-tbl">
-              <thead>
-                <tr>
-                  <th>{l.person}</th>
-                  <th>{dict.common.email}</th>
-                  <th>{s.jobFunction}</th>
-                  <th>{s.role}</th>
-                  <th>{s.joined}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.team.length === 0 ? (
+
+          <div className="fl-card">
+            <div className="fl-card-head">
+              <div>
+                <h3>{s.teamTitle}</h3>
+                <div className="ch-sub">{s.teamSub}</div>
+              </div>
+              {data.canManageUsers ? (
+                <button
+                  type="button"
+                  className="fl-btn primary sm"
+                  onClick={() => setMemberDialogOpen(true)}
+                >
+                  <Plus strokeWidth={2} />
+                  {s.addMember}
+                </button>
+              ) : null}
+            </div>
+            <div className="fl-tbl-wrap">
+              <table className="fl-tbl">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-sm fl-faint">
-                      {s.noTeam}
-                    </td>
+                    <th>{l.person}</th>
+                    <th>{dict.common.email}</th>
+                    <th>{s.jobFunction}</th>
+                    <th>{s.roleColumn}</th>
+                    <th>{s.joined}</th>
                   </tr>
-                ) : (
-                  data.team.map((member, i) => {
-                    const name = member.full_name ?? member.email ?? dict.common.user;
-                    const jobRoleName =
-                      (member.job_role as { name?: string } | null | undefined)?.name ??
-                      member.job_title ??
-                      "—";
-                    return (
-                      <tr key={member.id}>
-                        <td>
-                          <CellMain
-                            initials={initialsFromName(name)}
-                            gradient={AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]!}
-                            title={name}
-                            sub={
-                              member.id === data.profile.id ? s.you : undefined
-                            }
-                          />
-                        </td>
-                        <td className="fl-muted">{member.email ?? "—"}</td>
-                        <td>
-                          <FlChip>{jobRoleName}</FlChip>
-                        </td>
-                        <td>
-                          <FlChip>
-                            {dict.roles[member.role]}
-                          </FlChip>
-                        </td>
-                        <td className="fl-faint fl-tny">
-                          {format(new Date(member.created_at), "dd MMM yyyy", {
-                            locale: dateLocale,
-                          })}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.team.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-sm fl-faint">
+                        {s.noTeam}
+                      </td>
+                    </tr>
+                  ) : (
+                    data.team.map((member, i) => {
+                      const name =
+                        member.full_name ?? member.email ?? dict.common.user;
+                      const jobRoleName =
+                        member.job_role?.name ?? member.job_title ?? "—";
+                      return (
+                        <tr key={member.id}>
+                          <td>
+                            <CellMain
+                              initials={initialsFromName(name)}
+                              gradient={
+                                AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]!
+                              }
+                              title={name}
+                              sub={
+                                member.id === data.profile.id ? s.you : undefined
+                              }
+                            />
+                          </td>
+                          <td className="fl-muted">{member.email ?? "—"}</td>
+                          <td>
+                            <FlChip>{jobRoleName}</FlChip>
+                          </td>
+                          <td>
+                            <div className="flex flex-col gap-0.5">
+                              <FlChip>{dict.roles[member.role]}</FlChip>
+                              <span className="fl-tny fl-faint max-w-[10rem]">
+                                {member.role === "admin"
+                                  ? s.accessAdminHint
+                                  : member.role === "manager"
+                                    ? s.accessManagerHint
+                                    : s.accessMemberHint}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="fl-faint fl-tny">
+                            {format(new Date(member.created_at), "dd MMM yyyy", {
+                              locale: dateLocale,
+                            })}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <TeamMemberDialog
+              open={memberDialogOpen}
+              onOpenChange={setMemberDialogOpen}
+              jobRoles={data.jobRoles}
+              emailDomain={data.organization?.email_domain ?? null}
+              actorRole={data.profile.role}
+            />
           </div>
-          <TeamMemberDialog
-            open={memberDialogOpen}
-            onOpenChange={setMemberDialogOpen}
-            jobRoles={data.jobRoles}
-            emailDomain={data.organization?.email_domain ?? null}
-          />
         </div>
       ) : null}
 

@@ -29,6 +29,7 @@ import { useDict } from "@/components/shared/i18n-provider";
 import { CompanyLogoPicker } from "@/components/shared/company-logo-picker";
 import { CompanyProfileSelects } from "@/components/admin/company-profile-selects";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -290,12 +291,11 @@ export function CreateCompanyPageClient() {
               </label>
               <div className="fl-input-affix">
                 <KeyRound className="fl-input-affix__icon" strokeWidth={1.75} />
-                <Input
+                <PasswordInput
                   id="create-dir-password"
-                  type="password"
                   value={directorPassword}
                   onChange={(e) => setDirectorPassword(e.target.value)}
-                  className="fl-input fl-input--with-icon"
+                  inputClassName="fl-input fl-input--with-icon"
                   minLength={6}
                   placeholder="••••••••"
                   autoComplete="new-password"

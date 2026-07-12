@@ -55,6 +55,8 @@ export const navLabelKeys = {
   payments: "payments",
   users: "users",
   createCompany: "createCompany",
+  newClient: "newClient",
+  newTask: "newTask",
   workspace: "workspace",
   operations: "operations",
   system: "system",
@@ -114,8 +116,10 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/dashboard": { titleKey: "dashboard", subtitleKey: "dashboardSub" },
   "/leads": { titleKey: "leads", subtitleKey: "leadsSub" },
   "/clients": { titleKey: "clients", subtitleKey: "clientsSub" },
+  "/clients/new": { titleKey: "newClient", subtitleKey: "clientsSub" },
   "/projects": { titleKey: "projects", subtitleKey: "projectsSub" },
   "/tasks": { titleKey: "kanbanTasks", subtitleKey: "tasksSub" },
+  "/tasks/new": { titleKey: "newTask", subtitleKey: "tasksSub" },
   "/calendar": { titleKey: "calendar", subtitleKey: "calendarSub" },
   "/sales": { titleKey: "sales", subtitleKey: "salesSub" },
   "/marketing": { titleKey: "marketing", subtitleKey: "marketingSub" },
@@ -144,8 +148,10 @@ export function matchPageMeta(pathname: string) {
   if (pathname.startsWith("/admin/users")) return pageMetaKeys["/admin/users"];
   if (pathname.startsWith("/admin/companies/new")) return pageMetaKeys["/admin/companies/new"];
   if (pathname.startsWith("/admin/companies")) return pageMetaKeys["/admin/companies"];
+  if (pathname.startsWith("/clients/new")) return pageMetaKeys["/clients/new"];
   if (pathname.startsWith("/leads")) return pageMetaKeys["/leads"];
   if (pathname.startsWith("/crm")) return pageMetaKeys["/leads"];
+  if (pathname.startsWith("/tasks/new")) return pageMetaKeys["/tasks/new"];
   if (pathname.startsWith("/tasks")) return pageMetaKeys["/tasks"];
   if (pathname.startsWith("/hr/")) return pageMetaKeys["/hr"];
   if (pathname.startsWith("/finance/quotes")) return pageMetaKeys["/finance/quotes"];

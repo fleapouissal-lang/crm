@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { getOrgJobRoles } from "@/lib/actions/organizations";
+import { canManageUsers } from "@/lib/permissions";
 import type { ActionResult, Organization, OrgJobRole, Profile } from "@/types/database";
 
 export interface SettingsData {
@@ -18,6 +19,7 @@ export interface SettingsData {
     activities: number;
   };
   isAdmin: boolean;
+  canManageUsers: boolean;
 }
 
 export async function getSettingsData(): Promise<SettingsData | null> {
@@ -32,6 +34,7 @@ export async function getSettingsData(): Promise<SettingsData | null> {
       jobRoles: [],
       stats: { members: 0, leads: 0, tasks: 0, activities: 0 },
       isAdmin: false,
+      canManageUsers: false,
     };
   }
 
@@ -81,6 +84,7 @@ export async function getSettingsData(): Promise<SettingsData | null> {
     jobRoles,
     stats,
     isAdmin: profile.role === "admin",
+    canManageUsers: canManageUsers(profile.role),
   };
 }
 
