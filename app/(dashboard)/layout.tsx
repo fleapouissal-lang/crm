@@ -3,6 +3,7 @@ import { FusionShell } from "@/components/layout/fusion-shell";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformAdmin } from "@/lib/permissions";
+import type { Activity } from "@/types/database";
 
 export default async function DashboardLayout({
   children,
@@ -15,11 +16,10 @@ export default async function DashboardLayout({
   const platformAdmin = isPlatformAdmin(profile.role);
 
   if (platformAdmin) {
-    // Platform admin keeps the global console — no vertical CRM adaptation.
     return (
       <FusionShell
         profile={profile}
-        activityCount={0}
+        activities={[]}
         leadCount={0}
         quoteCount={0}
       >
@@ -31,16 +31,14 @@ export default async function DashboardLayout({
   if (!profile.organization_id) redirect("/login");
 
   const supabase = await createClient();
-  const [{ count: activityCount }, { count: leadCount }, { count: quoteCount }, orgRes] =
+  const [activitiesRes, { count: leadCount }, { count: quoteCount }, orgRes] =
     await Promise.all([
       supabase
         .from("activities")
-        .select("*", { count: "exact", head: true })
+        .select("*, profile:profiles!activities_user_id_fkey(*)")
         .eq("organization_id", profile.organization_id)
-        .gte(
-          "created_at",
-          new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        ),
+        .order("created_at", { ascending: false })
+        .limit(40),
       supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
@@ -61,6 +59,7 @@ export default async function DashboardLayout({
   const organizationName = orgRes.data?.name ?? null;
   const organizationLogoUrl = orgRes.data?.logo_url ?? null;
   const activityDomain = orgRes.data?.activity_domain ?? null;
+  const activities = (activitiesRes.data as Activity[] | null) ?? [];
 
   return (
     <FusionShell
@@ -68,7 +67,7 @@ export default async function DashboardLayout({
       organizationName={organizationName}
       organizationLogoUrl={organizationLogoUrl}
       activityDomain={activityDomain}
-      activityCount={activityCount ?? 0}
+      activities={activities}
       leadCount={leadCount ?? 0}
       quoteCount={quoteCount ?? 0}
     >

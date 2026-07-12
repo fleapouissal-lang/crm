@@ -109,7 +109,7 @@ export const ar = {
     templatesSub: "قوالب العروض والفواتير · متغيرات ديناميكية",
     hrSub: "6 أشخاص · Fusion Leap SARL AU",
     reportsSub: "نظرة شهرية للأداء",
-    notificationsSub: "4 غير مقروءة",
+    notificationsSub: "الوارد والتفضيلات",
     settingsSub: "إعدادات مساحة العمل",
     scalePlan: "خطة Scale",
     seatsUsed: "17 من 25 مقعداً · تجديد 1 أغسطس",

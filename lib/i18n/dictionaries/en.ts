@@ -109,7 +109,7 @@ export const en = {
     templatesSub: "Quote & invoice templates · dynamic variables",
     hrSub: "6 people · Fusion Leap SARL AU",
     reportsSub: "Monthly performance overview",
-    notificationsSub: "4 unread",
+    notificationsSub: "Inbox & preferences",
     settingsSub: "Workspace configuration",
     scalePlan: "Scale plan",
     seatsUsed: "17 of 25 seats used · renews Aug 1",

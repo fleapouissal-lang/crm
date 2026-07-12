@@ -103,7 +103,7 @@ export const fr = {
     templatesSub: "Modèles devis & factures · variables dynamiques",
     hrSub: "6 personnes · Fusion Leap SARL AU",
     reportsSub: "Vue performance mensuelle",
-    notificationsSub: "4 non lues",
+    notificationsSub: "Boîte de réception et préférences",
     settingsSub: "Configuration workspace",
     companiesSub: "Gestion des sociétés clientes du CRM",
     usersSub: "Tous les comptes des entreprises et administrateurs",

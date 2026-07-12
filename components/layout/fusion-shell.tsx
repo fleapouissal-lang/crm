@@ -6,18 +6,61 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { CursorGlow } from "@/components/layout/cursor-glow";
 import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
-import type { Profile } from "@/types/database";
+import { NotificationsProvider } from "@/components/notifications/notifications-provider";
+import { useNotificationsOptional } from "@/components/notifications/notifications-provider";
+import type { Activity, Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { isPlatformAdmin } from "@/lib/permissions";
 
 const SIDEBAR_COLLAPSED_KEY = "fusion-sidebar-collapsed";
+
+function SidebarWithUnread({
+  profile,
+  organizationName,
+  organizationLogoUrl,
+  activityDomain,
+  leadCount,
+  quoteCount,
+  open,
+  collapsed,
+  onClose,
+  onToggleCollapse,
+}: {
+  profile: Profile;
+  organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  activityDomain?: string | null;
+  leadCount: number;
+  quoteCount: number;
+  open: boolean;
+  collapsed: boolean;
+  onClose: () => void;
+  onToggleCollapse: () => void;
+}) {
+  const unread = useNotificationsOptional()?.unreadCount ?? 0;
+  return (
+    <AppSidebar
+      profile={profile}
+      organizationName={organizationName}
+      organizationLogoUrl={organizationLogoUrl}
+      activityDomain={activityDomain}
+      leadCount={leadCount}
+      quoteCount={quoteCount}
+      notificationCount={unread}
+      open={open}
+      collapsed={collapsed}
+      onClose={onClose}
+      onToggleCollapse={onToggleCollapse}
+    />
+  );
+}
 
 export function FusionShell({
   profile,
   organizationName,
   organizationLogoUrl,
   activityDomain,
-  activityCount,
+  activities = [],
   leadCount,
   quoteCount,
   children,
@@ -26,7 +69,7 @@ export function FusionShell({
   organizationName?: string | null;
   organizationLogoUrl?: string | null;
   activityDomain?: string | null;
-  activityCount: number;
+  activities?: Activity[];
   leadCount: number;
   quoteCount: number;
   children: React.ReactNode;
@@ -59,7 +102,7 @@ export function FusionShell({
   const platformAdmin = isPlatformAdmin(profile.role);
 
   return (
-    <>
+    <NotificationsProvider userId={profile.id} activities={activities}>
       <CursorGlow />
       <AuroraBackground />
       {!platformAdmin ? (
@@ -71,7 +114,7 @@ export function FusionShell({
           mounted && sidebarCollapsed && "sidebar-collapsed"
         )}
       >
-        <AppSidebar
+        <SidebarWithUnread
           profile={profile}
           organizationName={organizationName}
           organizationLogoUrl={organizationLogoUrl}
@@ -100,13 +143,12 @@ export function FusionShell({
             organizationName={organizationName}
             organizationLogoUrl={organizationLogoUrl}
             activityDomain={platformAdmin ? null : activityDomain}
-            activityCount={activityCount}
           />
           <div className="fusion-scroll">
             <div className="fusion-page">{children}</div>
           </div>
         </div>
       </div>
-    </>
+    </NotificationsProvider>
   );
 }

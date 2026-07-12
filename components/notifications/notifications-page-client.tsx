@@ -1,64 +1,31 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
-import { toast } from "sonner";
-import { useDict } from "@/components/shared/i18n-provider";
-import { FlAva } from "@/components/fusion/primitives";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import {
-  loadPreferences,
-  savePreferences,
-} from "@/lib/settings/storage";
+  Bell,
+  CheckCheck,
+  Circle,
+  ExternalLink,
+  ListTodo,
+  Target,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { FlAva } from "@/components/fusion/primitives";
+import { savePreferences } from "@/lib/settings/storage";
 import type { WorkspacePreferences } from "@/lib/settings/types";
+import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
+import { activityAccent } from "@/lib/notifications/map";
+import {
+  useNotifications,
+  type AppNotification,
+} from "@/components/notifications/notifications-provider";
 import { cn } from "@/lib/utils";
 
-type NotifFilter = "all" | "unread" | "mentions" | "system";
-
-type NotifItem = {
-  id: string;
-  text: string;
-  time: string;
-  unread: boolean;
-  kind: "mention" | "system" | "task" | "finance";
-};
-
-const SEED: NotifItem[] = [
-  {
-    id: "n1",
-    text: "Payment received — 42,000 SAR from Shegl cleared to Bank of Africa.",
-    time: "14 min",
-    unread: true,
-    kind: "finance",
-  },
-  {
-    id: "n2",
-    text: "Invoice FL-2026-079 overdue — SAR 48,000 from Pixel IT.",
-    time: "1 h",
-    unread: true,
-    kind: "finance",
-  },
-  {
-    id: "n3",
-    text: "Dalal mentioned you on Easy Touch Phase 2: \"Client approved, sending contract.\"",
-    time: "3 h",
-    unread: true,
-    kind: "mention",
-  },
-  {
-    id: "n4",
-    text: "Deadline approaching — Makkah Chamber RFP closes in 2 days.",
-    time: "5 h",
-    unread: true,
-    kind: "system",
-  },
-  {
-    id: "n5",
-    text: "Task reminder — review AutoLog GPS sync on staging.",
-    time: "Yesterday",
-    unread: false,
-    kind: "task",
-  },
-];
+type NotifFilter = "all" | "unread" | "tasks" | "leads";
 
 function FlSwitch({
   checked,
@@ -75,7 +42,10 @@ function FlSwitch({
       role="switch"
       aria-checked={checked}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
       className={cn(
         "relative h-[25px] w-11 shrink-0 rounded-full transition-colors",
         checked ? "bg-[var(--iris)]" : "bg-[var(--track)]",
@@ -114,25 +84,59 @@ function PrefRow({
   );
 }
 
+function KindBadge({
+  kind,
+  label,
+}: {
+  kind: AppNotification["kind"];
+  label: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+        kind === "task"
+          ? "bg-[color-mix(in_oklab,var(--iris)_14%,transparent)] text-[var(--iris)]"
+          : "bg-[color-mix(in_oklab,var(--amber)_18%,transparent)] text-[var(--amber)]"
+      )}
+    >
+      {kind === "task" ? (
+        <ListTodo className="size-2.5" strokeWidth={2.5} />
+      ) : (
+        <Target className="size-2.5" strokeWidth={2.5} />
+      )}
+      {label}
+    </span>
+  );
+}
+
 export function NotificationsPageClient() {
   const dict = useDict();
+  const { locale } = useI18n();
+  const router = useRouter();
   const n = dict.fusion.notifications;
   const s = dict.fusion.settings;
   const l = dict.fusion.labels;
+  const dateLocale = getDateFnsLocale(locale);
+  const {
+    items,
+    unreadCount,
+    prefs,
+    setPrefs,
+    markAllRead,
+    toggleRead,
+    markRead,
+  } = useNotifications();
   const [filter, setFilter] = useState<NotifFilter>("all");
-  const [items, setItems] = useState(SEED);
-  const [prefs, setPrefs] = useState<WorkspacePreferences>(() => loadPreferences());
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
       if (filter === "unread") return item.unread;
-      if (filter === "mentions") return item.kind === "mention";
-      if (filter === "system") return item.kind === "system";
+      if (filter === "tasks") return item.kind === "task";
+      if (filter === "leads") return item.kind === "lead";
       return true;
     });
   }, [items, filter]);
-
-  const unreadCount = items.filter((i) => i.unread).length;
 
   function updatePrefs(patch: Partial<WorkspacePreferences>) {
     const next = { ...prefs, ...patch };
@@ -141,24 +145,21 @@ export function NotificationsPageClient() {
     toast.success(s.prefsSaved);
   }
 
-  function markAllRead() {
-    setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+  function handleMarkAll() {
+    markAllRead();
     toast.success(n.markedAllRead);
   }
 
-  function toggleRead(id: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, unread: !item.unread } : item
-      )
-    );
+  function openItem(item: AppNotification) {
+    if (item.unread) markRead(item.id);
+    if (item.href) router.push(item.href);
   }
 
   const filters: { key: NotifFilter; label: string }[] = [
     { key: "all", label: n.all },
-    { key: "unread", label: l.unreadCount },
-    { key: "mentions", label: l.mentions },
-    { key: "system", label: l.system },
+    { key: "unread", label: n.unread },
+    { key: "tasks", label: n.tasks },
+    { key: "leads", label: n.leads },
   ];
 
   return (
@@ -208,14 +209,16 @@ export function NotificationsPageClient() {
                 onClick={() => setFilter(f.key)}
               >
                 {f.label}
-                {f.key === "unread" && unreadCount > 0 ? ` · ${unreadCount}` : ""}
+                {f.key === "unread" && unreadCount > 0
+                  ? ` · ${unreadCount}`
+                  : ""}
               </button>
             ))}
           </div>
           <button
             type="button"
             className="fl-btn sm ghost"
-            onClick={markAllRead}
+            onClick={handleMarkAll}
             disabled={unreadCount === 0}
           >
             <CheckCheck className="size-3.5" strokeWidth={2} />
@@ -225,19 +228,53 @@ export function NotificationsPageClient() {
 
         <div className="fl-card overflow-hidden">
           {filtered.length === 0 ? (
-            <p className="px-4 py-12 text-center text-sm fl-faint">{n.empty}</p>
+            <div className="px-4 py-14 text-center">
+              <Circle className="mx-auto mb-3 size-8 text-[var(--text-faint)]" strokeWidth={1.5} />
+              <p className="text-sm fl-faint">{n.empty}</p>
+              <p className="mt-1 text-xs fl-faint">{n.emptyHint}</p>
+            </div>
           ) : (
             filtered.map((item) => (
               <div
                 key={item.id}
-                className={cn("notif-item", item.unread && "unread")}
+                role="button"
+                tabIndex={0}
+                className={cn(
+                  "notif-item cursor-pointer",
+                  item.unread && "unread"
+                )}
+                onClick={() => openItem(item)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openItem(item);
+                  }
+                }}
               >
-                <FlAva sm style={{ background: "var(--grad-fusion)" }}>
-                  FL
+                <FlAva sm style={{ background: activityAccent(item.kind) }}>
+                  {item.actorInitials}
                 </FlAva>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px]">{item.text}</p>
-                  <div className="at-time">{item.time}</div>
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <KindBadge
+                      kind={item.kind}
+                      label={item.kind === "task" ? n.tasks : n.leads}
+                    />
+                    {item.href ? (
+                      <ExternalLink
+                        className="size-3 text-[var(--text-faint)]"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                  </div>
+                  <p className="text-[13px] leading-snug">{item.text}</p>
+                  <div className="at-time">
+                    {item.actorName ?? dict.common.user} ·{" "}
+                    {formatDistanceToNow(new Date(item.createdAt), {
+                      addSuffix: true,
+                      locale: dateLocale,
+                    })}
+                  </div>
                 </div>
                 <FlSwitch
                   checked={!item.unread}
@@ -247,7 +284,12 @@ export function NotificationsPageClient() {
             ))
           )}
         </div>
-        <p className="mt-2 text-center text-[11px] fl-faint">{n.readSwitchHint}</p>
+        <p className="mt-2 text-center text-[11px] fl-faint">
+          {n.readSwitchHint}{" "}
+          <Link href="/settings" className="text-[var(--iris)] hover:underline">
+            {s.notifications}
+          </Link>
+        </p>
       </div>
     </div>
   );

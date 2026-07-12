@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { format } from "date-fns";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { matchPageMeta } from "@/lib/navigation";
@@ -15,6 +15,7 @@ import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import type { Profile } from "@/types/database";
 
 import { isPlatformAdmin } from "@/lib/permissions";
@@ -24,13 +25,11 @@ export function AppHeader({
   organizationName,
   organizationLogoUrl,
   activityDomain,
-  activityCount = 0,
 }: {
   profile: Profile;
   organizationName?: string | null;
   organizationLogoUrl?: string | null;
   activityDomain?: string | null;
-  activityCount?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -101,32 +100,24 @@ export function AppHeader({
       </div>
 
       {!platformAdmin ? (
-      <form
-        className="fusion-search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const q = new FormData(e.currentTarget).get("q") as string;
-          if (q?.trim()) router.push(`/leads?q=${encodeURIComponent(q.trim())}`);
-        }}
-      >
-        <Search strokeWidth={2} className="size-4 shrink-0" />
-        <input name="q" placeholder={dict.nav.searchPlaceholder} />
-        <kbd>⌘K</kbd>
-      </form>
+        <form
+          className="fusion-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = new FormData(e.currentTarget).get("q") as string;
+            if (q?.trim()) router.push(`/leads?q=${encodeURIComponent(q.trim())}`);
+          }}
+        >
+          <Search strokeWidth={2} className="size-4 shrink-0" />
+          <input name="q" placeholder={dict.nav.searchPlaceholder} />
+          <kbd>⌘K</kbd>
+        </form>
       ) : null}
 
       <div className="fusion-top-actions">
         <LocaleSwitcher />
         <ThemeToggle />
-        <button
-          type="button"
-          className="fusion-icon-btn"
-          aria-label={dict.common.notifications}
-          onClick={() => router.push("/notifications")}
-        >
-          {activityCount > 0 ? <span className="dot" /> : null}
-          <Bell strokeWidth={2} />
-        </button>
+        {!platformAdmin ? <NotificationsBell /> : null}
         <button
           type="button"
           className="fusion-top-actions__profile"
