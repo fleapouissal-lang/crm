@@ -120,6 +120,24 @@ export function TaskFormDialog({
     }
   }, [open, task, defaultLeadId, defaultDueDate, reset]);
 
+  const status = watch("status");
+  const priority = watch("priority");
+  const assignedTo = watch("assigned_to");
+  const leadId = watch("lead_id");
+
+  const assigneeLabel = assignedTo
+    ? (profiles.find((p) => p.id === assignedTo)?.full_name ??
+        profiles.find((p) => p.id === assignedTo)?.email ??
+        dict.common.unassigned)
+    : dict.common.unassigned;
+  const projectLabel = projectId
+    ? (projects.find((p) => p.id === projectId)?.title ??
+        dict.fusion.kanban.noProject)
+    : dict.fusion.kanban.noProject;
+  const leadLabel = leadId
+    ? (leads.find((l) => l.id === leadId)?.title ?? dict.common.none)
+    : dict.common.none;
+
   function onSubmit(values: TaskFormValues) {
     startTransition(async () => {
       const result = isEdit
@@ -179,13 +197,13 @@ export function TaskFormDialog({
               <div className="fl-form-row">
                 <FormField label={dict.common.status}>
                   <Select
-                    value={watch("status")}
+                    value={status}
                     onValueChange={(v) =>
                       v && setValue("status", v as TaskFormValues["status"])
                     }
                   >
                     <SelectTrigger className="fl-select-trigger w-full">
-                      <SelectValue />
+                      <SelectValue>{dict.taskStatus[status]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="fl-select-panel" align="start">
                       {TASK_STATUSES.map((s) => (
@@ -199,13 +217,13 @@ export function TaskFormDialog({
 
                 <FormField label={dict.common.priority}>
                   <Select
-                    value={watch("priority")}
+                    value={priority}
                     onValueChange={(v) =>
                       v && setValue("priority", v as TaskFormValues["priority"])
                     }
                   >
                     <SelectTrigger className="fl-select-trigger w-full">
-                      <SelectValue />
+                      <SelectValue>{dict.taskPriority[priority]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="fl-select-panel" align="start">
                       {TASK_PRIORITIES.map((p) => (
@@ -230,13 +248,13 @@ export function TaskFormDialog({
 
                 <FormField label={dict.common.assignedTo}>
                   <Select
-                    value={watch("assigned_to") || "unassigned"}
+                    value={assignedTo || "unassigned"}
                     onValueChange={(v) =>
-                      setValue("assigned_to", v === "unassigned" ? "" : v)
+                      setValue("assigned_to", v === "unassigned" ? "" : (v ?? ""))
                     }
                   >
                     <SelectTrigger className="fl-select-trigger w-full">
-                      <SelectValue placeholder={dict.common.unassigned} />
+                      <SelectValue>{assigneeLabel}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="fl-select-panel" align="start">
                       <SelectItem value="unassigned">
@@ -261,7 +279,7 @@ export function TaskFormDialog({
                     }
                   >
                     <SelectTrigger className="fl-select-trigger w-full">
-                      <SelectValue placeholder={dict.fusion.kanban.noProject} />
+                      <SelectValue>{projectLabel}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="fl-select-panel" align="start">
                       <SelectItem value="none">
@@ -278,13 +296,13 @@ export function TaskFormDialog({
 
                 <FormField label={dict.common.linkedLead}>
                   <Select
-                    value={watch("lead_id") || "none"}
+                    value={leadId || "none"}
                     onValueChange={(v) =>
                       setValue("lead_id", v === "none" ? "" : v)
                     }
                   >
                     <SelectTrigger className="fl-select-trigger w-full">
-                      <SelectValue placeholder={dict.common.none} />
+                      <SelectValue>{leadLabel}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="fl-select-panel" align="start">
                       <SelectItem value="none">{dict.common.none}</SelectItem>

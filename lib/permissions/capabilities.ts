@@ -5,6 +5,7 @@ export type NavCapability =
   | "leadership"
   | "clients"
   | "tasks"
+  | "calendar"
   | "finance_docs";
 
 export function getJobSlug(profile: Pick<Profile, "job_role">): string | null {
@@ -37,6 +38,11 @@ export function canAccessTasks(profile: Profile): boolean {
     slug === "commercial" ||
     slug === "stagiaire"
   );
+}
+
+/** Calendar for leadership + équipe who can access tasks. */
+export function canAccessCalendar(profile: Profile): boolean {
+  return isLeadership(profile) || canAccessTasks(profile);
 }
 
 export function canAccessLeads(profile: Profile): boolean {
@@ -89,6 +95,7 @@ export function hasNavCapability(
   if (capability === "leadership") return isLeadership(profile);
   if (capability === "clients") return canAccessClients(profile);
   if (capability === "tasks") return canAccessTasks(profile);
+  if (capability === "calendar") return canAccessCalendar(profile);
   if (capability === "finance_docs") return canViewFinanceDocuments(profile);
   return true;
 }
@@ -99,11 +106,15 @@ export function canAccessNavItem(profile: Profile, itemId: string): boolean {
   switch (itemId) {
     case "dashboard":
     case "settings":
+    case "notifications":
       return true;
     case "clients":
       return canAccessClients(profile);
     case "tasks":
+    case "kanban":
       return canAccessTasks(profile);
+    case "calendar":
+      return canAccessCalendar(profile);
     default:
       return false;
   }

@@ -2578,6 +2578,7 @@ textarea.fl-control {
 
 .notif-item {
   display: flex;
+  align-items: center;
   gap: 13px;
   padding: 15px 20px;
   border-bottom: 1px solid var(--border);
@@ -2588,7 +2589,7 @@ textarea.fl-control {
 .notif-item.unread::before {
   content: "";
   position: absolute;
-  left: 8px;
+  inset-inline-start: 8px;
   top: 50%;
   transform: translateY(-50%);
   width: 6px;
@@ -4226,10 +4227,22 @@ textarea.fl-control {
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+.login-split__field input[type="password"],
+.login-split__field input[type="text"].pe-11,
+.login-split__field .relative > input {
+  padding-inline-end: 2.75rem;
+}
 .login-split__field input::placeholder { color: var(--login-input-placeholder); }
 .login-split__field input:focus {
   border-color: rgba(255, 120, 60, 0.4);
   box-shadow: 0 0 0 3px rgba(255, 120, 60, 0.1);
+}
+.login-split__field .relative > button {
+  color: var(--login-text-faint);
+}
+.login-split__field .relative > button:hover {
+  color: var(--login-input-text);
+  background: color-mix(in srgb, var(--login-input-text) 8%, transparent);
 }
 
 .login-split__row {

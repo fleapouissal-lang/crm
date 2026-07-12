@@ -34,6 +34,7 @@ export type VerticalNavId =
   | "clients"
   | "projects"
   | "tasks"
+  | "kanban"
   | "calendar"
   | "sales"
   | "marketing"
@@ -62,6 +63,7 @@ const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "clients",
   "projects",
   "tasks",
+  "kanban",
   "calendar",
   "sales",
   "marketing",
@@ -87,6 +89,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "clients",
       "projects",
       "tasks",
+      "kanban",
       "calendar",
       "sales",
       "quotes",
@@ -108,6 +111,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     iconOverrides: {
       projects: FolderKanban,
       tasks: Ticket,
+      kanban: Columns3,
       leads: UserPlus,
       clients: Building2,
       quotes: FileText,

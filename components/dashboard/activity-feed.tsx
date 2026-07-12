@@ -140,10 +140,14 @@ export function UpcomingTasks({
   tasks,
   dict,
   locale,
+  title,
+  emptyTitle,
 }: {
   tasks: Task[];
   dict: Dictionary;
   locale: Locale;
+  title?: string;
+  emptyTitle?: string;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const dateLocale = getIntlLocale(locale);
@@ -152,17 +156,17 @@ export function UpcomingTasks({
     <div className="fl-card">
       <div className="fl-card-head">
         <div>
-          <h3>{dict.dashboard.upcomingTasks}</h3>
+          <h3>{title ?? dict.dashboard.upcomingTasks}</h3>
           <div className="ch-sub">{dict.nav.tasks}</div>
         </div>
-        <Link href="/tasks" className="fl-btn sm ghost">
+        <Link href="/tasks?view=list" className="fl-btn sm ghost">
           {dict.common.viewAll}
         </Link>
       </div>
       <div className="fl-pad">
         {tasks.length === 0 ? (
           <p className="py-6 text-center text-sm fl-faint">
-            {dict.dashboard.noUpcomingTasks}
+            {emptyTitle ?? dict.dashboard.noUpcomingTasks}
           </p>
         ) : (
           <div>

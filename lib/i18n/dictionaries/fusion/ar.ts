@@ -469,7 +469,13 @@ export const fusionAr: FusionDictionary = {
     recentWonDeals: "آخر الصفقات المكتسبة",
     dateColumn: "التاريخ",
   },
-  notifications: { all: "الكل" },
+  notifications: {
+    all: "الكل",
+    prefsHint: "فعّل أو عطّل كل نوع تنبيه",
+    markedAllRead: "تم تعليم كل الإشعارات كمقروءة",
+    empty: "لا توجد إشعارات في هذا التصفية",
+    readSwitchHint: "المفتاح على اليمين: مفعّل = مقروء · معطّل = غير مقروء",
+  },
   settings: {
     workspace: "مساحة العمل",
     appearance: "المظهر",

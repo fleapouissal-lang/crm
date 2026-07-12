@@ -469,7 +469,13 @@ export const fusionFr: FusionDictionary = {
     recentWonDeals: "Derniers deals gagnés",
     dateColumn: "Date",
   },
-  notifications: { all: "Tous" },
+  notifications: {
+    all: "Tous",
+    prefsHint: "Activez ou désactivez chaque type d’alerte",
+    markedAllRead: "Toutes les notifications marquées comme lues",
+    empty: "Aucune notification dans ce filtre",
+    readSwitchHint: "Le switch à droite : activé = lu · désactivé = non lu",
+  },
   settings: {
     workspace: "Espace de travail",
     appearance: "Apparence",

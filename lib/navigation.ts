@@ -7,6 +7,7 @@ import {
   Users,
   FolderKanban,
   Columns3,
+  CheckSquare,
   Calendar,
   TrendingUp,
   Megaphone,
@@ -38,6 +39,7 @@ export const navLabelKeys = {
   leads: "leads",
   clients: "clients",
   projects: "projects",
+  tasks: "tasks",
   kanbanTasks: "kanbanTasks",
   calendar: "calendar",
   sales: "sales",
@@ -78,8 +80,9 @@ export const workspaceNav: NavItem[] = [
   { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leadership" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
-  { id: "tasks", href: "/tasks", icon: Columns3, labelKey: "kanbanTasks", capability: "tasks" },
-  { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "leadership" },
+  { id: "tasks", href: "/tasks?view=list", icon: CheckSquare, labelKey: "tasks", capability: "tasks" },
+  { id: "kanban", href: "/tasks?view=board", icon: Columns3, labelKey: "kanbanTasks", capability: "tasks" },
+  { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "calendar" },
 ];
 
 export const operationsNav: NavItem[] = [
@@ -108,7 +111,7 @@ export const operationsNav: NavItem[] = [
 ];
 
 export const systemNav: NavItem[] = [
-  { id: "notifications", href: "/notifications", icon: Bell, labelKey: "notifications", badge: "notifications", capability: "leadership" },
+  { id: "notifications", href: "/notifications", icon: Bell, labelKey: "notifications", badge: "notifications", capability: "always" },
   { id: "settings", href: "/settings", icon: Settings, labelKey: "settings", capability: "always" },
 ];
 
@@ -118,7 +121,7 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/clients": { titleKey: "clients", subtitleKey: "clientsSub" },
   "/clients/new": { titleKey: "newClient", subtitleKey: "clientsSub" },
   "/projects": { titleKey: "projects", subtitleKey: "projectsSub" },
-  "/tasks": { titleKey: "kanbanTasks", subtitleKey: "tasksSub" },
+  "/tasks": { titleKey: "tasks", subtitleKey: "tasksSub" },
   "/tasks/new": { titleKey: "newTask", subtitleKey: "tasksSub" },
   "/calendar": { titleKey: "calendar", subtitleKey: "calendarSub" },
   "/sales": { titleKey: "sales", subtitleKey: "salesSub" },

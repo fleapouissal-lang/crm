@@ -34,12 +34,13 @@ export function TasksPageClient({
   profile: Profile;
 }) {
   const dict = useDict();
-  const [view, setView] = useState<"board" | "list">("board");
-  const [projects, setProjects] = useState<ReturnType<typeof loadProjects>>([]);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const status = searchParams.get("status") ?? "all";
   const projectFilter = searchParams.get("project_id") ?? "all";
+  const viewParam = searchParams.get("view");
+  const view: "board" | "list" = viewParam === "list" ? "list" : "board";
+  const [projects, setProjects] = useState<ReturnType<typeof loadProjects>>([]);
+  const router = useRouter();
 
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
 
@@ -53,6 +54,25 @@ export function TasksPageClient({
     else params.set(key, value);
     router.push(`/tasks?${params.toString()}`);
   }
+
+  function setView(next: "board" | "list") {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", next);
+    router.push(`/tasks?${params.toString()}`);
+  }
+
+  const projectFilterLabel =
+    projectFilter === "all"
+      ? dict.fusion.kanban.allProjects
+      : projectFilter === "none"
+        ? dict.fusion.kanban.noProject
+        : (projects.find((p) => p.id === projectFilter)?.title ??
+          dict.fusion.kanban.filterByProject);
+  const statusFilterLabel =
+    status === "all"
+      ? dict.common.allStatuses
+      : (dict.taskStatus[status as (typeof TASK_STATUSES)[number]] ??
+        dict.common.allStatuses);
 
   return (
     <div className="space-y-4">
@@ -73,7 +93,7 @@ export function TasksPageClient({
                 onValueChange={(v) => v && updateFilter("project_id", v)}
               >
                 <SelectTrigger className="fl-select-trigger">
-                  <SelectValue placeholder={dict.fusion.kanban.filterByProject} />
+                  <SelectValue>{projectFilterLabel}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="fl-select-panel" align="end">
                   <SelectItem value="all">{dict.fusion.kanban.allProjects}</SelectItem>
@@ -92,7 +112,7 @@ export function TasksPageClient({
                 onValueChange={(v) => v && updateFilter("status", v)}
               >
                 <SelectTrigger className="fl-select-trigger">
-                  <SelectValue placeholder={dict.common.allStatuses} />
+                  <SelectValue>{statusFilterLabel}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="fl-select-panel" align="end">
                   <SelectItem value="all">{dict.common.allStatuses}</SelectItem>

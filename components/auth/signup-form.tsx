@@ -8,6 +8,7 @@ import { useDict } from "@/components/shared/i18n-provider";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AuroraBackground } from "@/components/layout/aurora-background";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function SignupForm() {
   const dict = useDict();
@@ -69,7 +70,14 @@ export function SignupForm() {
             </div>
             <div className="fl-field">
               <label htmlFor="password">{dict.common.password}</label>
-              <input id="password" name="password" type="password" className="fl-inp" required minLength={6} autoComplete="new-password" />
+              <PasswordInput
+                id="password"
+                name="password"
+                inputClassName="fl-inp"
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
             </div>
             <button type="submit" className="fl-btn primary w-full justify-center" disabled={pending}>
               {pending && <Loader2 className="size-4 animate-spin" />}

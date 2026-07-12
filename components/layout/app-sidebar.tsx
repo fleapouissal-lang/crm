@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useTransition, useCallback, type MouseEvent } from "react";
 import {
   ChevronsLeft,
@@ -50,9 +50,34 @@ function resolveNavTitle(
   return dict.nav[item.labelKey as keyof typeof dict.nav] as string;
 }
 
+function isNavItemActive(item: NavItem, pathname: string, search: string) {
+  const [itemPath, itemQuery = ""] = item.href.split("?");
+  if (item.id === "tasks" || item.id === "kanban") {
+    if (pathname !== "/tasks" && !pathname.startsWith("/tasks/")) return false;
+    if (pathname.startsWith("/tasks/new")) return item.id === "tasks";
+    const view = new URLSearchParams(search).get("view");
+    if (item.id === "kanban") {
+      return !view || view === "board";
+    }
+    return view === "list";
+  }
+  if (pathname === itemPath) {
+    if (!itemQuery) return true;
+    const want = new URLSearchParams(itemQuery);
+    const have = new URLSearchParams(search);
+    for (const [k, v] of want.entries()) {
+      if (have.get(k) !== v) return false;
+    }
+    return true;
+  }
+  if (itemPath === "/dashboard") return false;
+  return pathname.startsWith(itemPath + "/");
+}
+
 function NavSection({
   items,
   pathname,
+  search,
   profile,
   preset,
   applyVerticalFilter,
@@ -64,6 +89,7 @@ function NavSection({
 }: {
   items: NavItem[];
   pathname: string;
+  search: string;
   profile: Profile;
   preset: VerticalNavPreset;
   /** When false (platform admin), show all section items. */
@@ -87,9 +113,7 @@ function NavSection({
   return (
     <div className="fusion-nav-group">
       {visibleItems.map((item) => {
-        const active =
-          pathname === item.href ||
-          (item.href !== "/dashboard" && pathname.startsWith(item.href));
+        const active = isNavItemActive(item, pathname, search);
 
         let badge: number | undefined;
         if (item.badge === "notifications") badge = notificationCount;
@@ -165,6 +189,8 @@ export function AppSidebar({
   onToggleCollapse?: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
   const dict = useDict();
   const [pending, startTransition] = useTransition();
   const displayName = profile.full_name ?? dict.common.user;
@@ -271,6 +297,7 @@ export function AppSidebar({
               key={index}
               items={items}
               pathname={pathname}
+              search={search}
               profile={profile}
               preset={preset}
               applyVerticalFilter={!platformAdmin}
@@ -285,6 +312,7 @@ export function AppSidebar({
             <NavSection
               items={systemNav.filter((item) => item.id === "settings")}
               pathname={pathname}
+              search={search}
               profile={profile}
               preset={preset}
               applyVerticalFilter

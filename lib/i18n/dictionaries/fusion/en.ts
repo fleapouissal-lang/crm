@@ -469,6 +469,10 @@ export const fusionEn = {
   },
   notifications: {
     all: "All",
+    prefsHint: "Turn each alert type on or off",
+    markedAllRead: "All notifications marked as read",
+    empty: "No notifications in this filter",
+    readSwitchHint: "Right switch: on = read · off = unread",
   },
   settings: {
     workspace: "Workspace",

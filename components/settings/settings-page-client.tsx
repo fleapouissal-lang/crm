@@ -79,8 +79,8 @@ function FlToggle({
     >
       <span
         className={cn(
-          "absolute top-[3px] size-[19px] rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-[22px]" : "translate-x-[3px]"
+          "absolute top-[3px] size-[19px] rounded-full bg-white shadow transition-[inset-inline-start]",
+          checked ? "inset-inline-start-[22px]" : "inset-inline-start-[3px]"
         )}
       />
     </button>

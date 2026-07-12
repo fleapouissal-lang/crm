@@ -1,5 +1,6 @@
 import type { Role } from "@/types/database";
 export {
+  canAccessCalendar,
   canAccessClients,
   canAccessFullCrm,
   canAccessLeads,
