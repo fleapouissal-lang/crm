@@ -32,39 +32,44 @@ export function ContactBody() {
   ] as const;
 
   return (
-    <div className="marketing-faq-card marketing-contact-card">
-      <div className="marketing-faq marketing-contact-layout">
-        <aside className="marketing-faq__sidebar marketing-contact-layout__sidebar">
-          <h2 className="marketing-faq__sidebar-title">{c.sidebarTitle}</h2>
-          <p className="marketing-contact-layout__intro">{c.sidebarIntro}</p>
-
-          <ul className="marketing-contact-layout__details">
-            {details.map(({ icon: Icon, label, value, href }) => (
-              <li key={label}>
-                <div className="marketing-contact-layout__detail">
-                  <span className="marketing-faq__category-icon" aria-hidden>
-                    <Icon size={18} strokeWidth={2} />
-                  </span>
-                  <div className="marketing-contact-layout__detail-text">
-                    <p className="marketing-contact-layout__detail-label">{label}</p>
-                    {href ? (
-                      <Link href={href} className="marketing-contact-layout__detail-value">
-                        {value}
-                      </Link>
-                    ) : (
-                      <p className="marketing-contact-layout__detail-value">{value}</p>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        <div className="marketing-faq__main marketing-contact-layout__main">
-          <h2 className="marketing-contact-layout__form-title">{c.formTitle}</h2>
-          <ContactForm />
+    <div className="marketing-contact-panel">
+      <aside className="marketing-contact-panel__aside">
+        <div className="marketing-contact-panel__aside-top">
+          <h2>{c.sidebarTitle}</h2>
+          <p>{c.sidebarIntro}</p>
         </div>
+
+        <ul className="marketing-contact-panel__list">
+          {details.map(({ icon: Icon, label, value, href }) => (
+            <li key={label}>
+              {href ? (
+                <Link href={href} className="marketing-contact-panel__row">
+                  <span className="marketing-contact-panel__icon" aria-hidden>
+                    <Icon size={20} strokeWidth={2} />
+                  </span>
+                  <span className="marketing-contact-panel__meta">
+                    <span className="marketing-contact-panel__label">{label}</span>
+                    <span className="marketing-contact-panel__value">{value}</span>
+                  </span>
+                </Link>
+              ) : (
+                <div className="marketing-contact-panel__row">
+                  <span className="marketing-contact-panel__icon" aria-hidden>
+                    <Icon size={20} strokeWidth={2} />
+                  </span>
+                  <span className="marketing-contact-panel__meta">
+                    <span className="marketing-contact-panel__label">{label}</span>
+                    <span className="marketing-contact-panel__value">{value}</span>
+                  </span>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <div className="marketing-contact-panel__form">
+        <ContactForm />
       </div>
     </div>
   );
