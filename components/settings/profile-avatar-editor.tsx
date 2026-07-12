@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { removeAvatar, uploadAvatar } from "@/lib/actions/auth";
+import { removeAvatar, uploadAvatarBase64 } from "@/lib/actions/auth";
 import { useDict } from "@/components/shared/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,16 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 async function prepareAvatarFile(file: File): Promise<File> {
@@ -75,17 +86,31 @@ async function prepareAvatarFile(file: File): Promise<File> {
 
 export function ProfileAvatarEditor({
   name,
+  userId,
   initialUrl,
   onChange,
 }: {
   name: string;
+  userId?: string;
   initialUrl?: string | null;
   onChange?: (url: string | null) => void;
 }) {
   const s = useDict().fusion.settings;
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialUrl ?? null);
   const [pending, startTransition] = useTransition();
+  const previewRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setAvatarUrl(initialUrl ?? null);
+  }, [initialUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    };
+  }, []);
 
   function handleSelect(file: File | null) {
     if (!file) return;
@@ -93,19 +118,45 @@ export function ProfileAvatarEditor({
     startTransition(async () => {
       try {
         const prepared = await prepareAvatarFile(file);
-        const fd = new FormData();
-        fd.set("avatar", prepared);
-        const result = await uploadAvatar(fd);
+        if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+        const localPreview = URL.createObjectURL(prepared);
+        previewRef.current = localPreview;
+        setAvatarUrl(localPreview);
+        onChange?.(localPreview);
+
+        const result = await uploadAvatarBase64({
+          base64: await fileToBase64(prepared),
+          contentType: prepared.type || "image/jpeg",
+        });
+
         if (!result.success) {
+          if (previewRef.current) {
+            URL.revokeObjectURL(previewRef.current);
+            previewRef.current = null;
+          }
+          setAvatarUrl(initialUrl ?? null);
+          onChange?.(initialUrl ?? null);
           toast.error(result.error);
           return;
         }
+
         const nextUrl = result.data.avatar_url;
+        if (previewRef.current) {
+          URL.revokeObjectURL(previewRef.current);
+          previewRef.current = null;
+        }
         setAvatarUrl(nextUrl);
         onChange?.(nextUrl);
         toast.success(s.avatarSaved);
+        router.refresh();
       } catch (err) {
         const code = err instanceof Error ? err.message : "";
+        if (previewRef.current) {
+          URL.revokeObjectURL(previewRef.current);
+          previewRef.current = null;
+        }
+        setAvatarUrl(initialUrl ?? null);
+        onChange?.(initialUrl ?? null);
         if (code === "invalid_type") toast.error(s.avatarInvalidType);
         else if (code === "too_large") toast.error(s.avatarTooLarge);
         else toast.error(s.avatarUploadFailed);
@@ -120,16 +171,26 @@ export function ProfileAvatarEditor({
         toast.error(result.error);
         return;
       }
+      if (previewRef.current) {
+        URL.revokeObjectURL(previewRef.current);
+        previewRef.current = null;
+      }
       setAvatarUrl(null);
       onChange?.(null);
       toast.success(s.avatarRemoved);
+      router.refresh();
     });
   }
 
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
       <div className="relative shrink-0">
-        <UserAvatar name={name} avatarUrl={avatarUrl} variant="profile" />
+        <UserAvatar
+          name={name}
+          avatarUrl={avatarUrl}
+          userId={userId}
+          variant="profile"
+        />
         <button
           type="button"
           className={cn(
@@ -154,9 +215,9 @@ export function ProfileAvatarEditor({
           accept="image/jpeg,image/png,image/webp"
           className="sr-only"
           onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
+            const next = e.target.files?.[0] ?? null;
             e.target.value = "";
-            handleSelect(file);
+            handleSelect(next);
           }}
         />
       </div>

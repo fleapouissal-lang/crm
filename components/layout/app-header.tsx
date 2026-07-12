@@ -128,6 +128,7 @@ export function AppHeader({
           <UserAvatar
             name={profile.full_name ?? dict.common.user}
             avatarUrl={profile.avatar_url}
+            userId={profile.id}
             variant="header"
           />
         </button>

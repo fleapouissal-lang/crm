@@ -265,6 +265,7 @@ export function AppSidebar({
             <UserAvatar
               name={displayName}
               avatarUrl={profile.avatar_url}
+              userId={profile.id}
               variant="sidebar"
             />
             <div className="fusion-user-meta">
@@ -282,6 +283,7 @@ export function AppSidebar({
             <UserAvatar
               name={displayName}
               avatarUrl={profile.avatar_url}
+              userId={profile.id}
               variant="sidebar"
             />
             <div className="fusion-user-meta">

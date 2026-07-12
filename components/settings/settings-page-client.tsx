@@ -270,6 +270,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
             <div className="mt-6 border-b border-[var(--border)] pb-6">
               <ProfileAvatarEditor
                 name={profileName}
+                userId={data.profile.id}
                 initialUrl={data.profile.avatar_url}
                 onChange={setAvatarUrl}
               />
@@ -344,7 +345,12 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
           </div>
           <div className="fl-card fl-pad">
             <div className="flex items-center gap-[11px]">
-              <UserAvatar name={profileName} avatarUrl={avatarUrl} variant="profile" />
+              <UserAvatar
+                name={profileName}
+                avatarUrl={avatarUrl}
+                userId={data.profile.id}
+                variant="profile"
+              />
               <div>
                 <div className="font-medium">{profileName}</div>
                 {jobTitle ? (

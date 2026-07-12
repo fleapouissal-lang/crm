@@ -189,6 +189,8 @@ function MemberDashboardView({
 }) {
   const dict = useDict();
   const { locale } = useI18n();
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+
   useEffect(() => {
     const all = loadProjects(buildTeamOptions([profile]));
     setProjects(
