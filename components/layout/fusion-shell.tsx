@@ -5,14 +5,18 @@ import { AuroraBackground } from "@/components/layout/aurora-background";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { CursorGlow } from "@/components/layout/cursor-glow";
+import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
 import type { Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { isPlatformAdmin } from "@/lib/permissions";
 
 const SIDEBAR_COLLAPSED_KEY = "fusion-sidebar-collapsed";
 
 export function FusionShell({
   profile,
   organizationName,
+  organizationLogoUrl,
+  activityDomain,
   activityCount,
   leadCount,
   quoteCount,
@@ -20,6 +24,8 @@ export function FusionShell({
 }: {
   profile: Profile;
   organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  activityDomain?: string | null;
   activityCount: number;
   leadCount: number;
   quoteCount: number;
@@ -50,10 +56,15 @@ export function FusionShell({
     });
   }, []);
 
+  const platformAdmin = isPlatformAdmin(profile.role);
+
   return (
     <>
       <CursorGlow />
       <AuroraBackground />
+      {!platformAdmin ? (
+        <VerticalModuleGuard activityDomain={activityDomain} enabled />
+      ) : null}
       <div
         className={cn(
           "fusion-app",
@@ -62,6 +73,9 @@ export function FusionShell({
       >
         <AppSidebar
           profile={profile}
+          organizationName={organizationName}
+          organizationLogoUrl={organizationLogoUrl}
+          activityDomain={platformAdmin ? null : activityDomain}
           leadCount={leadCount}
           quoteCount={quoteCount}
           open={sidebarOpen}
@@ -84,6 +98,8 @@ export function FusionShell({
           <AppHeader
             profile={profile}
             organizationName={organizationName}
+            organizationLogoUrl={organizationLogoUrl}
+            activityDomain={platformAdmin ? null : activityDomain}
             activityCount={activityCount}
           />
           <div className="fusion-scroll">

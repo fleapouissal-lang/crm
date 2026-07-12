@@ -1,15 +1,87 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
 import { buildCompanyEmail } from "@/lib/organizations/domain";
+import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
+import { defaultTrialEndsAt, type PlanKey, type SubscriptionStatus } from "@/lib/billing/plans";
 import type { OrgJobRole, Role } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const TEAM_PASSWORD = "Demo123!";
-const PLATFORM_ADMIN_EMAIL = "admin@fusionleap.com";
+const PLATFORM_ADMIN_EMAIL = "administrateur@crmfleap.com";
 const PLATFORM_ADMIN_PASSWORD = "Admin123!";
+const LEGACY_ADMIN_EMAILS = ["admin@fusionleap.com"];
 
-const FUSION_LEAP_SLUG = "fusion-leap";
-const AUTOLOG_SLUG = "autolog";
+type CompanySeedConfig = {
+  name: string;
+  slug: string;
+  domain: string;
+  plan: PlanKey;
+  subscriptionStatus: SubscriptionStatus;
+  activityDomain: string;
+  director: { fullName: string; emailLocal: string };
+  /** Staff excluding directeur (created by provisionTenantCompany) */
+  staff: Array<{ fullName: string; emailLocal: string; jobSlug: string }>;
+};
+
+const COMPANIES: CompanySeedConfig[] = [
+  {
+    name: "Fusion Leap",
+    slug: "fusion-leap",
+    domain: "fusionleap.com",
+    plan: "enterprise",
+    subscriptionStatus: "active",
+    activityDomain: "digital",
+    director: { fullName: "Youssef Kaab", emailLocal: "directeur" },
+    staff: [
+      { fullName: "Fatim Ezzagra", emailLocal: "gerant", jobSlug: "gerant" },
+      { fullName: "Ouissal Benali", emailLocal: "developpeur", jobSlug: "developpeur" },
+      { fullName: "Achraf Amrani", emailLocal: "designer", jobSlug: "designer" },
+      { fullName: "Sara Idrissi", emailLocal: "commercial", jobSlug: "commercial" },
+      { fullName: "Karim Bennani", emailLocal: "comptable", jobSlug: "comptable" },
+      { fullName: "Nadia El Fassi", emailLocal: "rh", jobSlug: "rh" },
+      { fullName: "Amine Tazi", emailLocal: "support", jobSlug: "support" },
+      { fullName: "Oumaima Chraibi", emailLocal: "stagiaire", jobSlug: "stagiaire" },
+    ],
+  },
+  {
+    name: "Autolog",
+    slug: "autolog",
+    domain: "autolog.ma",
+    plan: "business",
+    subscriptionStatus: "trialing",
+    activityDomain: "transport_logistics",
+    director: { fullName: "Hassan Alaoui", emailLocal: "directeur" },
+    staff: [
+      { fullName: "Fatim Ezzahra", emailLocal: "gerant", jobSlug: "gerant" },
+      { fullName: "Yassine Mansouri", emailLocal: "developpeur", jobSlug: "developpeur" },
+      { fullName: "Imane Kadiri", emailLocal: "designer", jobSlug: "designer" },
+      { fullName: "Dalal Saidi", emailLocal: "commercial", jobSlug: "commercial" },
+      { fullName: "Mehdi Lahlou", emailLocal: "comptable", jobSlug: "comptable" },
+      { fullName: "Salma Benkirane", emailLocal: "rh", jobSlug: "rh" },
+      { fullName: "Rachid Ouazzani", emailLocal: "support", jobSlug: "support" },
+      { fullName: "Aya Filali", emailLocal: "stagiaire", jobSlug: "stagiaire" },
+    ],
+  },
+  {
+    name: "Evana",
+    slug: "evana",
+    domain: "evana.ma",
+    plan: "starter",
+    subscriptionStatus: "active",
+    activityDomain: "real_estate",
+    director: { fullName: "Sofia Benjelloun", emailLocal: "directeur" },
+    staff: [
+      { fullName: "Omar Cherkaoui", emailLocal: "gerant", jobSlug: "gerant" },
+      { fullName: "Hiba Ziani", emailLocal: "developpeur", jobSlug: "developpeur" },
+      { fullName: "Nour El Amrani", emailLocal: "designer", jobSlug: "designer" },
+      { fullName: "Reda Berrada", emailLocal: "commercial", jobSlug: "commercial" },
+      { fullName: "Leila Moussaoui", emailLocal: "comptable", jobSlug: "comptable" },
+      { fullName: "Samira Haddad", emailLocal: "rh", jobSlug: "rh" },
+      { fullName: "Anas Kettani", emailLocal: "support", jobSlug: "support" },
+      { fullName: "Ines Bakkali", emailLocal: "stagiaire", jobSlug: "stagiaire" },
+    ],
+  },
+];
 
 export type SeedAccount = {
   name: string;
@@ -28,16 +100,36 @@ export type SeedResult =
   | { status: "skipped"; message: string }
   | { status: "error"; message: string };
 
-type TeamSeedMember = {
-  fullName: string;
-  emailLocal: string;
-  jobSlug: string;
-  accessRole: Role;
-};
+function accessRoleForJob(jobSlug: string): Role {
+  if (jobSlug === "directeur") return "admin";
+  if (jobSlug === "gerant") return "manager";
+  return "member";
+}
+
+function jobLabel(slug: string): string {
+  return DEFAULT_ORG_JOB_ROLES.find((r) => r.slug === slug)?.name ?? slug;
+}
 
 async function ensurePlatformAdmin(supabase: ReturnType<typeof createAdminClient>) {
   const { data: listData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  let adminId = listData.users.find((u) => u.email === PLATFORM_ADMIN_EMAIL)?.id;
+  const users = listData.users ?? [];
+
+  for (const legacyEmail of LEGACY_ADMIN_EMAILS) {
+    const legacy = users.find((u) => u.email === legacyEmail);
+    if (!legacy) continue;
+    await supabase
+      .from("profiles")
+      .update({
+        role: "member",
+        organization_id: null,
+        job_role_id: null,
+        job_title: null,
+      })
+      .eq("id", legacy.id);
+    await supabase.auth.admin.deleteUser(legacy.id);
+  }
+
+  let adminId = users.find((u) => u.email === PLATFORM_ADMIN_EMAIL)?.id;
 
   if (!adminId) {
     const { data: created, error } = await supabase.auth.admin.createUser({
@@ -46,8 +138,16 @@ async function ensurePlatformAdmin(supabase: ReturnType<typeof createAdminClient
       email_confirm: true,
       user_metadata: { full_name: "Administrateur CRM" },
     });
-    if (error || !created.user) return;
+    if (error || !created.user) {
+      throw new Error(error?.message ?? "Could not create platform admin");
+    }
     adminId = created.user.id;
+  } else {
+    await supabase.auth.admin.updateUserById(adminId, {
+      password: PLATFORM_ADMIN_PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: "Administrateur CRM" },
+    });
   }
 
   await supabase
@@ -64,7 +164,11 @@ async function ensurePlatformAdmin(supabase: ReturnType<typeof createAdminClient
 }
 
 async function wipeDemoOrgs(supabase: ReturnType<typeof createAdminClient>) {
-  const slugs = [FUSION_LEAP_SLUG, AUTOLOG_SLUG, "fusion-leap-demo"];
+  const slugs = [
+    ...COMPANIES.map((c) => c.slug),
+    "fusion-leap-demo",
+  ];
+
   for (const slug of slugs) {
     const { data: org } = await supabase
       .from("organizations")
@@ -106,11 +210,11 @@ async function addTeamMember(
   orgId: string,
   domain: string,
   jobRoles: Map<string, OrgJobRole>,
-  member: TeamSeedMember
+  member: { fullName: string; emailLocal: string; jobSlug: string }
 ): Promise<string> {
   const email = buildCompanyEmail(member.emailLocal, domain);
   const jobRole = jobRoles.get(member.jobSlug);
-  if (!jobRole) throw new Error(`Job role "${member.jobSlug}" not found`);
+  if (!jobRole) throw new Error(`Job role "${member.jobSlug}" not found for ${domain}`);
 
   const { data: created, error } = await supabase.auth.admin.createUser({
     email,
@@ -127,7 +231,7 @@ async function addTeamMember(
     .from("profiles")
     .update({
       organization_id: orgId,
-      role: member.accessRole,
+      role: accessRoleForJob(member.jobSlug),
       full_name: member.fullName,
       email,
       job_role_id: jobRole.id,
@@ -143,202 +247,132 @@ async function addTeamMember(
   return created.user.id;
 }
 
-async function seedFusionLeap(supabase: ReturnType<typeof createAdminClient>) {
+async function seedCompany(
+  supabase: ReturnType<typeof createAdminClient>,
+  company: CompanySeedConfig
+) {
+  const directorEmail = buildCompanyEmail(company.director.emailLocal, company.domain);
+
   const { organizationId, directorId } = await provisionTenantCompany({
-    organizationName: "Fusion Leap",
-    emailDomain: "fusionleap.com",
-    slug: FUSION_LEAP_SLUG,
-    directorName: "Youssef Kaab",
-    directorEmail: "youssef@fusionleap.com",
+    organizationName: company.name,
+    emailDomain: company.domain,
+    slug: company.slug,
+    directorName: company.director.fullName,
+    directorEmail,
     directorPassword: TEAM_PASSWORD,
     client: supabase,
   });
 
-  const jobRoles = await getJobRolesMap(supabase, organizationId);
+  const periodEnd = new Date();
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-  const fatimId = await addTeamMember(supabase, organizationId, "fusionleap.com", jobRoles, {
-    fullName: "Fatim Ezzagra",
-    emailLocal: "fatim",
-    jobSlug: "gerant",
-    accessRole: "manager",
-  });
-
-  const ouissalId = await addTeamMember(supabase, organizationId, "fusionleap.com", jobRoles, {
-    fullName: "Ouissal",
-    emailLocal: "ouissal",
-    jobSlug: "developpeur",
-    accessRole: "member",
-  });
-
-  const achrafId = await addTeamMember(supabase, organizationId, "fusionleap.com", jobRoles, {
-    fullName: "Achraf",
-    emailLocal: "achraf",
-    jobSlug: "designer",
-    accessRole: "member",
-  });
-
-  const oumaimaId = await addTeamMember(supabase, organizationId, "fusionleap.com", jobRoles, {
-    fullName: "Oumaima",
-    emailLocal: "oumaima",
-    jobSlug: "stagiaire",
-    accessRole: "member",
-  });
-
-  const today = new Date();
-  const iso = (offset: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().slice(0, 10);
-  };
-
-  await supabase.from("tasks").insert([
-    {
-      organization_id: organizationId,
-      title: "Intégration API paiement — sprint 3",
-      description: "Stripe + facturation récurrente",
-      status: "in_progress",
-      priority: "high",
-      due_date: iso(3),
-      assigned_to: ouissalId,
-      created_by: directorId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Refactor module auth multi-tenant",
-      status: "todo",
-      priority: "urgent",
-      due_date: iso(5),
-      assigned_to: ouissalId,
-      created_by: ouissalId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Maquettes dashboard Fusion Leap v2",
-      status: "in_progress",
-      priority: "medium",
-      due_date: iso(4),
-      assigned_to: achrafId,
-      created_by: fatimId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Recherche UX onboarding CRM",
-      status: "todo",
-      priority: "low",
-      due_date: iso(7),
-      assigned_to: oumaimaId,
-      created_by: fatimId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Revue stratégique Q3 — pipeline leads",
-      status: "todo",
-      priority: "medium",
-      due_date: iso(2),
-      assigned_to: directorId,
-      created_by: fatimId,
-    },
-  ]);
-
-  return { organizationId, directorId, ouissalId };
-}
-
-async function seedAutolog(supabase: ReturnType<typeof createAdminClient>) {
-  const { organizationId, directorId } = await provisionTenantCompany({
-    organizationName: "Autolog",
-    emailDomain: "autolog.ma",
-    slug: AUTOLOG_SLUG,
-    directorName: "Youssef Kaab",
-    directorEmail: "youssef@autolog.ma",
-    directorPassword: TEAM_PASSWORD,
-    client: supabase,
-  });
+  await supabase
+    .from("organizations")
+    .update({
+      plan: company.plan,
+      subscription_status: company.subscriptionStatus,
+      activity_domain: company.activityDomain,
+      trial_ends_at:
+        company.subscriptionStatus === "trialing" ? defaultTrialEndsAt() : null,
+      current_period_end:
+        company.plan === "free" ? null : periodEnd.toISOString(),
+    })
+    .eq("id", organizationId);
 
   const jobRoles = await getJobRolesMap(supabase, organizationId);
 
-  const fatimId = await addTeamMember(supabase, organizationId, "autolog.ma", jobRoles, {
-    fullName: "Fatim Ezzahra",
-    emailLocal: "fatim",
-    jobSlug: "gerant",
-    accessRole: "manager",
-  });
+  for (const member of company.staff) {
+    await addTeamMember(supabase, organizationId, company.domain, jobRoles, member);
+  }
 
-  const dalalId = await addTeamMember(supabase, organizationId, "autolog.ma", jobRoles, {
-    fullName: "Dalal",
-    emailLocal: "dalal",
-    jobSlug: "commercial",
-    accessRole: "member",
-  });
+  // Light demo tasks for the director + first staff member if any
+  const firstStaff = company.staff[0];
+  if (firstStaff) {
+    const assigneeEmail = buildCompanyEmail(firstStaff.emailLocal, company.domain);
+    const { data: assignee } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", assigneeEmail)
+      .maybeSingle();
 
-  const today = new Date();
-  const iso = (offset: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().slice(0, 10);
-  };
+    const due = new Date();
+    due.setDate(due.getDate() + 3);
 
-  await supabase.from("tasks").insert([
-    {
-      organization_id: organizationId,
-      title: "Prospection flotte ILM Voyages",
-      description: "Premier contact + démo AutoLog",
-      status: "in_progress",
-      priority: "high",
-      due_date: iso(1),
-      assigned_to: dalalId,
-      created_by: dalalId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Relance devis transport Marrakech",
-      status: "todo",
-      priority: "medium",
-      due_date: iso(3),
-      assigned_to: dalalId,
-      created_by: dalalId,
-    },
-    {
-      organization_id: organizationId,
-      title: "Validation contrat partenaire GPS Teltonika",
-      status: "todo",
-      priority: "medium",
-      due_date: iso(5),
-      assigned_to: fatimId,
-      created_by: directorId,
-    },
-  ]);
+    await supabase.from("tasks").insert([
+      {
+        organization_id: organizationId,
+        title: `Onboarding équipe — ${company.name}`,
+        description: "Configurer les accès et valider les rôles métier",
+        status: "in_progress",
+        priority: "high",
+        due_date: due.toISOString().slice(0, 10),
+        assigned_to: assignee?.id ?? directorId,
+        created_by: directorId,
+      },
+      {
+        organization_id: organizationId,
+        title: `Revue pipeline — ${company.name}`,
+        status: "todo",
+        priority: "medium",
+        due_date: due.toISOString().slice(0, 10),
+        assigned_to: directorId,
+        created_by: directorId,
+      },
+    ]);
+  }
 
-  return { organizationId, dalalId };
+  return { organizationId, directorId };
 }
 
 function buildAccountsList(): SeedAccount[] {
-  return [
-    { name: "Administrateur global", email: PLATFORM_ADMIN_EMAIL, password: PLATFORM_ADMIN_PASSWORD, company: "Portail", role: "Platform admin" },
-    { name: "Youssef Kaab", email: "youssef@fusionleap.com", password: TEAM_PASSWORD, company: "Fusion Leap", role: "Directeur" },
-    { name: "Fatim Ezzagra", email: "fatim@fusionleap.com", password: TEAM_PASSWORD, company: "Fusion Leap", role: "Gérant" },
-    { name: "Ouissal", email: "ouissal@fusionleap.com", password: TEAM_PASSWORD, company: "Fusion Leap", role: "Développeur" },
-    { name: "Achraf", email: "achraf@fusionleap.com", password: TEAM_PASSWORD, company: "Fusion Leap", role: "Designer" },
-    { name: "Oumaima", email: "oumaima@fusionleap.com", password: TEAM_PASSWORD, company: "Fusion Leap", role: "Stagiaire" },
-    { name: "Youssef Kaab", email: "youssef@autolog.ma", password: TEAM_PASSWORD, company: "Autolog", role: "Directeur" },
-    { name: "Fatim Ezzahra", email: "fatim@autolog.ma", password: TEAM_PASSWORD, company: "Autolog", role: "Gérant" },
-    { name: "Dalal", email: "dalal@autolog.ma", password: TEAM_PASSWORD, company: "Autolog", role: "Commerciale" },
+  const accounts: SeedAccount[] = [
+    {
+      name: "Administrateur CRM",
+      email: PLATFORM_ADMIN_EMAIL,
+      password: PLATFORM_ADMIN_PASSWORD,
+      company: "Portail",
+      role: "Administrateur plateforme",
+    },
   ];
+
+  for (const company of COMPANIES) {
+    accounts.push({
+      name: company.director.fullName,
+      email: buildCompanyEmail(company.director.emailLocal, company.domain),
+      password: TEAM_PASSWORD,
+      company: company.name,
+      role: jobLabel("directeur"),
+    });
+
+    for (const member of company.staff) {
+      accounts.push({
+        name: member.fullName,
+        email: buildCompanyEmail(member.emailLocal, company.domain),
+        password: TEAM_PASSWORD,
+        company: company.name,
+        role: jobLabel(member.jobSlug),
+      });
+    }
+  }
+
+  return accounts;
 }
 
 export async function runSeed(options?: { force?: boolean }): Promise<SeedResult> {
   const supabase = createAdminClient();
+  const primarySlug = COMPANIES[0]?.slug ?? "fusion-leap";
 
   const { data: existingOrg } = await supabase
     .from("organizations")
     .select("id")
-    .eq("slug", FUSION_LEAP_SLUG)
+    .eq("slug", primarySlug)
     .maybeSingle();
 
   if (existingOrg && !options?.force) {
     await ensurePlatformAdmin(supabase);
     return {
       status: "skipped",
-      message: `Seed déjà présent (${FUSION_LEAP_SLUG}). Utilisez --force pour réinitialiser.`,
+      message: `Seed déjà présent (${primarySlug}). Utilisez --force pour réinitialiser.`,
     };
   }
 
@@ -347,8 +381,9 @@ export async function runSeed(options?: { force?: boolean }): Promise<SeedResult
   }
 
   try {
-    await seedFusionLeap(supabase);
-    await seedAutolog(supabase);
+    for (const company of COMPANIES) {
+      await seedCompany(supabase, company);
+    }
     await ensurePlatformAdmin(supabase);
   } catch (err) {
     return {
@@ -357,9 +392,10 @@ export async function runSeed(options?: { force?: boolean }): Promise<SeedResult
     };
   }
 
+  const accounts = buildAccountsList();
   return {
     status: "success",
-    message: "Seed OK — Fusion Leap (5) + Autolog (3) + admin global",
-    accounts: buildAccountsList(),
+    message: `Seed OK — ${COMPANIES.length} entreprises × ${DEFAULT_ORG_JOB_ROLES.length} rôles + admin plateforme`,
+    accounts,
   };
 }

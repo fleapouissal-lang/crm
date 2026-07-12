@@ -37,6 +37,16 @@ export async function provisionTenantCompany(input: {
   directorEmail: string;
   directorPassword: string;
   createdBy?: string | null;
+  logoUrl?: string | null;
+  rc?: string | null;
+  activityDomain?: string | null;
+  country?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  plan?: string | null;
+  subscriptionStatus?: string | null;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
   client?: SupabaseClient;
 }): Promise<{ organizationId: string; directorId: string }> {
   const client = input.client ?? createAdminClient();
@@ -73,6 +83,16 @@ export async function provisionTenantCompany(input: {
       email_domain: domain,
       director_id: directorId,
       created_by: input.createdBy ?? null,
+      logo_url: input.logoUrl ?? null,
+      rc: input.rc?.trim() || null,
+      activity_domain: input.activityDomain?.trim() || null,
+      country: input.country?.trim() || null,
+      city: input.city?.trim() || null,
+      phone: input.phone?.trim() || null,
+      plan: input.plan?.trim() || "free",
+      subscription_status: input.subscriptionStatus?.trim() || "active",
+      trial_ends_at: input.trialEndsAt ?? null,
+      current_period_end: input.currentPeriodEnd ?? null,
     })
     .select("*")
     .single();

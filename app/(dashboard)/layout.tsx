@@ -15,6 +15,7 @@ export default async function DashboardLayout({
   const platformAdmin = isPlatformAdmin(profile.role);
 
   if (platformAdmin) {
+    // Platform admin keeps the global console — no vertical CRM adaptation.
     return (
       <FusionShell
         profile={profile}
@@ -52,17 +53,21 @@ export default async function DashboardLayout({
         .in("stage", ["proposal", "negotiation"]),
       supabase
         .from("organizations")
-        .select("name")
+        .select("name, logo_url, activity_domain")
         .eq("id", profile.organization_id)
         .single(),
     ]);
 
   const organizationName = orgRes.data?.name ?? null;
+  const organizationLogoUrl = orgRes.data?.logo_url ?? null;
+  const activityDomain = orgRes.data?.activity_domain ?? null;
 
   return (
     <FusionShell
       profile={profile}
       organizationName={organizationName}
+      organizationLogoUrl={organizationLogoUrl}
+      activityDomain={activityDomain}
       activityCount={activityCount ?? 0}
       leadCount={leadCount ?? 0}
       quoteCount={quoteCount ?? 0}

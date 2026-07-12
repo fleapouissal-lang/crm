@@ -13,6 +13,14 @@ import {
   normalizeEmailDomain,
   slugifyRoleName,
 } from "@/lib/organizations/domain";
+import {
+  isPlanKey,
+  isSubscriptionStatus,
+  type PlanKey,
+  type SubscriptionStatus,
+} from "@/lib/billing/plans";
+import { createSubscriptionInvoice } from "@/lib/actions/platform-billing";
+import { uploadOrgLogoFile } from "@/lib/organizations/logo";
 import type { ActionResult, OrgJobRole, Organization, Profile, Role } from "@/types/database";
 
 export async function seedOrgJobRoles(
@@ -97,33 +105,256 @@ export async function deleteOrganization(orgId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/admin/companies");
+  revalidatePath("/admin/subscriptions");
   revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }
 
-export async function createOrganizationWithDirector(input: {
-  organizationName: string;
-  emailDomain: string;
-  directorName: string;
-  directorEmail: string;
-  directorPassword: string;
-}): Promise<ActionResult<{ organizationId: string }>> {
+export async function updateOrganizationAsAdmin(
+  formData: FormData
+): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile || !canManageCompanies(profile.role)) {
     return { success: false, error: "Platform administrator access required" };
   }
 
-  if (input.directorPassword.length < 6) {
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const domain = normalizeEmailDomain(String(formData.get("emailDomain") ?? ""));
+  const rc = String(formData.get("rc") ?? "").trim() || null;
+  const activityDomain = String(formData.get("activityDomain") ?? "").trim() || null;
+  const country = String(formData.get("country") ?? "").trim() || null;
+  const city = String(formData.get("city") ?? "").trim() || null;
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const removeLogo = formData.get("removeLogo") === "1";
+  const logo = formData.get("logo");
+  const logoFile = logo instanceof File && logo.size > 0 ? logo : null;
+
+  if (!organizationId || !name || !domain) {
+    return { success: false, error: "Company name and email domain are required" };
+  }
+
+  const admin = createAdminClient();
+  let logoUrl: string | null | undefined;
+
+  if (removeLogo) {
+    logoUrl = null;
+  } else if (logoFile) {
+    try {
+      logoUrl = await uploadOrgLogoFile(admin, organizationId, logoFile);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "upload_failed";
+      if (code === "invalid_logo_type") {
+        return { success: false, error: "Invalid image type (JPG, PNG, WebP, GIF)" };
+      }
+      if (code === "logo_too_large") {
+        return { success: false, error: "Logo must be under 2 MB" };
+      }
+      return { success: false, error: code };
+    }
+  }
+
+  const patch: Record<string, unknown> = {
+    name,
+    email_domain: domain,
+    rc,
+    activity_domain: activityDomain,
+    country,
+    city,
+    phone,
+  };
+  if (logoUrl !== undefined) patch.logo_url = logoUrl;
+
+  const { error } = await admin
+    .from("organizations")
+    .update(patch)
+    .eq("id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/admin/companies");
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/dashboard");
+  revalidatePath("/", "layout");
+  return { success: true, data: undefined };
+}
+
+export async function setOrganizationActive(
+  organizationId: string,
+  isActive: boolean
+): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile || !canManageCompanies(profile.role)) {
+    return { success: false, error: "Platform administrator access required" };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organizations")
+    .update({ is_active: isActive })
+    .eq("id", organizationId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/admin/companies");
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/dashboard");
+  return { success: true, data: undefined };
+}
+
+export async function updateOrganizationSubscription(input: {
+  organizationId: string;
+  plan: PlanKey;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile || !canManageCompanies(profile.role)) {
+    return { success: false, error: "Platform administrator access required" };
+  }
+
+  if (!isPlanKey(input.plan) || !isSubscriptionStatus(input.subscriptionStatus)) {
+    return { success: false, error: "Invalid plan or status" };
+  }
+
+  const admin = createAdminClient();
+  const { data: previous } = await admin
+    .from("organizations")
+    .select("plan")
+    .eq("id", input.organizationId)
+    .single();
+
+  const { error } = await admin
+    .from("organizations")
+    .update({
+      plan: input.plan,
+      subscription_status: input.subscriptionStatus,
+      trial_ends_at: input.trialEndsAt ?? null,
+      current_period_end: input.currentPeriodEnd ?? null,
+    })
+    .eq("id", input.organizationId);
+
+  if (error) return { success: false, error: error.message };
+
+  const previousPlan = (previous?.plan as PlanKey | undefined) ?? null;
+  const planChanged = previousPlan !== input.plan;
+
+  if (planChanged && input.plan !== "free") {
+    await createSubscriptionInvoice({
+      organizationId: input.organizationId,
+      plan: input.plan,
+      previousPlan,
+      periodEnd: input.currentPeriodEnd ?? null,
+      createdBy: profile.id,
+    });
+  }
+
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/admin/companies");
+  revalidatePath("/admin/invoices");
+  revalidatePath("/admin/quotes");
+  revalidatePath("/dashboard");
+  return { success: true, data: undefined };
+}
+
+export async function createOrganizationWithDirector(
+  formData: FormData
+): Promise<ActionResult<{ organizationId: string }>> {
+  const profile = await getCurrentProfile();
+  if (!profile || !canManageCompanies(profile.role)) {
+    return { success: false, error: "Platform administrator access required" };
+  }
+
+  const organizationName = String(formData.get("organizationName") ?? "");
+  const emailDomain = String(formData.get("emailDomain") ?? "");
+  const directorName = String(formData.get("directorName") ?? "");
+  const directorEmail = String(formData.get("directorEmail") ?? "");
+  const directorPassword = String(formData.get("directorPassword") ?? "");
+  const rc = String(formData.get("rc") ?? "").trim() || null;
+  const activityDomain = String(formData.get("activityDomain") ?? "").trim() || null;
+  const country = String(formData.get("country") ?? "").trim() || null;
+  const city = String(formData.get("city") ?? "").trim() || null;
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const planRaw = String(formData.get("plan") ?? "free").trim();
+  const statusRaw = String(formData.get("subscriptionStatus") ?? "active").trim();
+  const trialEndsRaw = String(formData.get("trialEndsAt") ?? "").trim();
+  const periodEndRaw = String(formData.get("currentPeriodEnd") ?? "").trim();
+  const logo = formData.get("logo");
+  const logoFile = logo instanceof File && logo.size > 0 ? logo : null;
+
+  const plan: PlanKey = isPlanKey(planRaw) ? planRaw : "free";
+  const subscriptionStatus: SubscriptionStatus = isSubscriptionStatus(statusRaw)
+    ? statusRaw
+    : plan === "free"
+      ? "active"
+      : "trialing";
+  const trialEndsAt = trialEndsRaw
+    ? new Date(`${trialEndsRaw}T12:00:00.000Z`).toISOString()
+    : null;
+  const currentPeriodEnd = periodEndRaw
+    ? new Date(`${periodEndRaw}T12:00:00.000Z`).toISOString()
+    : null;
+
+  if (directorPassword.length < 6) {
     return { success: false, error: "Password must be at least 6 characters" };
   }
 
   try {
+    const admin = createAdminClient();
     const { organizationId } = await provisionTenantCompany({
-      ...input,
+      organizationName,
+      emailDomain,
+      directorName,
+      directorEmail,
+      directorPassword,
       createdBy: profile.id,
+      rc,
+      activityDomain,
+      country,
+      city,
+      phone,
+      plan,
+      subscriptionStatus,
+      trialEndsAt,
+      currentPeriodEnd,
+      client: admin,
     });
+
+    if (logoFile) {
+      try {
+        const logoUrl = await uploadOrgLogoFile(admin, organizationId, logoFile);
+        await admin
+          .from("organizations")
+          .update({ logo_url: logoUrl })
+          .eq("id", organizationId);
+      } catch (err) {
+        const code = err instanceof Error ? err.message : "upload_failed";
+        if (code === "invalid_logo_type") {
+          return { success: false, error: "Invalid image type (JPG, PNG, WebP, GIF)" };
+        }
+        if (code === "logo_too_large") {
+          return { success: false, error: "Logo must be under 2 MB" };
+        }
+        return { success: false, error: code };
+      }
+    }
+
+    if (plan !== "free") {
+      await createSubscriptionInvoice({
+        organizationId,
+        plan,
+        previousPlan: null,
+        periodEnd: currentPeriodEnd,
+        createdBy: profile.id,
+      });
+    }
+
     revalidatePath("/admin/companies");
+    revalidatePath("/admin/subscriptions");
+    revalidatePath("/admin/invoices");
     revalidatePath("/dashboard");
+    revalidatePath("/", "layout");
     return { success: true, data: { organizationId } };
   } catch (err) {
     return {

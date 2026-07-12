@@ -1,0 +1,7 @@
+-- Extra company profile fields
+ALTER TABLE organizations
+  ADD COLUMN IF NOT EXISTS rc TEXT,
+  ADD COLUMN IF NOT EXISTS activity_domain TEXT,
+  ADD COLUMN IF NOT EXISTS country TEXT,
+  ADD COLUMN IF NOT EXISTS city TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT;

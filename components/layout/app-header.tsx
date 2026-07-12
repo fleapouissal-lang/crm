@@ -6,6 +6,11 @@ import { Bell, Search } from "lucide-react";
 import { format } from "date-fns";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { matchPageMeta } from "@/lib/navigation";
+import {
+  getVerticalPreset,
+  pathnameToNavId,
+  type VerticalNavId,
+} from "@/lib/navigation/vertical-presets";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -17,10 +22,14 @@ import { isPlatformAdmin } from "@/lib/permissions";
 export function AppHeader({
   profile,
   organizationName,
+  organizationLogoUrl,
+  activityDomain,
   activityCount = 0,
 }: {
   profile: Profile;
   organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  activityDomain?: string | null;
   activityCount?: number;
 }) {
   const router = useRouter();
@@ -29,8 +38,22 @@ export function AppHeader({
   const { locale } = useI18n();
   const [greeting, setGreeting] = useState("");
 
+  const platformAdmin = isPlatformAdmin(profile.role);
   const pageMeta = useMemo(() => matchPageMeta(pathname), [pathname]);
-  const title = dict.nav[pageMeta.titleKey as keyof typeof dict.nav] as string;
+  const title = useMemo(() => {
+    const fallback = dict.nav[pageMeta.titleKey as keyof typeof dict.nav] as string;
+    if (platformAdmin) return fallback;
+    const preset = getVerticalPreset(activityDomain);
+    if (preset.key === "default") return fallback;
+    const navId = pathnameToNavId(pathname);
+    if (!navId) return fallback;
+    const overrideKey = preset.labelOverrides?.[navId as VerticalNavId];
+    if (!overrideKey) return fallback;
+    const vertical = dict.fusion.verticalNav?.[preset.key] as
+      | Record<string, string>
+      | undefined;
+    return vertical?.[overrideKey] ?? fallback;
+  }, [dict, pageMeta.titleKey, platformAdmin, activityDomain, pathname]);
   const staticSub = dict.nav[pageMeta.subtitleKey as keyof typeof dict.nav] as string;
 
   const firstName = profile.full_name?.split(" ")[0];
@@ -52,15 +75,23 @@ export function AppHeader({
     setGreeting(firstName ? `${dateStr} · ${greet}, ${firstName}` : dateStr);
   }, [locale, firstName, pathname, staticSub]);
 
-  const platformAdmin = isPlatformAdmin(profile.role);
-
   return (
     <header className="fusion-topbar">
       <div className="fusion-page-head">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="fusion-page-head__row">
           <h1>{title}</h1>
           {organizationName && !platformAdmin ? (
-            <span className="fl-badge b-gray text-[11px]">{organizationName} CRM</span>
+            <span className="fl-badge b-gray fusion-org-badge text-[11px]">
+              {organizationLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={organizationLogoUrl}
+                  alt=""
+                  className="fusion-org-badge__logo"
+                />
+              ) : null}
+              {organizationName} CRM
+            </span>
           ) : null}
           {platformAdmin ? (
             <span className="fl-badge b-gray text-[11px]">{dict.auth.globalPortal}</span>
@@ -85,15 +116,20 @@ export function AppHeader({
       ) : null}
 
       <div className="fusion-top-actions">
-        <ThemeToggle />
         <LocaleSwitcher />
-        <button type="button" className="fusion-icon-btn" aria-label={dict.common.notifications} onClick={() => router.push("/notifications")}>
-          {(activityCount > 0) && <span className="dot" />}
+        <ThemeToggle />
+        <button
+          type="button"
+          className="fusion-icon-btn"
+          aria-label={dict.common.notifications}
+          onClick={() => router.push("/notifications")}
+        >
+          {activityCount > 0 ? <span className="dot" /> : null}
           <Bell strokeWidth={2} />
         </button>
         <button
           type="button"
-          className="border-0 bg-transparent p-0"
+          className="fusion-top-actions__profile"
           aria-label={dict.auth.profile}
           title={dict.nav.settings}
           onClick={() => router.push("/settings")}

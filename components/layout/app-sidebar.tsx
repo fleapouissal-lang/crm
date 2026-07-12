@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTransition, useCallback, type MouseEvent } from "react";
+import { useMemo, useTransition, useCallback, type MouseEvent } from "react";
 import {
+  ChevronsLeft,
+  ChevronsRight,
   LogOut,
-  PanelLeft,
   PanelLeftClose,
   Settings,
 } from "lucide-react";
@@ -16,19 +17,45 @@ import {
   platformAdminNav,
   type NavItem,
 } from "@/lib/navigation";
+import {
+  getVerticalPreset,
+  isNavIdVisibleInPreset,
+  type VerticalNavId,
+  type VerticalNavPreset,
+  type VerticalPresetKey,
+} from "@/lib/navigation/vertical-presets";
 import { isPlatformAdmin, hasNavCapability, canViewFinanceDocumentsForRole } from "@/lib/permissions";
 import { signOut } from "@/lib/actions/auth";
-import { FusionLeapBrand } from "@/components/brand/fusion-leap-logo";
+import { CompanyBrand } from "@/components/brand/company-brand";
 import { SidebarLuxuryBg } from "@/components/layout/sidebar-luxury-bg";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useDict } from "@/components/shared/i18n-provider";
 import type { Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
 
+function resolveNavTitle(
+  item: NavItem,
+  preset: VerticalNavPreset,
+  dict: ReturnType<typeof useDict>
+): string {
+  const verticalKey = preset.key;
+  const overrideKey = preset.labelOverrides?.[item.id as VerticalNavId];
+  if (verticalKey !== "default" && overrideKey) {
+    const vertical = dict.fusion.verticalNav?.[verticalKey] as
+      | Record<string, string>
+      | undefined;
+    const label = vertical?.[overrideKey];
+    if (label) return label;
+  }
+  return dict.nav[item.labelKey as keyof typeof dict.nav] as string;
+}
+
 function NavSection({
   items,
   pathname,
   profile,
+  preset,
+  applyVerticalFilter,
   leadCount,
   quoteCount,
   notificationCount,
@@ -38,6 +65,9 @@ function NavSection({
   items: NavItem[];
   pathname: string;
   profile: Profile;
+  preset: VerticalNavPreset;
+  /** When false (platform admin), show all section items. */
+  applyVerticalFilter: boolean;
   leadCount?: number;
   quoteCount?: number;
   notificationCount?: number;
@@ -46,6 +76,7 @@ function NavSection({
 }) {
   const dict = useDict();
   const visibleItems = items.filter((item) => {
+    if (applyVerticalFilter && !isNavIdVisibleInPreset(preset, item.id)) return false;
     if (item.adminOnly && !canViewFinanceDocumentsForRole(profile.role)) return false;
     if (item.capability && !hasNavCapability(profile, item.capability)) return false;
     return true;
@@ -65,8 +96,9 @@ function NavSection({
         else if (item.badge === "leads") badge = leadCount;
         else if (item.badge === "quotes") badge = quoteCount;
 
-        const title = dict.nav[item.labelKey as keyof typeof dict.nav] as string;
-        const Icon = item.icon;
+        const title = resolveNavTitle(item, preset, dict);
+        const Icon =
+          preset.iconOverrides?.[item.id as VerticalNavId] ?? item.icon;
 
         return (
           <Link
@@ -108,6 +140,9 @@ function NavSection({
 
 export function AppSidebar({
   profile,
+  organizationName,
+  organizationLogoUrl,
+  activityDomain,
   leadCount,
   quoteCount,
   notificationCount = 4,
@@ -117,6 +152,9 @@ export function AppSidebar({
   onToggleCollapse,
 }: {
   profile: Profile;
+  organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  activityDomain?: string | null;
   leadCount?: number;
   quoteCount?: number;
   notificationCount?: number;
@@ -130,6 +168,10 @@ export function AppSidebar({
   const [pending, startTransition] = useTransition();
   const displayName = profile.full_name ?? dict.common.user;
   const platformAdmin = isPlatformAdmin(profile.role);
+  const preset = useMemo(
+    () => getVerticalPreset(platformAdmin ? null : activityDomain),
+    [platformAdmin, activityDomain]
+  );
   const navSections = platformAdmin
     ? [platformAdminNav]
     : [workspaceNav, operationsNav, systemNav.filter((item) => item.id !== "settings")];
@@ -149,6 +191,7 @@ export function AppSidebar({
       className={cn("fusion-sidebar", open && "open", collapsed && "collapsed")}
       id="sidebar"
       data-collapsed={collapsed ? "true" : "false"}
+      data-vertical={preset.key as VerticalPresetKey}
       onDoubleClick={handleSidebarDoubleClick}
     >
       <SidebarLuxuryBg />
@@ -160,26 +203,66 @@ export function AppSidebar({
               href="/dashboard"
               className="fusion-brand"
               onClick={onClose}
-              title="Fusion Leap"
+              title={organizationName ?? "Fusion Leap"}
             >
-              <FusionLeapBrand collapsed={collapsed} />
+              <CompanyBrand
+                name={organizationName}
+                logoUrl={platformAdmin ? null : organizationLogoUrl}
+                collapsed={collapsed}
+              />
             </Link>
-            <button
-              type="button"
-              className="fusion-sidebar-collapse-btn"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand" : "Collapse"}
-            >
-              <span className="fusion-sidebar-collapse-btn__shine" aria-hidden />
-              {collapsed ? (
-                <PanelLeft className="size-[18px]" strokeWidth={1.75} />
-              ) : (
-                <PanelLeftClose className="size-[18px]" strokeWidth={1.75} />
-              )}
-            </button>
           </div>
         </div>
+
+        <button
+          type="button"
+          className="fusion-sidebar-rail-btn"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? (
+            <ChevronsRight className="size-4" strokeWidth={2.25} />
+          ) : (
+            <ChevronsLeft className="size-4" strokeWidth={2.25} />
+          )}
+        </button>
+
+        {showSettingsInFoot ? (
+          <Link
+            href="/settings"
+            className="fusion-user-card fusion-user-card--top"
+            onClick={onClose}
+            title={displayName}
+          >
+            <UserAvatar
+              name={displayName}
+              avatarUrl={profile.avatar_url}
+              variant="sidebar"
+            />
+            <div className="fusion-user-meta">
+              <b>{displayName}</b>
+              <small>{dict.roles[profile.role]}</small>
+            </div>
+            {!collapsed ? (
+              <span className="fusion-nav-icon-wrap fusion-user-settings">
+                <Settings className="fusion-nav-svg" strokeWidth={1.5} />
+              </span>
+            ) : null}
+          </Link>
+        ) : (
+          <div className="fusion-user-card fusion-user-card--top cursor-default">
+            <UserAvatar
+              name={displayName}
+              avatarUrl={profile.avatar_url}
+              variant="sidebar"
+            />
+            <div className="fusion-user-meta">
+              <b>{displayName}</b>
+              <small>{dict.roles[profile.role]}</small>
+            </div>
+          </div>
+        )}
 
         <nav className="fusion-nav">
           {navSections.map((items, index) => (
@@ -188,6 +271,8 @@ export function AppSidebar({
               items={items}
               pathname={pathname}
               profile={profile}
+              preset={preset}
+              applyVerticalFilter={!platformAdmin}
               leadCount={leadCount}
               quoteCount={quoteCount}
               notificationCount={notificationCount}
@@ -200,6 +285,8 @@ export function AppSidebar({
               items={systemNav.filter((item) => item.id === "settings")}
               pathname={pathname}
               profile={profile}
+              preset={preset}
+              applyVerticalFilter
               notificationCount={notificationCount}
               collapsed={collapsed}
               onClose={onClose}
@@ -208,53 +295,15 @@ export function AppSidebar({
         </nav>
 
         <div className="fusion-side-foot">
-          {showSettingsInFoot ? (
-            <Link
-              href="/settings"
-              className="fusion-user-card"
-              onClick={onClose}
-              title={displayName}
-            >
-              <UserAvatar
-                name={displayName}
-                avatarUrl={profile.avatar_url}
-                variant="sidebar"
-              />
-              <div className="fusion-user-meta">
-                <b>{displayName}</b>
-                <small>{dict.roles[profile.role]}</small>
-              </div>
-              {!collapsed ? (
-                <span className="fusion-nav-icon-wrap fusion-user-settings">
-                  <Settings className="fusion-nav-svg" strokeWidth={1.5} />
-                </span>
-              ) : null}
-            </Link>
-          ) : (
-            <div className="fusion-user-card cursor-default">
-              <UserAvatar
-                name={displayName}
-                avatarUrl={profile.avatar_url}
-                variant="sidebar"
-              />
-              <div className="fusion-user-meta">
-                <b>{displayName}</b>
-                <small>{dict.roles[profile.role]}</small>
-              </div>
-            </div>
-          )}
-
           <button
             type="button"
-            className="fusion-nav-item fusion-logout-btn"
+            className="fusion-logout-btn"
             disabled={pending}
             title={dict.auth.signOut}
             onClick={() => startTransition(() => void signOut())}
           >
-            <span className="fusion-nav-icon-wrap">
-              <LogOut className="fusion-nav-svg" strokeWidth={1.5} />
-            </span>
-            <span className="fusion-nav-text fusion-logout-label">{dict.auth.signOut}</span>
+            <LogOut className="size-4" strokeWidth={1.75} />
+            <span className="fusion-logout-label">{dict.auth.signOut}</span>
           </button>
 
           <button

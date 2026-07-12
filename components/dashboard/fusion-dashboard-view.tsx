@@ -32,7 +32,7 @@ type BadgeKey = keyof FusionDictionary["badges"];
 
 const projectsData = [
   { initials: "لم", grad: "linear-gradient(135deg,#52525b,#71717a)", title: "Easy Touch — Clinic SaaS", sub: "Phase 2 · LiveKit voice", client: "Abu Nasser", progress: 72, badge: "b-green", statusKey: "onTrack" as BadgeKey, team: [{ i: "YK", bg: "#52525b" }, { i: "OB", bg: "#3ecf8e" }] },
-  { initials: "AL", grad: "linear-gradient(135deg,#e6b567,#d99a4e)", title: "AutoLog", sub: "Fleet + Renter Score", client: "ILM Voyages", progress: 58, badge: "b-green", statusKey: "onTrack" as BadgeKey, team: [{ i: "YK", bg: "#52525b" }, { i: "AC", bg: "#f5a623" }] },
+  { initials: "AL", grad: "linear-gradient(135deg,#ff7a3d,#e04bb8)", title: "AutoLog", sub: "Fleet + Renter Score", client: "ILM Voyages", progress: 58, badge: "b-green", statusKey: "onTrack" as BadgeKey, team: [{ i: "YK", bg: "#52525b" }, { i: "AC", bg: "#f5a623" }] },
   { initials: "SH", grad: "linear-gradient(135deg,#3ecf8e,#2fa876)", title: "Shegl Marketplace", sub: "Maintenance · v1.4", client: "Nasser Aleidan", progress: 94, badge: "b-blue", statusKey: "live" as BadgeKey, team: [{ i: "OB", bg: "#3ecf8e" }] },
   { initials: "MK", grad: "linear-gradient(135deg,#71717a,#4169d6)", title: "Makkah Chamber site", sub: "RFP · due Jul 10", client: "via Pixel IT", progress: 40, badge: "b-amber", statusKey: "bidStage" as BadgeKey, team: [{ i: "YK", bg: "#52525b" }, { i: "AC", bg: "#f5a623" }] },
   { initials: "ST", grad: "linear-gradient(135deg,#f2557a,#d63e63)", title: "Service Time PWA", sub: "QA & handoff", client: "via Pixel IT", progress: 81, badge: "b-gold", statusKey: "review" as BadgeKey, team: [{ i: "OB", bg: "#3ecf8e" }, { i: "YK", bg: "#52525b" }] },
@@ -120,7 +120,7 @@ export function FusionDashboardView({ activities }: { activities: Activity[] }) 
                 ]}
                 options={{
                   chart: { toolbar: { show: false }, fontFamily: "inherit", background: "transparent" },
-                  colors: ["#52525b", "#3ecf8e", "#e6b567"],
+                  colors: ["#ff7a3d", "#3ecf8e", "#8b5cf6"],
                   stroke: { curve: "smooth", width: [2.5, 2.5, 1.5], dashArray: [0, 0, 5] },
                   fill: { type: ["gradient", "solid", "solid"], gradient: { opacityFrom: 0.25, opacityTo: 0 } },
                   dataLabels: { enabled: false },
@@ -154,7 +154,7 @@ export function FusionDashboardView({ activities }: { activities: Activity[] }) 
                 series={[34, 23, 18, 14, 11]}
                 options={{
                   labels: clientShare.map((c) => ("nameKey" in c ? l.other : c.name)),
-                  colors: ["#52525b", "#71717a", "#e6b567", "#3ecf8e", "#646b81"],
+                  colors: ["#ff7a3d", "#e04bb8", "#8b5cf6", "#3ecf8e", "#646b81"],
                   chart: { background: "transparent" },
                   stroke: { width: 0 },
                   dataLabels: { enabled: false },

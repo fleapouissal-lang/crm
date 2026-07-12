@@ -116,8 +116,8 @@ export function PipelineBreakdownChart({ data }: BreakdownProps) {
     "#646b81",
     "#71717a",
     "#3ecf8e",
-    "#e6b567",
-    "#52525b",
+    "#ff7a3d",
+    "#8b5cf6",
     "#3ecf8e",
     "#f2557a",
   ];

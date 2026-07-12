@@ -17,6 +17,7 @@ import {
   BarChart3,
   Bell,
   Settings,
+  CreditCard,
 } from "lucide-react";
 
 export type NavBadge = "notifications" | "leads" | "quotes";
@@ -50,6 +51,10 @@ export const navLabelKeys = {
   notifications: "notifications",
   settings: "settings",
   companies: "companies",
+  subscriptions: "subscriptions",
+  payments: "payments",
+  users: "users",
+  createCompany: "createCompany",
   workspace: "workspace",
   operations: "operations",
   system: "system",
@@ -58,6 +63,11 @@ export const navLabelKeys = {
 export const platformAdminNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard" },
   { id: "companies", href: "/admin/companies", icon: Building2, labelKey: "companies" },
+  { id: "users", href: "/admin/users", icon: Users, labelKey: "users" },
+  { id: "subscriptions", href: "/admin/subscriptions", icon: CreditCard, labelKey: "subscriptions" },
+  { id: "quotes", href: "/admin/quotes", icon: FileText, labelKey: "quotes" },
+  { id: "invoices", href: "/admin/invoices", icon: Receipt, labelKey: "invoices" },
+  { id: "payments", href: "/admin/payments", icon: Wallet, labelKey: "payments" },
   { id: "settings", href: "/settings", icon: Settings, labelKey: "settings" },
 ];
 
@@ -118,9 +128,21 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/notifications": { titleKey: "notifications", subtitleKey: "notificationsSub" },
   "/settings": { titleKey: "settings", subtitleKey: "settingsSub" },
   "/admin/companies": { titleKey: "companies", subtitleKey: "companiesSub" },
+  "/admin/companies/new": { titleKey: "createCompany", subtitleKey: "createCompanySub" },
+  "/admin/users": { titleKey: "users", subtitleKey: "usersSub" },
+  "/admin/subscriptions": { titleKey: "subscriptions", subtitleKey: "subscriptionsSub" },
+  "/admin/quotes": { titleKey: "quotes", subtitleKey: "adminQuotesSub" },
+  "/admin/invoices": { titleKey: "invoices", subtitleKey: "adminInvoicesSub" },
+  "/admin/payments": { titleKey: "payments", subtitleKey: "paymentsSub" },
 };
 
 export function matchPageMeta(pathname: string) {
+  if (pathname.startsWith("/admin/subscriptions")) return pageMetaKeys["/admin/subscriptions"];
+  if (pathname.startsWith("/admin/payments")) return pageMetaKeys["/admin/payments"];
+  if (pathname.startsWith("/admin/quotes")) return pageMetaKeys["/admin/quotes"];
+  if (pathname.startsWith("/admin/invoices")) return pageMetaKeys["/admin/invoices"];
+  if (pathname.startsWith("/admin/users")) return pageMetaKeys["/admin/users"];
+  if (pathname.startsWith("/admin/companies/new")) return pageMetaKeys["/admin/companies/new"];
   if (pathname.startsWith("/admin/companies")) return pageMetaKeys["/admin/companies"];
   if (pathname.startsWith("/leads")) return pageMetaKeys["/leads"];
   if (pathname.startsWith("/crm")) return pageMetaKeys["/leads"];

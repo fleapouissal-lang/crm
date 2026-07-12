@@ -27,6 +27,31 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     return { success: false, error: error.message };
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.organization_id && profile.role !== "platform_admin") {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("is_active")
+        .eq("id", profile.organization_id)
+        .single();
+
+      if (org && org.is_active === false) {
+        await supabase.auth.signOut();
+        return { success: false, error: dict.auth.errors.companyInactive };
+      }
+    }
+  }
+
   redirect("/dashboard");
 }
 
