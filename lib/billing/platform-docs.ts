@@ -1,4 +1,5 @@
 import { PLAN_PRICES_EUR, type PlanKey } from "@/lib/billing/plans";
+import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/billing/currency";
 import type {
   PlatformBillingReason,
   PlatformInvoice,
@@ -37,7 +38,10 @@ export const INVOICE_STATUS_BADGE: Record<PlatformInvoiceStatus, string> = {
   overdue: "b-rose",
 };
 
-export function formatPlatformMoney(amount: number, currency = "EUR"): string {
+export function formatPlatformMoney(
+  amount: number,
+  currency: string = PLATFORM_DEFAULT_CURRENCY
+): string {
   return `${Number(amount).toLocaleString("fr-FR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,

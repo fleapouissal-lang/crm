@@ -82,6 +82,16 @@ export async function updateSession(request: NextRequest) {
         url.pathname = "/dashboard";
         return NextResponse.redirect(url);
       }
+      // Defense-in-depth: payroll/HR is leadership-only (admin | manager)
+      if (
+        (pathname === "/hr" || pathname.startsWith("/hr/")) &&
+        role !== "admin" &&
+        role !== "manager"
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
       if (!profile.organization_id && !isPublicRoute) {
         const url = request.nextUrl.clone();
         url.pathname = "/login";

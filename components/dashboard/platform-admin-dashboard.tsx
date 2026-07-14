@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -17,8 +18,11 @@ import {
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
 import type { PlatformAdminStats } from "@/lib/actions/platform-admin";
+import { resolvePlatformCurrency } from "@/lib/billing/currency";
 import { formatPlatformMoney } from "@/lib/billing/platform-docs";
 import { PAYMENT_STATUS_BADGE } from "@/lib/billing/payments";
+import { loadPreferences } from "@/lib/settings/storage";
+import type { CurrencyCode } from "@/lib/settings/types";
 import { cn } from "@/lib/utils";
 
 export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats }) {
@@ -28,6 +32,11 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
   const b = dict.fusion.platformBilling;
   const pay = dict.fusion.platformPayments;
   const activeCount = stats.companies.filter((c) => c.is_active !== false).length;
+  const [currency, setCurrency] = useState<CurrencyCode>("MAD");
+
+  useEffect(() => {
+    setCurrency(loadPreferences().currency);
+  }, []);
 
   return (
     <div className="space-y-[18px]">
@@ -73,11 +82,11 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{d.mrrLabel}</div>
-          <StatLine value={formatPlatformMoney(stats.mrr)} />
+          <StatLine value={formatPlatformMoney(stats.mrr, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{d.paidThisMonth}</div>
-          <StatLine value={formatPlatformMoney(stats.paidThisMonth)} />
+          <StatLine value={formatPlatformMoney(stats.paidThisMonth, currency)} />
         </div>
       </div>
 
@@ -109,7 +118,7 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
           </div>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4">
             <div className="k-label">{b.unpaidAmount}</div>
-            <StatLine value={formatPlatformMoney(stats.unpaidAmount)} />
+            <StatLine value={formatPlatformMoney(stats.unpaidAmount, currency)} />
           </div>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4">
             <div className="k-label">Visa</div>
@@ -165,7 +174,10 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
                       <b>{row.organization?.name ?? "—"}</b>
                     </td>
                     <td className="fl-mono">
-                      {formatPlatformMoney(Number(row.amount), row.currency)}
+                      {formatPlatformMoney(
+                        Number(row.amount),
+                        resolvePlatformCurrency(row.currency, currency)
+                      )}
                     </td>
                     <td className="text-xs fl-muted">
                       {row.method === "card" ? (

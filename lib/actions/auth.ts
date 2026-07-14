@@ -14,6 +14,9 @@ import {
   uploadAvatarToBucket,
 } from "@/lib/avatars/storage";
 import type { ActionResult, Profile } from "@/types/database";
+import { getCurrentProfile } from "@/lib/auth/profile";
+
+export { getCurrentProfile };
 
 export async function signUp(_formData: FormData): Promise<ActionResult> {
   const dict = await getLocalizedDict();
@@ -68,23 +71,6 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
-}
-
-export async function getCurrentProfile(): Promise<Profile | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("*, job_role:org_job_roles(*)")
-    .eq("id", user.id)
-    .single();
-
-  return data as Profile | null;
 }
 
 export async function getOrgProfiles(): Promise<Profile[]> {

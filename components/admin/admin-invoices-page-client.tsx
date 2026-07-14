@@ -1,21 +1,25 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Pencil, Plus } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { CheckCircle2, Eye, FilePenLine, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PlatformInvoiceDialog } from "@/components/admin/platform-invoice-dialog";
+import { PlatformInvoicePdfDialog } from "@/components/admin/platform-invoice-pdf-dialog";
 import {
   deletePlatformInvoice,
   listPlatformInvoices,
   setPlatformInvoiceStatus,
 } from "@/lib/actions/platform-billing";
+import { resolvePlatformCurrency } from "@/lib/billing/currency";
 import {
   INVOICE_STATUS_BADGE,
   formatPlatformMoney,
 } from "@/lib/billing/platform-docs";
+import { loadPreferences } from "@/lib/settings/storage";
+import type { CurrencyCode } from "@/lib/settings/types";
 import type { Organization, PlatformInvoice } from "@/types/database";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +35,14 @@ export function AdminInvoicesPageClient({
   const s = dict.fusion.settings;
   const [invoices, setInvoices] = useState(initialInvoices);
   const [formOpen, setFormOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [active, setActive] = useState<PlatformInvoice | null>(null);
   const [pending, startTransition] = useTransition();
+  const [currency, setCurrency] = useState<CurrencyCode>("MAD");
+
+  useEffect(() => {
+    setCurrency(loadPreferences().currency);
+  }, []);
 
   const stats = useMemo(() => {
     const unpaid = invoices.filter(
@@ -51,6 +61,16 @@ export function AdminInvoicesPageClient({
     startTransition(async () => {
       setInvoices(await listPlatformInvoices());
     });
+  }
+
+  function openEdit(row: PlatformInvoice) {
+    setActive(row);
+    setFormOpen(true);
+  }
+
+  function openPdf(row: PlatformInvoice) {
+    setActive(row);
+    setPdfOpen(true);
   }
 
   function handleDelete(id: string) {
@@ -86,11 +106,11 @@ export function AdminInvoicesPageClient({
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{b.unpaidAmount}</div>
-          <StatLine value={formatPlatformMoney(stats.unpaidAmount)} />
+          <StatLine value={formatPlatformMoney(stats.unpaidAmount, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{b.paidAmount}</div>
-          <StatLine value={formatPlatformMoney(stats.paidAmount)} />
+          <StatLine value={formatPlatformMoney(stats.paidAmount, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{b.invoices}</div>
@@ -127,7 +147,7 @@ export function AdminInvoicesPageClient({
                 <th>{b.dueDate}</th>
                 <th>{b.reason}</th>
                 <th>{b.status}</th>
-                <th className="w-[9rem]">{s.actions}</th>
+                <th className="w-[10rem]">{s.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -146,7 +166,10 @@ export function AdminInvoicesPageClient({
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">
-                      {formatPlatformMoney(Number(row.amount), row.currency)}
+                      {formatPlatformMoney(
+                        Number(row.amount),
+                        resolvePlatformCurrency(row.currency, currency)
+                      )}
                     </td>
                     <td className="fl-faint fl-tny">{row.due_date ?? "—"}</td>
                     <td className="fl-faint fl-tny">
@@ -168,13 +191,21 @@ export function AdminInvoicesPageClient({
                           type="button"
                           className="fl-btn sm ghost"
                           disabled={pending}
-                          title={b.editInvoice}
-                          onClick={() => {
-                            setActive(row);
-                            setFormOpen(true);
-                          }}
+                          title={b.viewInvoicePdf}
+                          aria-label={b.viewInvoicePdf}
+                          onClick={() => openPdf(row)}
                         >
-                          <Pencil className="size-3.5" />
+                          <Eye className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="fl-btn sm ghost"
+                          disabled={pending}
+                          title={b.editInvoice}
+                          aria-label={b.editInvoice}
+                          onClick={() => openEdit(row)}
+                        >
+                          <FilePenLine className="size-3.5" />
                         </button>
                         {row.status !== "paid" ? (
                           <button
@@ -182,6 +213,7 @@ export function AdminInvoicesPageClient({
                             className="fl-btn sm ghost"
                             disabled={pending}
                             title={b.markPaid}
+                            aria-label={b.markPaid}
                             onClick={() => handleMarkPaid(row.id)}
                           >
                             <CheckCircle2 className="size-3.5 text-[var(--emerald)]" />
@@ -193,8 +225,10 @@ export function AdminInvoicesPageClient({
                               type="button"
                               className="fl-btn sm ghost text-[var(--rose)]"
                               disabled={pending}
+                              title={dict.common.delete}
+                              aria-label={dict.common.delete}
                             >
-                              {dict.common.delete}
+                              <Trash2 className="size-3.5" />
                             </button>
                           }
                           title={b.deleteInvoiceTitle}
@@ -221,6 +255,17 @@ export function AdminInvoicesPageClient({
         companies={companies}
         invoice={active}
         onSaved={refresh}
+        onPreviewPdf={(inv) => {
+          setActive(inv);
+          setFormOpen(false);
+          setPdfOpen(true);
+        }}
+      />
+
+      <PlatformInvoicePdfDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        invoice={active}
       />
     </div>
   );

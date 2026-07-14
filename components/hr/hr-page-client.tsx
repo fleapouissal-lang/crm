@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,10 +15,11 @@ import {
   AlertCircle,
   Palmtree,
   StickyNote,
+  Wallet,
 } from "lucide-react";
 import type { Profile } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
-import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
+import { CellMain, FlProgress, StatLine } from "@/components/fusion/primitives";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import {
   EmployeeProfileFormDialog,
@@ -32,17 +33,13 @@ import type {
 } from "@/lib/hr/types";
 import {
   avgUtilization,
+  formatBaseSalary,
   memberStatusBadgeClass,
   sumEntries,
 } from "@/lib/hr/types";
-import {
-  loadHrProfiles,
-  saveHrProfiles,
-  updateEmployeeProfile,
-  upsertHrEntry,
-} from "@/lib/hr/storage";
-import { buildTeamOptions, type TeamMemberOption } from "@/lib/team/members";
-import { hrMemberPath } from "@/lib/hr/paths";
+import { currentMonthKey, teamPayrollTotals } from "@/lib/hr/payroll";
+import { useHrStore } from "@/lib/hr/use-hr-store";
+import { hrMemberPath, hrSalaryPath } from "@/lib/hr/paths";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -55,11 +52,13 @@ import {
 
 function MemberRowActions({
   onView,
+  onSalary,
   onEdit,
   onAddEntry,
   onQuickAdd,
 }: {
   onView: () => void;
+  onSalary: () => void;
   onEdit: () => void;
   onAddEntry: () => void;
   onQuickAdd: (type: HrEntryType) => void;
@@ -72,6 +71,11 @@ function MemberRowActions({
       label: h.viewDossier,
       icon: <Eye className="size-4" />,
       onClick: onView,
+    },
+    {
+      label: h.openSalaryAccount,
+      icon: <Wallet className="size-4" />,
+      onClick: onSalary,
     },
     {
       label: h.addEntry,
@@ -120,17 +124,28 @@ function MemberRowActions({
   return <RowActionsMenu actions={actions} />;
 }
 
-export function HrPageClient({ profiles }: { profiles: Profile[] }) {
+export function HrPageClient({
+  profiles,
+  initialHrProfiles,
+}: {
+  profiles: Profile[];
+  initialHrProfiles: EmployeeProfile[];
+}) {
   const dict = useDict();
   const h = dict.fusion.hr;
   const l = dict.fusion.labels;
   const b = dict.fusion.badges;
   const router = useRouter();
 
-  const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
+  const {
+    hydrated,
+    teamOptions,
+    hrProfiles,
+    profileByMember,
+    saveEntry,
+    saveProfile,
+  } = useHrStore(profiles, initialHrProfiles);
 
-  const [hrProfiles, setHrProfiles] = useState<EmployeeProfile[]>([]);
-  const [hydrated, setHydrated] = useState(false);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<HrDepartment | "all">("all");
 
@@ -139,35 +154,22 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
   const [entryDefaultType, setEntryDefaultType] = useState<HrEntryType | undefined>();
 
-  useEffect(() => {
-    setHrProfiles(loadHrProfiles(teamOptions));
-    setHydrated(true);
-  }, [teamOptions]);
-
-  const persist = useCallback((next: EmployeeProfile[]) => {
-    setHrProfiles(next);
-    saveHrProfiles(next);
-  }, []);
-
-  const profileByMember = useMemo(
-    () => new Map(hrProfiles.map((p) => [p.memberId, p])),
-    [hrProfiles]
-  );
-
   const activeMember = teamOptions.find((m) => m.id === activeMemberId) ?? null;
   const activeProfile = activeMemberId
     ? profileByMember.get(activeMemberId) ?? null
     : null;
 
-  const month = new Date().toISOString().slice(0, 7);
+  const month = currentMonthKey();
 
   const kpis = useMemo(() => {
-    const allEntries = hrProfiles.flatMap((p) => p.entries);
+    const totals = teamPayrollTotals(hrProfiles, month);
     return {
       headcount: teamOptions.length,
       avgUtil: avgUtilization(hrProfiles),
-      bonusMonth: sumEntries(allEntries, "bonus", { month }),
-      overtimeMonth: sumEntries(allEntries, "overtime", { month }),
+      payroll: totals.baseMass,
+      estimated: totals.estimatedMass,
+      overtimeMonth: totals.overtimeHours,
+      withSalary: totals.withSalary,
     };
   }, [hrProfiles, teamOptions, month]);
 
@@ -180,7 +182,10 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
       return (
         member.name.toLowerCase().includes(q) ||
         member.initials.toLowerCase().includes(q) ||
-        profile?.roleTitle.toLowerCase().includes(q)
+        profile?.roleTitle.toLowerCase().includes(q) ||
+        (profile?.businessUnit ?? "").toLowerCase().includes(q) ||
+        (profile?.email ?? "").toLowerCase().includes(q) ||
+        (profile?.phone ?? "").toLowerCase().includes(q)
       );
     });
   }, [teamOptions, profileByMember, search, deptFilter]);
@@ -206,12 +211,16 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
     router.push(hrMemberPath(memberId));
   }
 
+  function goToSalary(memberId: string) {
+    router.push(hrSalaryPath(memberId));
+  }
+
   function handleSaveEntry(entry: HrEntry) {
-    persist(upsertHrEntry(hrProfiles, entry));
+    saveEntry(entry);
   }
 
   function handleSaveProfile(profile: EmployeeProfile) {
-    persist(updateEmployeeProfile(hrProfiles, profile));
+    saveProfile(profile);
   }
 
   if (!hydrated) {
@@ -224,22 +233,27 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
         <div className="fl-card fl-pad">
           <div className="k-label">{h.headcount}</div>
           <StatLine value={String(kpis.headcount)} />
-          <div className="k-foot fl-faint mt-2">Fusion Leap SARL AU</div>
+          <div className="k-foot fl-faint mt-2">
+            {kpis.withSalary}/{kpis.headcount} {h.membersWithSalary.toLowerCase()}
+          </div>
         </div>
         <div className="fl-card fl-pad">
-          <div className="k-label">{h.avgUtilization}</div>
-          <StatLine value={`${kpis.avgUtil}%`} />
-          <FlProgress value={kpis.avgUtil} className="mt-3" />
+          <div className="k-label">{h.massSalary}</div>
+          <StatLine value={kpis.payroll.toLocaleString("fr-FR")} unit="MAD" />
+          <div className="k-foot fl-faint mt-2">{h.baseSalary}</div>
         </div>
         <div className="fl-card fl-pad">
-          <div className="k-label">{h.bonus}</div>
-          <StatLine value={kpis.bonusMonth.toLocaleString()} unit="MAD" />
+          <div className="k-label">{h.estimatedPayroll}</div>
+          <StatLine value={kpis.estimated.toLocaleString("fr-FR")} unit="MAD" />
           <div className="k-foot fl-faint mt-2">{l.thisMonth}</div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{h.overtimeHours}</div>
           <StatLine value={String(kpis.overtimeMonth)} unit="h" />
-          <div className="k-foot fl-faint mt-2">{l.thisMonth}</div>
+          <FlProgress
+            value={Math.min(100, kpis.avgUtil)}
+            className="mt-3"
+          />
         </div>
       </div>
 
@@ -298,11 +312,11 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
             <thead>
               <tr>
                 <th>{l.person}</th>
-                <th>{l.role}</th>
-                <th>{l.contract}</th>
-                <th>{h.bonus}</th>
-                <th>{h.commission}</th>
+                <th>{h.businessUnit}</th>
+                <th>{h.contact}</th>
+                <th>{h.baseSalary}</th>
                 <th>{h.overtime}</th>
+                <th>{h.lateness}</th>
                 <th>{l.utilization}</th>
                 <th>{dict.common.status}</th>
                 <th className="col-actions" />
@@ -319,6 +333,8 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
                 filteredMembers.map((member) => {
                   const profile = profileByMember.get(member.id)!;
                   const entries = profile.entries;
+                  const phone = profile.phone?.trim() || member.phone || "";
+                  const email = profile.email?.trim() || member.email || "";
                   return (
                     <tr
                       key={member.id}
@@ -335,24 +351,38 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
                             initials={member.initials}
                             gradient={`linear-gradient(135deg,${member.color},#71717a)`}
                             title={member.name}
-                            sub={h.departments[profile.department]}
+                            sub={profile.roleTitle}
                           />
                         </Link>
                       </td>
-                      <td className="fl-muted max-w-[200px] truncate">
-                        {profile.roleTitle}
+                      <td className="fl-muted max-w-[140px] truncate">
+                        {profile.businessUnit?.trim() || "—"}
                       </td>
-                      <td>
-                        <FlChip>{h.contracts[profile.contractType]}</FlChip>
+                      <td className="max-w-[180px]">
+                        <div className="truncate text-[13px]">
+                          {phone || email || "—"}
+                        </div>
+                        {phone && email ? (
+                          <div className="truncate text-[11px] fl-faint">{email}</div>
+                        ) : null}
                       </td>
-                      <td className="fl-mono text-[13px]">
-                        {sumEntries(entries, "bonus").toLocaleString()}
-                      </td>
-                      <td className="fl-mono text-[13px]">
-                        {sumEntries(entries, "commission").toLocaleString()}
+                      <td
+                        className="fl-mono text-[13px] whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Link
+                          href={hrSalaryPath(member.id)}
+                          className="inline-flex items-center gap-1.5 hover:underline"
+                        >
+                          <Wallet className="size-3.5 opacity-60" />
+                          {formatBaseSalary(profile)}
+                        </Link>
                       </td>
                       <td className="fl-mono text-[13px]">
                         {sumEntries(entries, "overtime", { month })}h
+                      </td>
+                      <td className="fl-mono text-[13px]">
+                        {sumEntries(entries, "lateness")}
                       </td>
                       <td className="min-w-[100px]">
                         <FlProgress value={profile.utilization} />
@@ -375,6 +405,7 @@ export function HrPageClient({ profiles }: { profiles: Profile[] }) {
                       >
                         <MemberRowActions
                           onView={() => goToProfile(member.id)}
+                          onSalary={() => goToSalary(member.id)}
                           onEdit={() => openMember(member.id, "profile")}
                           onAddEntry={() => openMember(member.id, "entry")}
                           onQuickAdd={(type) => openMember(member.id, "quick", type)}

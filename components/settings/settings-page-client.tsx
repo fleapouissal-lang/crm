@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { setLocale } from "@/lib/actions/locale";
 import { updateProfile, signOut, updatePassword } from "@/lib/actions/auth";
+import { clearHrLocalCache } from "@/lib/hr/storage";
 import { updateOrganization } from "@/lib/actions/settings";
 import type { SettingsData } from "@/lib/actions/settings";
 import {
@@ -386,7 +387,12 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 <button
                   type="button"
                   className="fl-btn sm"
-                  onClick={() => startTransition(() => signOut())}
+                  onClick={() =>
+                    startTransition(() => {
+                      clearHrLocalCache();
+                      void signOut();
+                    })
+                  }
                 >
                   <LogOut className="size-3.5" />
                   {s.signOut}

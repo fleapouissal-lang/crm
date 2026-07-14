@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Activity } from "@/types/database";
+import { getNotifications } from "@/lib/actions/notifications";
 import { loadPreferences } from "@/lib/settings/storage";
 import {
   DEFAULT_PREFERENCES,
@@ -44,6 +45,7 @@ type NotificationsContextValue = {
   markUnread: (id: string) => void;
   markAllRead: () => void;
   toggleRead: (id: string) => void;
+  refresh: () => void;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(
@@ -84,48 +86,60 @@ function toItem(
 
 export function NotificationsProvider({
   userId,
-  activities,
+  enabled = true,
   children,
 }: {
   userId: string;
-  activities: Activity[];
+  enabled?: boolean;
   children: ReactNode;
 }) {
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [prefs, setPrefsState] =
     useState<WorkspacePreferences>(DEFAULT_PREFERENCES);
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
-    const existing = loadReadIds(userId);
-    let next = existing;
-    try {
-      const initKey = `fusion-notif-init-v1:${userId}`;
-      if (!localStorage.getItem(initKey)) {
-        if (activities.length > 0) {
-          next = markIdsRead(
-            userId,
-            activities.map((a) => a.id)
-          );
-        }
-        localStorage.setItem(initKey, "1");
-      }
-    } catch {
-      /* ignore */
+  const loadActivities = useCallback(() => {
+    if (!enabled) {
+      setActivities([]);
+      return;
     }
-    setReadIds(next);
+    void getNotifications(30).then((data) => {
+      setActivities(data);
+      try {
+        const initKey = `fusion-notif-init-v1:${userId}`;
+        if (!localStorage.getItem(initKey) && data.length > 0) {
+          const seeded = markIdsRead(
+            userId,
+            data.map((a) => a.id)
+          );
+          setReadIds(new Set(seeded));
+          localStorage.setItem(initKey, "1");
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+  }, [enabled, userId]);
+
+  useEffect(() => {
+    setReadIds(loadReadIds(userId));
     setPrefsState(loadPreferences());
     setHydrated(true);
-    // Seed historical items once per user; later activity updates stay unread via missing ids.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init only on user change
   }, [userId]);
+
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
 
   const setPrefs = useCallback((next: WorkspacePreferences) => {
     setPrefsState(next);
   }, []);
 
   const items = useMemo(() => {
-    const mapped = activities.map((a) => toItem(a, hydrated ? readIds : new Set()));
+    const mapped = activities.map((a) =>
+      toItem(a, hydrated ? readIds : new Set())
+    );
     return mapped.filter((item) => passesPrefs(item.kind, prefs));
   }, [activities, readIds, prefs, hydrated]);
 
@@ -180,6 +194,7 @@ export function NotificationsProvider({
       markUnread,
       markAllRead,
       toggleRead,
+      refresh: loadActivities,
     }),
     [
       userId,
@@ -191,6 +206,7 @@ export function NotificationsProvider({
       markUnread,
       markAllRead,
       toggleRead,
+      loadActivities,
     ]
   );
 

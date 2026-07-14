@@ -14,7 +14,6 @@ import {
   Wallet,
   FileText,
   Receipt,
-  UserCircle,
   BarChart3,
   Bell,
   Settings,
@@ -106,7 +105,7 @@ export const operationsNav: NavItem[] = [
     adminOnly: true,
     capability: "finance_docs",
   },
-  { id: "hr", href: "/hr", icon: UserCircle, labelKey: "hr", capability: "leadership" },
+  { id: "hr", href: "/hr", icon: Users, labelKey: "hr", capability: "leadership" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
 ];
 

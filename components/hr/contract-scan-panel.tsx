@@ -26,33 +26,20 @@ const MAX_SCAN_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_DIM = 1920;
 
 type CapturedFile = {
-  dataUrl: string;
-  fileName: string;
-  mimeType: string;
+  file: File;
   label?: string;
 };
 
 async function compressImageIfNeeded(file: File): Promise<CapturedFile> {
   if (!file.type.startsWith("image/")) {
-    const dataUrl = await readFileAsDataUrl(file);
-    return {
-      dataUrl,
-      fileName: file.name,
-      mimeType: file.type,
-      label: file.name.replace(/\.[^.]+$/, ""),
-    };
+    return { file, label: file.name.replace(/\.[^.]+$/, "") };
+  }
+
+  if (file.size <= MAX_SCAN_BYTES) {
+    return { file, label: file.name.replace(/\.[^.]+$/, "") };
   }
 
   const dataUrl = await readFileAsDataUrl(file);
-  if (file.size <= MAX_SCAN_BYTES) {
-    return {
-      dataUrl,
-      fileName: file.name,
-      mimeType: file.type,
-      label: file.name.replace(/\.[^.]+$/, ""),
-    };
-  }
-
   const img = await loadImage(dataUrl);
   const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(img.width, img.height));
   const w = Math.round(img.width * scale);
@@ -65,20 +52,22 @@ async function compressImageIfNeeded(file: File): Promise<CapturedFile> {
   ctx.drawImage(img, 0, 0, w, h);
 
   let quality = 0.88;
-  let out = canvas.toDataURL("image/jpeg", quality);
-  while (estimateDataUrlBytes(out) > MAX_SCAN_BYTES && quality > 0.45) {
+  let blob: Blob | null = null;
+  while (quality >= 0.45) {
+    blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", quality)
+    );
+    if (blob && blob.size <= MAX_SCAN_BYTES) break;
     quality -= 0.1;
-    out = canvas.toDataURL("image/jpeg", quality);
   }
 
-  if (estimateDataUrlBytes(out) > MAX_SCAN_BYTES) {
+  if (!blob || blob.size > MAX_SCAN_BYTES) {
     throw new Error("too_large");
   }
 
+  const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
   return {
-    dataUrl: out,
-    fileName: file.name.replace(/\.[^.]+$/, "") + ".jpg",
-    mimeType: "image/jpeg",
+    file: new File([blob], name, { type: "image/jpeg" }),
     label: file.name.replace(/\.[^.]+$/, ""),
   };
 }
@@ -99,11 +88,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
-}
-
-function estimateDataUrlBytes(dataUrl: string): number {
-  const base64 = dataUrl.split(",")[1] ?? "";
-  return Math.ceil((base64.length * 3) / 4);
 }
 
 function ContractCameraDialog({
@@ -170,7 +154,7 @@ function ContractCameraDialog({
     };
   }, [open, h, stopStream]);
 
-  function handleCapture() {
+  async function handleCapture() {
     const video = videoRef.current;
     if (!video || !ready) return;
 
@@ -186,17 +170,17 @@ function ContractCameraDialog({
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
-    if (estimateDataUrlBytes(dataUrl) > MAX_SCAN_BYTES) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88)
+    );
+    if (!blob || blob.size > MAX_SCAN_BYTES) {
       toast.error(h.scanTooLarge);
       return;
     }
 
     const stamp = format(new Date(), "yyyy-MM-dd-HHmm");
     onCapture({
-      dataUrl,
-      fileName: `scan-${stamp}.jpg`,
-      mimeType: "image/jpeg",
+      file: new File([blob], `scan-${stamp}.jpg`, { type: "image/jpeg" }),
       label: `${h.takeScan} ${stamp}`,
     });
     onOpenChange(false);
@@ -237,7 +221,7 @@ function ContractCameraDialog({
             type="button"
             className="fl-btn sm primary"
             disabled={!ready || !!error}
-            onClick={handleCapture}
+            onClick={() => void handleCapture()}
           >
             <Camera strokeWidth={2} />
             {h.capturePhoto}
@@ -248,14 +232,22 @@ function ContractCameraDialog({
   );
 }
 
+export type HrScanUploadInput = {
+  memberId: string;
+  file: File;
+  label?: string;
+};
+
 export function ContractScanPanel({
   profile,
   onUpload,
   onDelete,
+  quickLabels,
 }: {
   profile: EmployeeProfile;
-  onUpload: (scan: HrContractScan) => void;
+  onUpload: (input: HrScanUploadInput) => Promise<HrContractScan | null>;
   onDelete: (scanId: string) => void;
+  quickLabels?: string[];
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
@@ -264,21 +256,18 @@ export function ContractScanPanel({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
 
   const scans = profile.contractScans ?? [];
 
-  function saveCaptured(file: CapturedFile) {
-    const scan: HrContractScan = {
-      id: `scan-${Date.now()}`,
+  async function persistCaptured(captured: CapturedFile) {
+    const scan = await onUpload({
       memberId: profile.memberId,
-      fileName: file.fileName,
-      mimeType: file.mimeType,
-      dataUrl: file.dataUrl,
-      uploadedAt: new Date().toISOString(),
-      label: file.label ?? file.fileName.replace(/\.[^.]+$/, ""),
-    };
-    onUpload(scan);
-    toast.success(h.scanUploaded);
+      file: captured.file,
+      label: selectedLabel || captured.label,
+    });
+    setSelectedLabel(null);
+    if (scan) toast.success(h.scanUploaded);
   }
 
   function handleFileChange(
@@ -307,11 +296,11 @@ export function ContractScanPanel({
     startTransition(async () => {
       try {
         const captured = await compressImageIfNeeded(file);
-        if (estimateDataUrlBytes(captured.dataUrl) > MAX_SCAN_BYTES) {
+        if (captured.file.size > MAX_SCAN_BYTES) {
           toast.error(h.scanTooLarge);
           return;
         }
-        saveCaptured(captured);
+        await persistCaptured(captured);
       } catch {
         toast.error(h.scanTooLarge);
       }
@@ -320,11 +309,32 @@ export function ContractScanPanel({
 
   const uploadActions = (
     <div className="flex flex-wrap gap-2">
+      {quickLabels?.map((label) => (
+        <button
+          key={label}
+          type="button"
+          className={cn(
+            "fl-btn sm",
+            selectedLabel === label ? "primary" : "ghost"
+          )}
+          disabled={pending}
+          onClick={() => {
+            setSelectedLabel(label);
+            pdfInputRef.current?.click();
+          }}
+        >
+          <FileText strokeWidth={2} />
+          {label}
+        </button>
+      ))}
       <button
         type="button"
         className="fl-btn sm primary"
         disabled={pending}
-        onClick={() => pdfInputRef.current?.click()}
+        onClick={() => {
+          setSelectedLabel(null);
+          pdfInputRef.current?.click();
+        }}
       >
         <FileText strokeWidth={2} />
         {h.uploadPdf}
@@ -427,7 +437,11 @@ export function ContractScanPanel({
       <ContractCameraDialog
         open={cameraOpen}
         onOpenChange={setCameraOpen}
-        onCapture={saveCaptured}
+        onCapture={(captured) => {
+          startTransition(async () => {
+            await persistCaptured(captured);
+          });
+        }}
       />
     </div>
   );
@@ -454,7 +468,7 @@ function ContractScanCard({
   return (
     <article className="fl-hr-scan-card fl-card overflow-hidden">
       <div className="fl-hr-scan-preview relative">
-        {isImage ? (
+        {isImage && scan.dataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={scan.dataUrl} alt={scan.fileName} className="size-full object-cover" />
         ) : (
@@ -486,15 +500,21 @@ function ContractScanCard({
           {format(new Date(scan.uploadedAt), "dd MMM yyyy · HH:mm")}
         </p>
         <div className="flex gap-1.5">
-          <a
-            href={scan.dataUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn("fl-btn sm ghost flex-1 justify-center text-[11px]")}
-          >
-            <ExternalLink className="size-3" strokeWidth={2} />
-            {viewLabel}
-          </a>
+          {scan.dataUrl ? (
+            <a
+              href={scan.dataUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn("fl-btn sm ghost flex-1 justify-center text-[11px]")}
+            >
+              <ExternalLink className="size-3" strokeWidth={2} />
+              {viewLabel}
+            </a>
+          ) : (
+            <span className="fl-btn sm ghost flex-1 justify-center text-[11px] opacity-50">
+              {viewLabel}
+            </span>
+          )}
           <button
             type="button"
             className="fl-btn sm ghost text-[11px] text-[var(--rose)]"

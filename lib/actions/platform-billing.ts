@@ -102,6 +102,7 @@ export async function createPlatformQuote(input: {
   validityDays?: number;
   status?: PlatformQuoteStatus;
   notes?: string;
+  currency?: string;
 }): Promise<ActionResult<PlatformQuote>> {
   const profile = await requirePlatformAdmin();
   if (!profile) return { success: false, error: "Platform administrator access required" };
@@ -118,7 +119,7 @@ export async function createPlatformQuote(input: {
       organization_id: input.organizationId,
       plan: input.plan,
       amount,
-      currency: "EUR",
+      currency: input.currency ?? "MAD",
       validity_days: input.validityDays ?? 30,
       status: input.status ?? "draft",
       notes: input.notes ?? "",
@@ -140,6 +141,7 @@ export async function updatePlatformQuote(input: {
   validityDays: number;
   status: PlatformQuoteStatus;
   notes?: string;
+  currency?: string;
 }): Promise<ActionResult> {
   if (!(await requirePlatformAdmin())) {
     return { success: false, error: "Platform administrator access required" };
@@ -152,6 +154,7 @@ export async function updatePlatformQuote(input: {
       organization_id: input.organizationId,
       plan: input.plan,
       amount: input.amount,
+      currency: input.currency ?? "MAD",
       validity_days: input.validityDays,
       status: input.status,
       notes: input.notes ?? "",
@@ -187,6 +190,7 @@ export async function createPlatformInvoice(input: {
   billingReason?: PlatformBillingReason;
   notes?: string;
   createdBy?: string | null;
+  currency?: string;
 }): Promise<ActionResult<PlatformInvoice>> {
   const profile = await requirePlatformAdmin();
   if (!profile && !input.createdBy) {
@@ -206,7 +210,7 @@ export async function createPlatformInvoice(input: {
       organization_id: input.organizationId,
       plan: input.plan,
       amount,
-      currency: "EUR",
+      currency: input.currency ?? "MAD",
       due_date: input.dueDate ?? defaultDueDate(),
       period_start: input.periodStart ?? period.period_start,
       period_end: input.periodEnd ?? period.period_end,
@@ -283,6 +287,7 @@ export async function updatePlatformInvoice(input: {
   periodEnd?: string | null;
   status: PlatformInvoiceStatus;
   notes?: string;
+  currency?: string;
 }): Promise<ActionResult> {
   if (!(await requirePlatformAdmin())) {
     return { success: false, error: "Platform administrator access required" };
@@ -295,6 +300,7 @@ export async function updatePlatformInvoice(input: {
       organization_id: input.organizationId,
       plan: input.plan,
       amount: input.amount,
+      currency: input.currency ?? "MAD",
       due_date: input.dueDate ?? null,
       period_start: input.periodStart ?? null,
       period_end: input.periodEnd ?? null,
@@ -363,6 +369,8 @@ export async function convertQuoteToInvoice(
     organizationId: quote.organization_id,
     plan: quote.plan as PlanKey,
     amount: Number(quote.amount),
+    currency:
+      !quote.currency || quote.currency === "EUR" ? "MAD" : quote.currency,
     quoteId: quote.id,
     billingReason: "manual",
     notes: `Issu du devis ${quote.number}`,

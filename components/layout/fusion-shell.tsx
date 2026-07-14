@@ -6,9 +6,8 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { CursorGlow } from "@/components/layout/cursor-glow";
 import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
-import { NotificationsProvider } from "@/components/notifications/notifications-provider";
-import { useNotificationsOptional } from "@/components/notifications/notifications-provider";
-import type { Activity, Profile } from "@/types/database";
+import { NotificationsProvider, useNotificationsOptional } from "@/components/notifications/notifications-provider";
+import type { Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { isPlatformAdmin } from "@/lib/permissions";
 
@@ -60,18 +59,18 @@ export function FusionShell({
   organizationName,
   organizationLogoUrl,
   activityDomain,
-  activities = [],
   leadCount,
   quoteCount,
+  loadNotifications = false,
   children,
 }: {
   profile: Profile;
   organizationName?: string | null;
   organizationLogoUrl?: string | null;
   activityDomain?: string | null;
-  activities?: Activity[];
   leadCount: number;
   quoteCount: number;
+  loadNotifications?: boolean;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -102,7 +101,10 @@ export function FusionShell({
   const platformAdmin = isPlatformAdmin(profile.role);
 
   return (
-    <NotificationsProvider userId={profile.id} activities={activities}>
+    <NotificationsProvider
+      userId={profile.id}
+      enabled={loadNotifications && !platformAdmin}
+    >
       <CursorGlow />
       <AuroraBackground />
       {!platformAdmin ? (

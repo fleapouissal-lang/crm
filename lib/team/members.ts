@@ -6,6 +6,8 @@ export interface TeamMemberOption {
   name: string;
   role?: string;
   color: string;
+  email?: string;
+  phone?: string;
 }
 
 const AVATAR_COLORS = ["#52525b", "#3ecf8e", "#f5a623", "#71717a", "#4169d6", "#d63e63"];
@@ -18,6 +20,8 @@ export const DEMO_TEAM_MEMBERS: TeamMemberOption[] = [
     name: "Youssef Kaab",
     role: "Founder & MD",
     color: "#52525b",
+    email: "youssef@fusionleap.ma",
+    phone: "+212 6 00 00 00 01",
   },
   {
     id: "tm-ob",
@@ -25,6 +29,8 @@ export const DEMO_TEAM_MEMBERS: TeamMemberOption[] = [
     name: "Ouissal BenZahi",
     role: "Developer",
     color: "#3ecf8e",
+    email: "ouissal@fusionleap.ma",
+    phone: "+212 6 00 00 00 02",
   },
   {
     id: "tm-ac",
@@ -32,6 +38,8 @@ export const DEMO_TEAM_MEMBERS: TeamMemberOption[] = [
     name: "Achraf",
     role: "Design Lead",
     color: "#f5a623",
+    email: "achraf@fusionleap.ma",
+    phone: "+212 6 00 00 00 03",
   },
   {
     id: "tm-dl",
@@ -39,6 +47,8 @@ export const DEMO_TEAM_MEMBERS: TeamMemberOption[] = [
     name: "Dalal",
     role: "Commercial / Sales",
     color: "#71717a",
+    email: "dalal@fusionleap.ma",
+    phone: "+212 6 00 00 00 04",
   },
 ];
 
@@ -67,6 +77,8 @@ export function profileToTeamOption(profile: Profile): TeamMemberOption {
     name: profile.full_name ?? profile.email ?? "User",
     role: profile.role,
     color: colorForMemberId(profile.id),
+    email: profile.email ?? undefined,
+    phone: profile.phone ?? undefined,
   };
 }
 

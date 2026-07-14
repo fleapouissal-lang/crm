@@ -6,7 +6,16 @@ import { canAccessLeads } from "@/lib/permissions";
 import { LeadsPageClient } from "@/components/leads/leads-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function LeadsPage({
+function LeadsFallback() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-96 w-full" />
+    </div>
+  );
+}
+
+async function LeadsContent({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; stage?: string }>;
@@ -22,20 +31,23 @@ export default async function LeadsPage({
   ]);
 
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      }
-    >
-      <LeadsPageClient
-        leads={leads}
-        profiles={profiles}
-        organizationId={profile.organization_id}
-        role={profile.role}
-      />
+    <LeadsPageClient
+      leads={leads}
+      profiles={profiles}
+      organizationId={profile.organization_id}
+      role={profile.role}
+    />
+  );
+}
+
+export default function LeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; stage?: string }>;
+}) {
+  return (
+    <Suspense fallback={<LeadsFallback />}>
+      <LeadsContent searchParams={searchParams} />
     </Suspense>
   );
 }

@@ -331,7 +331,7 @@ export function CreateCompanyPageClient() {
                       <span className="fl-select-plan">
                         <span>{s.plans[key]}</span>
                         <span className="fl-select-plan__price">
-                          €{PLAN_PRICES_EUR[key]}
+                          {PLAN_PRICES_EUR[key]} MAD
                           {key === "free" ? ` ${s.perMonthFree}` : `/${s.perMonthShort}`}
                         </span>
                       </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
 import {
   CheckCircle2,
@@ -23,7 +23,10 @@ import { listPlatformInvoices } from "@/lib/actions/platform-billing";
 import {
   PAYMENT_STATUS_BADGE,
 } from "@/lib/billing/payments";
+import { resolvePlatformCurrency } from "@/lib/billing/currency";
 import { formatPlatformMoney } from "@/lib/billing/platform-docs";
+import { loadPreferences } from "@/lib/settings/storage";
+import type { CurrencyCode } from "@/lib/settings/types";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import type {
   Organization,
@@ -51,6 +54,11 @@ export function AdminPaymentsPageClient({
   const [invoices, setInvoices] = useState(initialInvoices);
   const [formOpen, setFormOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [currency, setCurrency] = useState<CurrencyCode>("MAD");
+
+  useEffect(() => {
+    setCurrency(loadPreferences().currency);
+  }, []);
 
   const stats = useMemo(() => {
     const succeeded = payments.filter((x) => x.status === "succeeded");
@@ -117,11 +125,11 @@ export function AdminPaymentsPageClient({
       <div className="grid g-4">
         <div className="fl-card fl-pad">
           <div className="k-label">{p.collectedMonth}</div>
-          <StatLine value={formatPlatformMoney(stats.monthCollected)} />
+          <StatLine value={formatPlatformMoney(stats.monthCollected, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{p.collectedTotal}</div>
-          <StatLine value={formatPlatformMoney(stats.collected)} />
+          <StatLine value={formatPlatformMoney(stats.collected, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{p.succeededCount}</div>
@@ -195,7 +203,10 @@ export function AdminPaymentsPageClient({
                       ) : null}
                     </td>
                     <td className="fl-mono">
-                      {formatPlatformMoney(Number(row.amount), row.currency)}
+                      {formatPlatformMoney(
+                        Number(row.amount),
+                        resolvePlatformCurrency(row.currency, currency)
+                      )}
                     </td>
                     <td className="fl-muted">{p.methods[row.method]}</td>
                     <td>

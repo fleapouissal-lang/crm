@@ -7,7 +7,16 @@ import { canAccessTasks } from "@/lib/permissions";
 import { TasksPageClient } from "@/components/tasks/tasks-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function TasksPage({
+function TasksFallback() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-96 w-full" />
+    </div>
+  );
+}
+
+async function TasksContent({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; lead_id?: string; project_id?: string }>;
@@ -24,21 +33,24 @@ export default async function TasksPage({
   ]);
 
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      }
-    >
-      <TasksPageClient
-        tasks={tasks}
-        profiles={profiles}
-        leads={leads}
-        organizationId={profile.organization_id}
-        profile={profile}
-      />
+    <TasksPageClient
+      tasks={tasks}
+      profiles={profiles}
+      leads={leads}
+      organizationId={profile.organization_id}
+      profile={profile}
+    />
+  );
+}
+
+export default function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; lead_id?: string; project_id?: string }>;
+}) {
+  return (
+    <Suspense fallback={<TasksFallback />}>
+      <TasksContent searchParams={searchParams} />
     </Suspense>
   );
 }

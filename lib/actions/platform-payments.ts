@@ -54,6 +54,7 @@ export async function recordPlatformPayment(input: {
   organizationId: string;
   invoiceId?: string | null;
   amount: number;
+  currency?: string;
   status: PaymentStatus;
   method: PaymentMethod;
   cardBrand?: CardBrand | null;
@@ -91,7 +92,7 @@ export async function recordPlatformPayment(input: {
       organization_id: input.organizationId,
       invoice_id: input.invoiceId ?? null,
       amount: input.amount,
-      currency: "EUR",
+      currency: input.currency ?? "MAD",
       status: input.status,
       method: input.method,
       card_brand: input.method === "card" ? input.cardBrand ?? null : null,

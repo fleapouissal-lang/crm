@@ -19,11 +19,12 @@ import {
   type ActivityDomainKey,
 } from "@/lib/organizations/company-profile-options";
 
-/** Always kept regardless of vertical (quotes/invoices still gated by role capability). */
+/** Always kept regardless of vertical (quotes/invoices/hr still gated by role capability). */
 export const ALWAYS_VISIBLE_NAV_IDS = [
   "dashboard",
   "quotes",
   "invoices",
+  "hr",
   "notifications",
   "settings",
 ] as const;
@@ -94,6 +95,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "sales",
       "quotes",
       "invoices",
+      "hr",
       "reports",
       "notifications",
       "settings",
@@ -126,6 +128,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "finance",
       "quotes",
       "invoices",
+      "hr",
       "calendar",
       "reports",
       "notifications",
@@ -158,6 +161,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "sales",
       "quotes",
       "invoices",
+      "hr",
       "reports",
       "notifications",
       "settings",

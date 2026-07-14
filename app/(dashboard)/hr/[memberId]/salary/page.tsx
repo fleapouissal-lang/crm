@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getHrWorkspace } from "@/lib/actions/hr";
-import { EmployeeProfilePageClient } from "@/components/hr/employee-profile-page-client";
+import { SalaryAccountPageClient } from "@/components/hr/salary-account-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function HrMemberPage({
+export default async function HrSalaryAccountPage({
   params,
 }: {
   params: Promise<{ memberId: string }>;
@@ -24,7 +24,7 @@ export default async function HrMemberPage({
         </div>
       }
     >
-      <EmployeeProfilePageClient
+      <SalaryAccountPageClient
         memberId={memberId}
         profiles={data.teamProfiles}
         initialHrProfiles={data.hrProfiles}

@@ -11,6 +11,7 @@ export type HrContractType =
   | "core"
   | "cdd"
   | "cdi"
+  | "stage"
   | "commission";
 
 export type HrMemberStatus = "active" | "onLeave" | "inactive";
@@ -25,6 +26,8 @@ export interface HrEntry {
   amount?: number;
   currency?: string;
   hours?: number;
+  /** Minutes late (lateness entries). */
+  minutes?: number;
   days?: number;
   note?: string;
   createdAt: string;
@@ -35,8 +38,10 @@ export interface HrContractScan {
   memberId: string;
   fileName: string;
   mimeType: string;
-  /** Base64 data URL for local demo storage */
+  /** Signed URL for viewing (server-issued, short-lived). */
   dataUrl: string;
+  /** Private storage object path (org-scoped). */
+  storagePath?: string;
   uploadedAt: string;
   label?: string;
 }
@@ -45,6 +50,15 @@ export interface EmployeeProfile {
   memberId: string;
   roleTitle: string;
   department: HrDepartment;
+  /** Business unit (BU) within the company. */
+  businessUnit?: string;
+  phone?: string;
+  email?: string;
+  /** Monthly base salary. */
+  baseSalary?: number;
+  salaryCurrency?: string;
+  /** Hourly rate used to value overtime in the salary account (optional). */
+  overtimeRate?: number;
   contractType: HrContractType;
   utilization: number;
   status: HrMemberStatus;
@@ -89,6 +103,7 @@ export const HR_CONTRACT_TYPES: HrContractType[] = [
   "core",
   "cdd",
   "cdi",
+  "stage",
   "commission",
 ];
 
@@ -164,13 +179,37 @@ export function avgUtilization(profiles: EmployeeProfile[]): number {
 }
 
 export function normalizeEmployeeProfile(profile: EmployeeProfile): EmployeeProfile {
+  const salary =
+    typeof profile.baseSalary === "number" && Number.isFinite(profile.baseSalary)
+      ? Math.max(0, profile.baseSalary)
+      : undefined;
+  const overtimeRate =
+    typeof profile.overtimeRate === "number" && Number.isFinite(profile.overtimeRate)
+      ? Math.max(0, profile.overtimeRate)
+      : undefined;
+
   return {
     ...profile,
+    businessUnit: profile.businessUnit?.trim() || "",
+    phone: profile.phone?.trim() || "",
+    email: profile.email?.trim() || "",
+    baseSalary: salary,
+    overtimeRate,
+    salaryCurrency: profile.salaryCurrency?.trim() || "MAD",
     contractStart: profile.contractStart ?? "",
     contractEnd: profile.contractEnd ?? "",
     contractScans: profile.contractScans ?? [],
     entries: profile.entries ?? [],
   };
+}
+
+export function formatBaseSalary(
+  profile: Pick<EmployeeProfile, "baseSalary" | "salaryCurrency">,
+  emptyLabel = "—"
+): string {
+  if (profile.baseSalary == null || profile.baseSalary <= 0) return emptyLabel;
+  const currency = profile.salaryCurrency || "MAD";
+  return `${profile.baseSalary.toLocaleString()} ${currency}`;
 }
 
 export function filterEntriesByType(

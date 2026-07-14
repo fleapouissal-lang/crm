@@ -12,6 +12,8 @@ import {
   type PaymentMethod,
   type PaymentStatus,
 } from "@/lib/billing/payments";
+import { resolvePlatformCurrency } from "@/lib/billing/currency";
+import { loadPreferences } from "@/lib/settings/storage";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,10 +126,13 @@ export function RecordPaymentDialog({
       return;
     }
     startTransition(async () => {
+      const preferred = loadPreferences().currency;
+      const inv = invoices.find((i) => i.id === invoiceId);
       const result = await recordPlatformPayment({
         organizationId,
         invoiceId: invoiceId || null,
         amount: Number(amount) || 0,
+        currency: resolvePlatformCurrency(inv?.currency, preferred),
         status,
         method,
         cardBrand: method === "card" ? cardBrand : null,
@@ -233,7 +238,10 @@ export function RecordPaymentDialog({
                     </SelectItem>
                     {orgInvoices.map((inv) => (
                       <SelectItem key={inv.id} value={inv.id} label={inv.number}>
-                        {inv.number} · €{Number(inv.amount)}
+                        {inv.number} · {Number(inv.amount)}{" "}
+                        {inv.currency === "EUR" || !inv.currency
+                          ? "MAD"
+                          : inv.currency}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -11,69 +11,43 @@ import {
   EmployeeProfileFormDialog,
   HrEntryFormDialog,
 } from "@/components/hr/hr-form-dialogs";
-import type { EmployeeProfile, HrContractScan, HrEntry, HrEntryType } from "@/lib/hr/types";
-import {
-  addContractScan,
-  loadHrProfiles,
-  removeContractScan,
-  saveHrProfiles,
-  updateEmployeeProfile,
-  upsertHrEntry,
-} from "@/lib/hr/storage";
-import { buildTeamOptions } from "@/lib/team/members";
+import type { EmployeeProfile, HrEntryType } from "@/lib/hr/types";
+import { hrSalaryPath } from "@/lib/hr/paths";
+import { useHrStore } from "@/lib/hr/use-hr-store";
 import { cn } from "@/lib/utils";
 
 export function EmployeeProfilePageClient({
   memberId,
   profiles,
+  initialHrProfiles,
 }: {
   memberId: string;
   profiles: Profile[];
+  initialHrProfiles: EmployeeProfile[];
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
 
-  const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
-  const member = teamOptions.find((m) => m.id === memberId) ?? null;
+  const {
+    hydrated,
+    getMember,
+    getProfile,
+    saveEntry,
+    saveProfile,
+    uploadScan,
+    deleteScan,
+  } = useHrStore(profiles, initialHrProfiles);
 
-  const [hrProfiles, setHrProfiles] = useState<EmployeeProfile[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const member = getMember(memberId);
+  const profile = getProfile(memberId);
+
   const [entryOpen, setEntryOpen] = useState(false);
   const [profileFormOpen, setProfileFormOpen] = useState(false);
   const [entryDefaultType, setEntryDefaultType] = useState<HrEntryType | undefined>();
 
-  useEffect(() => {
-    setHrProfiles(loadHrProfiles(teamOptions));
-    setHydrated(true);
-  }, [teamOptions]);
-
-  const persist = useCallback((next: EmployeeProfile[]) => {
-    setHrProfiles(next);
-    saveHrProfiles(next);
-  }, []);
-
-  const profile = hrProfiles.find((p) => p.memberId === memberId) ?? null;
-
   function openEntry(type?: HrEntryType) {
     setEntryDefaultType(type);
     setEntryOpen(true);
-  }
-
-  function handleSaveEntry(entry: HrEntry) {
-    persist(upsertHrEntry(hrProfiles, entry));
-  }
-
-  function handleSaveProfile(updated: EmployeeProfile) {
-    persist(updateEmployeeProfile(hrProfiles, updated));
-  }
-
-  function handleUploadScan(scan: HrContractScan) {
-    persist(addContractScan(hrProfiles, scan));
-  }
-
-  function handleDeleteScan(scanId: string) {
-    persist(removeContractScan(hrProfiles, memberId, scanId));
-    toast.success(h.scanDeleted);
   }
 
   if (!hydrated) {
@@ -100,6 +74,10 @@ export function EmployeeProfilePageClient({
           {h.backToTeam}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href={hrSalaryPath(memberId)} className="fl-btn sm primary">
+            <Wallet className="size-3.5" strokeWidth={2} />
+            {h.openSalaryAccount}
+          </Link>
           <button
             type="button"
             className="fl-btn sm"
@@ -108,20 +86,14 @@ export function EmployeeProfilePageClient({
             <Pencil className="size-3.5" strokeWidth={2} />
             {h.editProfile}
           </button>
-          <button
-            type="button"
-            className="fl-btn sm primary"
-            onClick={() => openEntry()}
-          >
+          <button type="button" className="fl-btn sm" onClick={() => openEntry()}>
             {h.addEntry}
           </button>
         </div>
       </div>
 
       <div>
-        <h1 className={cn("text-2xl font-semibold tracking-tight")}>
-          {member.name}
-        </h1>
+        <h1 className={cn("text-2xl font-semibold tracking-tight")}>{member.name}</h1>
         <p className="mt-1 text-sm fl-muted">{profile.roleTitle}</p>
       </div>
 
@@ -130,8 +102,11 @@ export function EmployeeProfilePageClient({
         profile={profile}
         onAddEntry={() => openEntry()}
         onQuickAdd={(type) => openEntry(type)}
-        onUploadScan={handleUploadScan}
-        onDeleteScan={handleDeleteScan}
+        onUploadScan={uploadScan}
+        onDeleteScan={(scanId) => {
+          deleteScan(memberId, scanId);
+          toast.success(h.scanDeleted);
+        }}
       />
 
       <HrEntryFormDialog
@@ -139,7 +114,7 @@ export function EmployeeProfilePageClient({
         onOpenChange={setEntryOpen}
         member={member}
         defaultType={entryDefaultType}
-        onSave={handleSaveEntry}
+        onSave={saveEntry}
       />
 
       <EmployeeProfileFormDialog
@@ -147,7 +122,7 @@ export function EmployeeProfilePageClient({
         onOpenChange={setProfileFormOpen}
         profile={profile}
         member={member}
-        onSave={handleSaveProfile}
+        onSave={saveProfile}
       />
     </div>
   );

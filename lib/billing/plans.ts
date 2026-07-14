@@ -31,9 +31,12 @@ export function isSubscriptionStatus(value: string): value is SubscriptionStatus
   return (SUBSCRIPTION_STATUSES as readonly string[]).includes(value);
 }
 
-export function formatPlanPrice(plan: PlanKey): string {
+export function formatPlanPrice(
+  plan: PlanKey,
+  currency: string = "MAD"
+): string {
   const amount = PLAN_PRICES_EUR[plan];
-  return amount === 0 ? "€0" : `€${amount}`;
+  return `${amount} ${currency}`;
 }
 
 /** Default trial length for paid plans (days). */

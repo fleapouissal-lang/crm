@@ -1,14 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { getHrWorkspace } from "@/lib/actions/hr";
 import { HrPageClient } from "@/components/hr/hr-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function HrRoutePage() {
-  const profile = await getCurrentProfile();
-  if (!profile?.organization_id) redirect("/login");
-
-  const profiles = await getOrgProfiles();
+  const data = await getHrWorkspace();
+  if (!data) redirect("/dashboard");
 
   return (
     <Suspense
@@ -19,7 +17,10 @@ export default async function HrRoutePage() {
         </div>
       }
     >
-      <HrPageClient profiles={profiles} />
+      <HrPageClient
+        profiles={data.teamProfiles}
+        initialHrProfiles={data.hrProfiles}
+      />
     </Suspense>
   );
 }

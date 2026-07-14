@@ -15,6 +15,7 @@ import type {
 import {
   entryTypeBadgeClass,
   filterEntriesByType,
+  formatBaseSalary,
   memberStatusBadgeClass,
   sumEntries,
 } from "@/lib/hr/types";
@@ -142,7 +143,11 @@ export function EmployeeProfileContent({
   profile: EmployeeProfile;
   onAddEntry?: (type?: HrEntryType) => void;
   onQuickAdd?: (type: HrEntryType) => void;
-  onUploadScan?: (scan: HrContractScan) => void;
+  onUploadScan?: (input: {
+    memberId: string;
+    file: File;
+    label?: string;
+  }) => Promise<HrContractScan | null>;
   onDeleteScan?: (scanId: string) => void;
 }) {
   const dict = useDict();
@@ -178,6 +183,10 @@ export function EmployeeProfileContent({
   ];
 
   const kpis = [
+    {
+      label: h.baseSalary,
+      value: formatBaseSalary(profile, "—"),
+    },
     {
       label: h.totalBonus,
       value: `${sumEntries(profile.entries, "bonus").toLocaleString()} MAD`,
@@ -227,8 +236,30 @@ export function EmployeeProfileContent({
         />
         <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+            <dt className="fl-muted">{h.businessUnit}</dt>
+            <dd className="font-medium text-end">
+              {profile.businessUnit?.trim() || "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted">{h.department}</dt>
             <dd className="font-medium">{h.departments[profile.department]}</dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+            <dt className="fl-muted shrink-0">{dict.fusion.settings.phone}</dt>
+            <dd className="font-medium text-end truncate">
+              {profile.phone?.trim() || member.phone || "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+            <dt className="fl-muted shrink-0">{h.email}</dt>
+            <dd className="font-medium text-end truncate">
+              {profile.email?.trim() || member.email || "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+            <dt className="fl-muted">{h.baseSalary}</dt>
+            <dd className="font-medium fl-mono">{formatBaseSalary(profile)}</dd>
           </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted">{l.contract}</dt>
@@ -266,7 +297,7 @@ export function EmployeeProfileContent({
         <div className="fl-pad min-h-[280px]">
           {activeTab === "overview" && (
             <div className="space-y-5">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {kpis.map((kpi) => (
                   <div
                     key={kpi.label}
@@ -377,6 +408,7 @@ export function EmployeeProfileContent({
               profile={profile}
               onUpload={onUploadScan}
               onDelete={onDeleteScan}
+              quickLabels={[h.contractTravail, h.contractStage]}
             />
           ) : null}
         </div>

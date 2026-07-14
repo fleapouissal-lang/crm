@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/actions/auth";
+import { getCurrentProfile } from "@/lib/auth/profile";
 import type { Activity } from "@/types/database";
 
 export async function getNotifications(limit = 40): Promise<Activity[]> {

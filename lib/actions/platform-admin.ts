@@ -53,7 +53,7 @@ export async function getPlatformAdminStats(): Promise<PlatformAdminStats | null
     admin
       .from("profiles")
       .select(
-        "*, organization:organizations(id, name, logo_url)"
+        "*, organization:organizations!organization_id(id, name, logo_url)"
       )
       .order("created_at", { ascending: false }),
     admin.from("platform_quotes").select("status"),
@@ -67,7 +67,7 @@ export async function getPlatformAdminStats(): Promise<PlatformAdminStats | null
       .limit(8),
   ]);
 
-  const platformUsers = (users as PlatformUserRow[]) ?? [];
+  const platformUsers = (users as PlatformUserRow[] | null) ?? [];
 
   const orgs = (companies as Organization[]) ?? [];
   const openQuotes = (quotes ?? []).filter(
@@ -176,10 +176,15 @@ export async function getPlatformUsers(): Promise<PlatformUserRow[]> {
   if (!profile || !canManageCompanies(profile.role)) return [];
 
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("profiles")
-    .select("*, organization:organizations(id, name, logo_url)")
+    .select("*, organization:organizations!organization_id(id, name, logo_url)")
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getPlatformUsers]", error.message);
+    return [];
+  }
 
   return (data as PlatformUserRow[]) ?? [];
 }

@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { FusionShell } from "@/components/layout/fusion-shell";
-import { getCurrentProfile } from "@/lib/actions/auth";
+import { getCurrentProfile } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformAdmin } from "@/lib/permissions";
-import type { Activity } from "@/types/database";
 
 export default async function DashboardLayout({
   children,
@@ -17,12 +16,7 @@ export default async function DashboardLayout({
 
   if (platformAdmin) {
     return (
-      <FusionShell
-        profile={profile}
-        activities={[]}
-        leadCount={0}
-        quoteCount={0}
-      >
+      <FusionShell profile={profile} leadCount={0} quoteCount={0}>
         {children}
       </FusionShell>
     );
@@ -31,22 +25,18 @@ export default async function DashboardLayout({
   if (!profile.organization_id) redirect("/login");
 
   const supabase = await createClient();
-  const [activitiesRes, { count: leadCount }, { count: quoteCount }, orgRes] =
+  // Keep layout light: org branding + tiny badge counts only.
+  // Notifications load client-side after paint (see NotificationsProvider).
+  const [{ count: leadCount }, { count: quoteCount }, orgRes] =
     await Promise.all([
       supabase
-        .from("activities")
-        .select("*, profile:profiles!activities_user_id_fkey(*)")
-        .eq("organization_id", profile.organization_id)
-        .order("created_at", { ascending: false })
-        .limit(40),
-      supabase
         .from("leads")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("organization_id", profile.organization_id)
         .not("stage", "in", '("won","lost")'),
       supabase
         .from("leads")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("organization_id", profile.organization_id)
         .in("stage", ["proposal", "negotiation"]),
       supabase
@@ -56,20 +46,15 @@ export default async function DashboardLayout({
         .single(),
     ]);
 
-  const organizationName = orgRes.data?.name ?? null;
-  const organizationLogoUrl = orgRes.data?.logo_url ?? null;
-  const activityDomain = orgRes.data?.activity_domain ?? null;
-  const activities = (activitiesRes.data as Activity[] | null) ?? [];
-
   return (
     <FusionShell
       profile={profile}
-      organizationName={organizationName}
-      organizationLogoUrl={organizationLogoUrl}
-      activityDomain={activityDomain}
-      activities={activities}
+      organizationName={orgRes.data?.name ?? null}
+      organizationLogoUrl={orgRes.data?.logo_url ?? null}
+      activityDomain={orgRes.data?.activity_domain ?? null}
       leadCount={leadCount ?? 0}
       quoteCount={quoteCount ?? 0}
+      loadNotifications
     >
       {children}
     </FusionShell>

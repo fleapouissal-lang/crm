@@ -26,6 +26,7 @@ import {
 } from "@/lib/navigation/vertical-presets";
 import { isPlatformAdmin, hasNavCapability, canViewFinanceDocumentsForRole } from "@/lib/permissions";
 import { signOut } from "@/lib/actions/auth";
+import { clearHrLocalCache } from "@/lib/hr/storage";
 import { CompanyBrand } from "@/components/brand/company-brand";
 import { SidebarLuxuryBg } from "@/components/layout/sidebar-luxury-bg";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -331,7 +332,12 @@ export function AppSidebar({
             className="fusion-logout-btn"
             disabled={pending}
             title={dict.auth.signOut}
-            onClick={() => startTransition(() => void signOut())}
+            onClick={() =>
+              startTransition(() => {
+                clearHrLocalCache();
+                void signOut();
+              })
+            }
           >
             <LogOut className="size-4" strokeWidth={1.75} />
             <span className="fusion-logout-label">{dict.auth.signOut}</span>

@@ -130,7 +130,7 @@ export function EditSubscriptionDialog({
               <SelectContent>
                 {PLAN_KEYS.map((key) => (
                   <SelectItem key={key} value={key}>
-                    {s.plans[key]} · €{PLAN_PRICES_EUR[key]}
+                    {s.plans[key]} · {PLAN_PRICES_EUR[key]} MAD
                     {key === "free" ? ` ${s.perMonthFree}` : `/${s.perMonthShort}`}
                   </SelectItem>
                 ))}

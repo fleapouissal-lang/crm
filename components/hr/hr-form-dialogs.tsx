@@ -39,6 +39,7 @@ type FormValues = {
   amount: string;
   currency: string;
   hours: string;
+  minutes: string;
   days: string;
   note: string;
 };
@@ -77,6 +78,7 @@ export function HrEntryFormDialog({
       amount: "",
       currency: "MAD",
       hours: "",
+      minutes: "",
       days: "",
       note: "",
     },
@@ -92,6 +94,7 @@ export function HrEntryFormDialog({
         amount: "",
         currency: "MAD",
         hours: "",
+        minutes: "",
         days: "",
         note: "",
       });
@@ -102,7 +105,7 @@ export function HrEntryFormDialog({
     if (!member) return;
 
     const entry: HrEntry = {
-      id: `hr-${Date.now()}`,
+      id: crypto.randomUUID(),
       memberId: member.id,
       type: values.type,
       date: values.date,
@@ -138,9 +141,13 @@ export function HrEntryFormDialog({
       entry.days = days;
     }
 
-    if (values.type === "lateness" && !values.note.trim()) {
-      toast.error(h.entryNote);
-      return;
+    if (values.type === "lateness") {
+      if (!values.note.trim()) {
+        toast.error(h.entryNote);
+        return;
+      }
+      const minutes = Number(values.minutes);
+      if (minutes > 0) entry.minutes = minutes;
     }
 
     onSave(entry);
@@ -215,6 +222,21 @@ export function HrEntryFormDialog({
             </div>
           )}
 
+          {entryType === "lateness" && (
+            <div className="space-y-2">
+              <Label htmlFor="hr-minutes">{h.minutesLate}</Label>
+              <Input
+                id="hr-minutes"
+                type="number"
+                min="1"
+                step="1"
+                className="fl-inp"
+                placeholder={h.minutesLateHint}
+                {...register("minutes")}
+              />
+            </div>
+          )}
+
           {entryType === "leave" && (
             <div className="space-y-2">
               <Label htmlFor="hr-days">{h.days}</Label>
@@ -244,6 +266,22 @@ export function HrEntryFormDialog({
   );
 }
 
+type ProfileFormValues = {
+  roleTitle: string;
+  department: HrDepartment;
+  businessUnit: string;
+  phone: string;
+  email: string;
+  baseSalary: string;
+  salaryCurrency: string;
+  overtimeRate: string;
+  contractType: HrContractType;
+  utilization: string;
+  status: HrMemberStatus;
+  contractStart: string;
+  contractEnd: string;
+};
+
 export function EmployeeProfileFormDialog({
   open,
   onOpenChange,
@@ -260,6 +298,7 @@ export function EmployeeProfileFormDialog({
   const dict = useDict();
   const h = dict.fusion.hr;
   const l = dict.fusion.labels;
+  const s = dict.fusion.settings;
 
   const {
     register,
@@ -267,13 +306,19 @@ export function EmployeeProfileFormDialog({
     setValue,
     watch,
     reset,
-  } = useForm({
+  } = useForm<ProfileFormValues>({
     defaultValues: {
       roleTitle: "",
-      department: "tech" as HrDepartment,
-      contractType: "core" as HrContractType,
+      department: "tech",
+      businessUnit: "",
+      phone: "",
+      email: "",
+      baseSalary: "",
+      salaryCurrency: "MAD",
+      overtimeRate: "",
+      contractType: "core",
       utilization: "75",
-      status: "active" as HrMemberStatus,
+      status: "active",
       contractStart: "",
       contractEnd: "",
     },
@@ -284,6 +329,18 @@ export function EmployeeProfileFormDialog({
       reset({
         roleTitle: profile.roleTitle,
         department: profile.department,
+        businessUnit: profile.businessUnit || "",
+        phone: profile.phone || member?.phone || "",
+        email: profile.email || member?.email || "",
+        baseSalary:
+          profile.baseSalary != null && profile.baseSalary > 0
+            ? String(profile.baseSalary)
+            : "",
+        salaryCurrency: profile.salaryCurrency || "MAD",
+        overtimeRate:
+          profile.overtimeRate != null && profile.overtimeRate > 0
+            ? String(profile.overtimeRate)
+            : "",
         contractType: profile.contractType,
         utilization: String(profile.utilization),
         status: profile.status,
@@ -291,22 +348,32 @@ export function EmployeeProfileFormDialog({
         contractEnd: profile.contractEnd ?? "",
       });
     }
-  }, [open, profile, reset]);
+  }, [open, profile, member, reset]);
 
-  function onSubmit(values: {
-    roleTitle: string;
-    department: HrDepartment;
-    contractType: HrContractType;
-    utilization: string;
-    status: HrMemberStatus;
-    contractStart: string;
-    contractEnd: string;
-  }) {
+  function onSubmit(values: ProfileFormValues) {
     if (!profile) return;
+    const salaryRaw = values.baseSalary.trim();
+    const salary = salaryRaw === "" ? undefined : Number(salaryRaw);
+    if (salaryRaw !== "" && (!Number.isFinite(salary) || (salary ?? 0) < 0)) {
+      toast.error(h.baseSalary);
+      return;
+    }
+    const otRaw = values.overtimeRate.trim();
+    const overtimeRate = otRaw === "" ? undefined : Number(otRaw);
+    if (otRaw !== "" && (!Number.isFinite(overtimeRate) || (overtimeRate ?? 0) < 0)) {
+      toast.error(h.overtimeRate);
+      return;
+    }
     onSave({
       ...profile,
       roleTitle: values.roleTitle.trim() || profile.roleTitle,
       department: values.department,
+      businessUnit: values.businessUnit.trim(),
+      phone: values.phone.trim(),
+      email: values.email.trim(),
+      baseSalary: salary,
+      salaryCurrency: values.salaryCurrency || "MAD",
+      overtimeRate,
       contractType: values.contractType,
       utilization: Math.min(100, Math.max(0, Number(values.utilization) || 0)),
       status: values.status,
@@ -321,17 +388,49 @@ export function EmployeeProfileFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-md">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>
             {h.editProfile} — {member.name}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="fl-dialog-body fl-form space-y-4">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="fl-dialog-body fl-form max-h-[70vh] space-y-4 overflow-y-auto"
+        >
           <div className="space-y-2">
             <Label htmlFor="hr-role">{l.role}</Label>
             <Input id="hr-role" className="fl-inp" {...register("roleTitle")} />
           </div>
+
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-3 space-y-3">
+            <p className="text-[12px] font-semibold tracking-wide text-[var(--text-dim)]">
+              {h.contactSection}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hr-phone">{s.phone}</Label>
+                <Input
+                  id="hr-phone"
+                  type="tel"
+                  className="fl-inp"
+                  placeholder={s.phonePlaceholder}
+                  {...register("phone")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hr-email">{h.email}</Label>
+                <Input
+                  id="hr-email"
+                  type="email"
+                  className="fl-inp"
+                  placeholder="nom@entreprise.com"
+                  {...register("email")}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>{h.department}</Label>
@@ -352,6 +451,68 @@ export function EmployeeProfileFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="hr-bu">{h.businessUnit}</Label>
+              <Input
+                id="hr-bu"
+                className="fl-inp"
+                placeholder={h.businessUnitPlaceholder}
+                {...register("businessUnit")}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-3 space-y-3">
+            <p className="text-[12px] font-semibold tracking-wide text-[var(--text-dim)]">
+              {h.payrollSection}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hr-salary">{h.baseSalary}</Label>
+                <Input
+                  id="hr-salary"
+                  type="number"
+                  min="0"
+                  step="100"
+                  className="fl-inp"
+                  placeholder="0"
+                  {...register("baseSalary")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{h.currency}</Label>
+                <Select
+                  value={watch("salaryCurrency")}
+                  onValueChange={(v) => v && setValue("salaryCurrency", v)}
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel">
+                    <SelectItem value="MAD">MAD</SelectItem>
+                    <SelectItem value="SAR">SAR</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hr-ot-rate">{h.overtimeRate}</Label>
+              <Input
+                id="hr-ot-rate"
+                type="number"
+                min="0"
+                step="1"
+                className="fl-inp"
+                placeholder="0"
+                {...register("overtimeRate")}
+              />
+              <p className="text-[11px] fl-faint">{h.overtimeRateHint}</p>
+            </div>
+            <p className="text-[11px] fl-faint">{h.baseSalaryHint}</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label>{h.contractType}</Label>
               <Select
                 value={watch("contractType")}
@@ -369,12 +530,6 @@ export function EmployeeProfileFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="hr-util">{l.utilization}</Label>
-              <Input id="hr-util" type="number" min="0" max="100" className="fl-inp" {...register("utilization")} />
-            </div>
             <div className="space-y-2">
               <Label>{h.memberStatus}</Label>
               <Select
@@ -385,15 +540,21 @@ export function EmployeeProfileFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="fl-select-panel">
-                  {(Object.keys(h.statuses) as HrMemberStatus[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {h.statuses[s]}
+                  {(Object.keys(h.statuses) as HrMemberStatus[]).map((st) => (
+                    <SelectItem key={st} value={st}>
+                      {h.statuses[st]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hr-util">{l.utilization}</Label>
+            <Input id="hr-util" type="number" min="0" max="100" className="fl-inp" {...register("utilization")} />
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="hr-contract-start">{h.contractStart}</Label>

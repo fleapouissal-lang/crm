@@ -1,21 +1,25 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { FileText, Plus, Receipt } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Eye, FilePenLine, Plus, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PlatformQuoteDialog } from "@/components/admin/platform-quote-dialog";
+import { PlatformQuotePdfDialog } from "@/components/admin/platform-quote-pdf-dialog";
 import {
   convertQuoteToInvoice,
   deletePlatformQuote,
   listPlatformQuotes,
 } from "@/lib/actions/platform-billing";
+import { resolvePlatformCurrency } from "@/lib/billing/currency";
 import {
   QUOTE_STATUS_BADGE,
   formatPlatformMoney,
 } from "@/lib/billing/platform-docs";
+import { loadPreferences } from "@/lib/settings/storage";
+import type { CurrencyCode } from "@/lib/settings/types";
 import type { Organization, PlatformQuote } from "@/types/database";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +35,14 @@ export function AdminQuotesPageClient({
   const s = dict.fusion.settings;
   const [quotes, setQuotes] = useState(initialQuotes);
   const [formOpen, setFormOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [active, setActive] = useState<PlatformQuote | null>(null);
   const [pending, startTransition] = useTransition();
+  const [currency, setCurrency] = useState<CurrencyCode>("MAD");
+
+  useEffect(() => {
+    setCurrency(loadPreferences().currency);
+  }, []);
 
   const stats = useMemo(() => {
     const open = quotes.filter((q) => q.status === "draft" || q.status === "sent");
@@ -45,6 +55,16 @@ export function AdminQuotesPageClient({
     startTransition(async () => {
       setQuotes(await listPlatformQuotes());
     });
+  }
+
+  function openEdit(row: PlatformQuote) {
+    setActive(row);
+    setFormOpen(true);
+  }
+
+  function openPdf(row: PlatformQuote) {
+    setActive(row);
+    setPdfOpen(true);
   }
 
   function handleDelete(id: string) {
@@ -80,7 +100,7 @@ export function AdminQuotesPageClient({
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{b.quotesValue}</div>
-          <StatLine value={formatPlatformMoney(stats.value)} />
+          <StatLine value={formatPlatformMoney(stats.value, currency)} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{b.acceptedQuotes}</div>
@@ -116,7 +136,7 @@ export function AdminQuotesPageClient({
                 <th>{b.amount}</th>
                 <th>{b.validityDays}</th>
                 <th>{b.status}</th>
-                <th className="w-[8rem]">{s.actions}</th>
+                <th className="w-[9rem]">{s.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -135,9 +155,14 @@ export function AdminQuotesPageClient({
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">
-                      {formatPlatformMoney(Number(row.amount), row.currency)}
+                      {formatPlatformMoney(
+                        Number(row.amount),
+                        resolvePlatformCurrency(row.currency, currency)
+                      )}
                     </td>
-                    <td className="fl-faint">{row.validity_days} {b.days}</td>
+                    <td className="fl-faint">
+                      {row.validity_days} {b.days}
+                    </td>
                     <td>
                       <span
                         className={cn(
@@ -154,13 +179,21 @@ export function AdminQuotesPageClient({
                           type="button"
                           className="fl-btn sm ghost"
                           disabled={pending}
-                          title={b.editQuote}
-                          onClick={() => {
-                            setActive(row);
-                            setFormOpen(true);
-                          }}
+                          title={b.viewQuotePdf}
+                          aria-label={b.viewQuotePdf}
+                          onClick={() => openPdf(row)}
                         >
-                          <FileText className="size-3.5" />
+                          <Eye className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="fl-btn sm ghost"
+                          disabled={pending}
+                          title={b.editQuote}
+                          aria-label={b.editQuote}
+                          onClick={() => openEdit(row)}
+                        >
+                          <FilePenLine className="size-3.5" />
                         </button>
                         {row.status !== "accepted" && row.status !== "refused" ? (
                           <button
@@ -168,6 +201,7 @@ export function AdminQuotesPageClient({
                             className="fl-btn sm ghost"
                             disabled={pending}
                             title={b.convertToInvoice}
+                            aria-label={b.convertToInvoice}
                             onClick={() => handleConvert(row.id)}
                           >
                             <Receipt className="size-3.5" />
@@ -179,8 +213,10 @@ export function AdminQuotesPageClient({
                               type="button"
                               className="fl-btn sm ghost text-[var(--rose)]"
                               disabled={pending}
+                              title={dict.common.delete}
+                              aria-label={dict.common.delete}
                             >
-                              {dict.common.delete}
+                              <Trash2 className="size-3.5" />
                             </button>
                           }
                           title={b.deleteQuoteTitle}
@@ -207,6 +243,17 @@ export function AdminQuotesPageClient({
         companies={companies}
         quote={active}
         onSaved={refresh}
+        onPreviewPdf={(q) => {
+          setActive(q);
+          setFormOpen(false);
+          setPdfOpen(true);
+        }}
+      />
+
+      <PlatformQuotePdfDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        quote={active}
       />
     </div>
   );
