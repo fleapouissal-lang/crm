@@ -39,6 +39,7 @@ export type HrEntryRow = {
   hours: number | string | null;
   minutes: number | null;
   days: number | string | null;
+  leave_end_date: string | null;
   note: string | null;
   created_at: string;
 };
@@ -70,6 +71,7 @@ export function mapEntryRow(row: HrEntryRow): HrEntry {
     hours: num(row.hours),
     minutes: row.minutes ?? undefined,
     days: num(row.days),
+    endDate: row.leave_end_date ?? undefined,
     note: row.note ?? "",
     createdAt: row.created_at,
   };

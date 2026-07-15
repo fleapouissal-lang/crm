@@ -92,7 +92,14 @@ export function salaryAccountEntries(
   entries: HrEntry[],
   month?: string
 ): HrEntry[] {
-  const types = new Set(["bonus", "commission", "overtime", "lateness", "leave"]);
+  const types = new Set([
+    "bonus",
+    "commission",
+    "overtime",
+    "lateness",
+    "leave",
+    "note",
+  ]);
   return entries
     .filter((e) => {
       if (!types.has(e.type)) return false;

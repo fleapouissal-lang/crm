@@ -29,6 +29,8 @@ export interface HrEntry {
   /** Minutes late (lateness entries). */
   minutes?: number;
   days?: number;
+  /** End date for leave entries (inclusive range with date). */
+  endDate?: string;
   note?: string;
   createdAt: string;
 }

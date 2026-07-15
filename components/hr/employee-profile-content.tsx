@@ -21,7 +21,7 @@ import {
 } from "@/lib/hr/types";
 import { formatHrEntryValue } from "@/lib/hr/paths";
 import { ContractScanPanel } from "@/components/hr/contract-scan-panel";
-import { CellMain, FlChip, FlProgress } from "@/components/fusion/primitives";
+import { CellMain, FlChip } from "@/components/fusion/primitives";
 import { cn } from "@/lib/utils";
 
 function HrProfileTabs({
@@ -121,7 +121,7 @@ function HrEntryList({
                 {format(new Date(entry.date + "T00:00:00"), "dd MMM yyyy")}
               </span>
             </div>
-            {entry.note ? (
+            {entry.note?.trim() && entry.type !== "note" ? (
               <p className="mt-1 text-[12px] fl-muted">{entry.note}</p>
             ) : null}
           </div>
@@ -227,7 +227,7 @@ export function EmployeeProfileContent({
 
   return (
     <div className="space-y-5">
-      <div className="fl-card fl-pad">
+      <div className="fl-card fl-pad fl-hr-member-hero">
         <CellMain
           initials={member.initials}
           gradient={`linear-gradient(135deg,${member.color},#71717a)`}
@@ -235,12 +235,6 @@ export function EmployeeProfileContent({
           sub={profile.roleTitle}
         />
         <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
-          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-            <dt className="fl-muted">{h.businessUnit}</dt>
-            <dd className="font-medium text-end">
-              {profile.businessUnit?.trim() || "—"}
-            </dd>
-          </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted">{h.department}</dt>
             <dd className="font-medium">{h.departments[profile.department]}</dd>
@@ -261,24 +255,10 @@ export function EmployeeProfileContent({
             <dt className="fl-muted">{h.baseSalary}</dt>
             <dd className="font-medium fl-mono">{formatBaseSalary(profile)}</dd>
           </div>
-          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-            <dt className="fl-muted">{l.contract}</dt>
-            <dd>
-              <FlChip>{h.contracts[profile.contractType]}</FlChip>
-            </dd>
-          </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5 sm:col-span-2">
-            <dt className="fl-muted shrink-0">{l.utilization}</dt>
-            <dd className="min-w-[140px] flex-1">
-              <div className="mb-1 text-end fl-mono text-[11px] fl-faint">
-                {profile.utilization}%
-              </div>
-              <FlProgress value={profile.utilization} />
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-            <dt className="fl-muted">{dict.common.status}</dt>
-            <dd>
+            <dt className="fl-muted shrink-0">{h.contractAndStatus}</dt>
+            <dd className="flex flex-wrap items-center justify-end gap-2">
+              <FlChip>{h.contracts[profile.contractType]}</FlChip>
               <span className={cn("fl-badge", memberStatusBadgeClass(profile.status))}>
                 {profile.status === "active" ? b.active : h.statuses[profile.status]}
               </span>
@@ -408,7 +388,6 @@ export function EmployeeProfileContent({
               profile={profile}
               onUpload={onUploadScan}
               onDelete={onDeleteScan}
-              quickLabels={[h.contractTravail, h.contractStage]}
             />
           ) : null}
         </div>

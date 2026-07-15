@@ -13,7 +13,9 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import type { EmployeeProfile, HrContractScan } from "@/lib/hr/types";
+import { getHrContractScanSignedUrlAction } from "@/lib/actions/hr";
 import { cn } from "@/lib/utils";
+import { HrEmptyMotif } from "@/components/hr/hr-empty-motif";
 import {
   Dialog,
   DialogContent,
@@ -238,25 +240,145 @@ export type HrScanUploadInput = {
   label?: string;
 };
 
+function ContractDropzone({
+  pending,
+  labelValue,
+  onLabelChange,
+  onPickFile,
+  onDropFile,
+  onOpenCamera,
+  dropHint,
+  labelPlaceholder,
+  uploadPdfLabel,
+  takeScanLabel,
+}: {
+  pending: boolean;
+  labelValue: string;
+  onLabelChange: (value: string) => void;
+  onPickFile: (file: File) => void;
+  onDropFile: (file: File) => void;
+  onOpenCamera: () => void;
+  dropHint: string;
+  labelPlaceholder: string;
+  uploadPdfLabel: string;
+  takeScanLabel: string;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) onDropFile(file);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="fl-field mb-0">
+        <label htmlFor="contract-doc-label" className="fl-field-label">
+          {labelPlaceholder}
+        </label>
+        <input
+          id="contract-doc-label"
+          type="text"
+          className="fl-input"
+          value={labelValue}
+          disabled={pending}
+          placeholder={labelPlaceholder}
+          onChange={(e) => onLabelChange(e.target.value)}
+        />
+      </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        aria-disabled={pending}
+        className={cn(
+          "fl-hr-dropzone",
+          dragOver && "is-dragover",
+          pending && "opacity-60 pointer-events-none"
+        )}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="flex size-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--glass-solid)]">
+          <Upload className="size-5 text-[var(--iris)]" strokeWidth={1.75} />
+        </div>
+        <div>
+          <p className="text-sm font-medium">{uploadPdfLabel}</p>
+          <p className="mt-1 text-xs fl-faint">{dropHint}</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2 pt-1">
+          <span className="fl-btn sm primary pointer-events-none">
+            <FileText strokeWidth={2} />
+            PDF / Image
+          </span>
+          <button
+            type="button"
+            className="fl-btn sm"
+            disabled={pending}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenCamera();
+            }}
+          >
+            <Camera strokeWidth={2} />
+            {takeScanLabel}
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf,image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onPickFile(file);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ContractScanPanel({
   profile,
   onUpload,
   onDelete,
-  quickLabels,
 }: {
   profile: EmployeeProfile;
   onUpload: (input: HrScanUploadInput) => Promise<HrContractScan | null>;
   onDelete: (scanId: string) => void;
-  quickLabels?: string[];
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
   const l = dict.fusion.labels;
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [docLabel, setDocLabel] = useState("");
 
   const scans = profile.contractScans ?? [];
 
@@ -264,32 +386,26 @@ export function ContractScanPanel({
     const scan = await onUpload({
       memberId: profile.memberId,
       file: captured.file,
-      label: selectedLabel || captured.label,
+      label: docLabel.trim() || captured.label,
     });
-    setSelectedLabel(null);
-    if (scan) toast.success(h.scanUploaded);
+    if (scan) {
+      setDocLabel("");
+      toast.success(h.scanUploaded);
+    }
   }
 
-  function handleFileChange(
-    e: React.ChangeEvent<HTMLInputElement>,
-    kind: "pdf" | "image"
-  ) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function processFile(file: File) {
+    const isPdf =
+      file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
 
-    if (file.size > MAX_SCAN_BYTES && kind === "pdf") {
-      toast.error(h.scanTooLarge);
+    if (!isPdf && !isImage) {
+      toast.error(h.scanInvalidType);
       return;
     }
 
-    const allowed =
-      kind === "pdf"
-        ? file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-        : file.type.startsWith("image/");
-
-    if (!allowed) {
-      toast.error(kind === "pdf" ? h.scanPdfOnly : h.scanImageOnly);
+    if (file.size > MAX_SCAN_BYTES && isPdf) {
+      toast.error(h.scanTooLarge);
       return;
     }
 
@@ -306,74 +422,6 @@ export function ContractScanPanel({
       }
     });
   }
-
-  const uploadActions = (
-    <div className="flex flex-wrap gap-2">
-      {quickLabels?.map((label) => (
-        <button
-          key={label}
-          type="button"
-          className={cn(
-            "fl-btn sm",
-            selectedLabel === label ? "primary" : "ghost"
-          )}
-          disabled={pending}
-          onClick={() => {
-            setSelectedLabel(label);
-            pdfInputRef.current?.click();
-          }}
-        >
-          <FileText strokeWidth={2} />
-          {label}
-        </button>
-      ))}
-      <button
-        type="button"
-        className="fl-btn sm primary"
-        disabled={pending}
-        onClick={() => {
-          setSelectedLabel(null);
-          pdfInputRef.current?.click();
-        }}
-      >
-        <FileText strokeWidth={2} />
-        {h.uploadPdf}
-      </button>
-      <button
-        type="button"
-        className="fl-btn sm"
-        disabled={pending}
-        onClick={() => setCameraOpen(true)}
-      >
-        <Camera strokeWidth={2} />
-        {h.takeScan}
-      </button>
-      <button
-        type="button"
-        className="fl-btn sm ghost"
-        disabled={pending}
-        onClick={() => imageInputRef.current?.click()}
-      >
-        <Upload strokeWidth={2} />
-        {h.uploadImage}
-      </button>
-      <input
-        ref={pdfInputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="hidden"
-        onChange={(e) => handleFileChange(e, "pdf")}
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => handleFileChange(e, "image")}
-      />
-    </div>
-  );
 
   return (
     <div className="space-y-5">
@@ -404,25 +452,32 @@ export function ContractScanPanel({
         ) : null}
       </dl>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h4 className="text-sm font-semibold">{h.contractScans}</h4>
-          <p className="fl-tny fl-faint mt-0.5">{h.contractScansHint}</p>
-        </div>
-        {uploadActions}
-      </div>
+      <ContractDropzone
+        pending={pending}
+        labelValue={docLabel}
+        onLabelChange={setDocLabel}
+        onPickFile={processFile}
+        onDropFile={processFile}
+        onOpenCamera={() => setCameraOpen(true)}
+        dropHint={h.contractDropHint}
+        labelPlaceholder={h.contractDocLabel}
+        uploadPdfLabel={h.uploadContract}
+        takeScanLabel={h.takeScan}
+      />
 
       {scans.length === 0 ? (
-        <div className="fl-hr-scan-empty rounded-xl border border-dashed border-[var(--border)] px-4 py-12 text-center">
-          <FileText className="mx-auto mb-3 size-10 fl-faint opacity-50" strokeWidth={1.5} />
-          <p className="text-sm fl-faint">{h.noContractScans}</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">{uploadActions}</div>
-        </div>
+        <HrEmptyMotif
+          icon={FileText}
+          title={h.noContractScans}
+          description={h.contractScansHint}
+          size="md"
+        />
       ) : (
         <div className="fl-hr-scan-grid">
           {scans.map((scan) => (
             <ContractScanCard
               key={scan.id}
+              memberId={profile.memberId}
               scan={scan}
               viewLabel={h.viewScan}
               deleteLabel={dict.common.delete}
@@ -448,6 +503,7 @@ export function ContractScanPanel({
 }
 
 function ContractScanCard({
+  memberId,
   scan,
   viewLabel,
   deleteLabel,
@@ -455,6 +511,7 @@ function ContractScanCard({
   scanLabel,
   onDelete,
 }: {
+  memberId: string;
   scan: HrContractScan;
   viewLabel: string;
   deleteLabel: string;
@@ -462,12 +519,37 @@ function ContractScanCard({
   scanLabel: string;
   onDelete: () => void;
 }) {
+  const dict = useDict();
+  const h = dict.fusion.hr;
+  const [opening, setOpening] = useState(false);
   const isImage = scan.mimeType.startsWith("image/");
   const isPdf = scan.mimeType === "application/pdf";
 
+  const openInNewTab = useCallback(async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const res = await getHrContractScanSignedUrlAction(memberId, scan.id);
+      const url = res.success && res.data ? res.data : scan.dataUrl;
+      if (!url) {
+        toast.error(h.scanPreviewFailed);
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    } finally {
+      setOpening(false);
+    }
+  }, [opening, memberId, scan.id, scan.dataUrl, h.scanPreviewFailed]);
+
   return (
     <article className="fl-hr-scan-card fl-card overflow-hidden">
-      <div className="fl-hr-scan-preview relative">
+      <button
+        type="button"
+        className="fl-hr-scan-preview relative block w-full cursor-pointer border-0 p-0 text-start"
+        aria-label={viewLabel}
+        disabled={opening}
+        onClick={() => void openInNewTab()}
+      >
         {isImage && scan.dataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={scan.dataUrl} alt={scan.fileName} className="size-full object-cover" />
@@ -491,7 +573,7 @@ function ContractScanCard({
         >
           {isPdf ? pdfLabel : scanLabel}
         </span>
-      </div>
+      </button>
       <div className="fl-pad space-y-2">
         <p className="truncate text-[13px] font-medium" title={scan.fileName}>
           {scan.label ?? scan.fileName}
@@ -500,21 +582,15 @@ function ContractScanCard({
           {format(new Date(scan.uploadedAt), "dd MMM yyyy · HH:mm")}
         </p>
         <div className="flex gap-1.5">
-          {scan.dataUrl ? (
-            <a
-              href={scan.dataUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn("fl-btn sm ghost flex-1 justify-center text-[11px]")}
-            >
-              <ExternalLink className="size-3" strokeWidth={2} />
-              {viewLabel}
-            </a>
-          ) : (
-            <span className="fl-btn sm ghost flex-1 justify-center text-[11px] opacity-50">
-              {viewLabel}
-            </span>
-          )}
+          <button
+            type="button"
+            className={cn("fl-btn sm ghost flex-1 justify-center text-[11px]")}
+            disabled={opening}
+            onClick={() => void openInNewTab()}
+          >
+            <ExternalLink className="size-3" strokeWidth={2} />
+            {viewLabel}
+          </button>
           <button
             type="button"
             className="fl-btn sm ghost text-[11px] text-[var(--rose)]"

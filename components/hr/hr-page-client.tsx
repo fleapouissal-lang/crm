@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { Profile } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
-import { CellMain, FlProgress, StatLine } from "@/components/fusion/primitives";
+import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import {
   EmployeeProfileFormDialog,
@@ -183,7 +183,6 @@ export function HrPageClient({
         member.name.toLowerCase().includes(q) ||
         member.initials.toLowerCase().includes(q) ||
         profile?.roleTitle.toLowerCase().includes(q) ||
-        (profile?.businessUnit ?? "").toLowerCase().includes(q) ||
         (profile?.email ?? "").toLowerCase().includes(q) ||
         (profile?.phone ?? "").toLowerCase().includes(q)
       );
@@ -312,20 +311,19 @@ export function HrPageClient({
             <thead>
               <tr>
                 <th>{l.person}</th>
-                <th>{h.businessUnit}</th>
+                <th>{h.department}</th>
                 <th>{h.contact}</th>
                 <th>{h.baseSalary}</th>
                 <th>{h.overtime}</th>
                 <th>{h.lateness}</th>
-                <th>{l.utilization}</th>
-                <th>{dict.common.status}</th>
+                <th>{h.contractAndStatus}</th>
                 <th className="col-actions" />
               </tr>
             </thead>
             <tbody>
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center fl-faint">
+                  <td colSpan={7} className="py-16 text-center fl-faint">
                     {h.noEntries}
                   </td>
                 </tr>
@@ -356,7 +354,7 @@ export function HrPageClient({
                         </Link>
                       </td>
                       <td className="fl-muted max-w-[140px] truncate">
-                        {profile.businessUnit?.trim() || "—"}
+                        {h.departments[profile.department]}
                       </td>
                       <td className="max-w-[180px]">
                         <div className="truncate text-[13px]">
@@ -384,20 +382,20 @@ export function HrPageClient({
                       <td className="fl-mono text-[13px]">
                         {sumEntries(entries, "lateness")}
                       </td>
-                      <td className="min-w-[100px]">
-                        <FlProgress value={profile.utilization} />
-                      </td>
                       <td>
-                        <span
-                          className={cn(
-                            "fl-badge",
-                            memberStatusBadgeClass(profile.status)
-                          )}
-                        >
-                          {profile.status === "active"
-                            ? b.active
-                            : h.statuses[profile.status]}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <FlChip>{h.contracts[profile.contractType]}</FlChip>
+                          <span
+                            className={cn(
+                              "fl-badge",
+                              memberStatusBadgeClass(profile.status)
+                            )}
+                          >
+                            {profile.status === "active"
+                              ? b.active
+                              : h.statuses[profile.status]}
+                          </span>
+                        </div>
                       </td>
                       <td
                         className="col-actions"

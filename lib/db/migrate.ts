@@ -89,7 +89,14 @@ export async function runMigrations(options?: {
     }
 
     if (applied.length === 0) {
+      if (url.includes("supabase.co")) {
+        await sql.unsafe(`NOTIFY pgrst, 'reload schema'`);
+      }
       return { status: "noop", message: "Database is up to date" };
+    }
+
+    if (url.includes("supabase.co")) {
+      await sql.unsafe(`NOTIFY pgrst, 'reload schema'`);
     }
 
     return { status: "success", applied };

@@ -10,7 +10,7 @@ import {
   memberStatusBadgeClass,
   sumEntries,
 } from "@/lib/hr/types";
-import { CellMain, FlChip, FlProgress } from "@/components/fusion/primitives";
+import { CellMain, FlChip } from "@/components/fusion/primitives";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,17 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatHrEntryValue } from "@/lib/hr/paths";
 import { cn } from "@/lib/utils";
-
-function formatEntryValue(entry: HrEntry, h: ReturnType<typeof useDict>["fusion"]["hr"]) {
-  if (entry.type === "bonus" || entry.type === "commission") {
-    return `${entry.amount?.toLocaleString() ?? 0} ${entry.currency ?? "MAD"}`;
-  }
-  if (entry.type === "overtime") return `${entry.hours ?? 0}h`;
-  if (entry.type === "leave") return `${entry.days ?? 0} ${h.days.toLowerCase()}`;
-  if (entry.type === "lateness") return h.lateness;
-  return h.note;
-}
 
 export function EmployeeDetailDialog({
   open,
@@ -111,19 +102,10 @@ export function EmployeeDetailDialog({
               <dt className="fl-muted">{h.department}</dt>
               <dd className="font-medium">{h.departments[profile.department]}</dd>
             </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2">
-              <dt className="fl-muted">{l.contract}</dt>
-              <dd><FlChip>{h.contracts[profile.contractType]}</FlChip></dd>
-            </div>
             <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2 sm:col-span-2">
-              <dt className="fl-muted">{l.utilization}</dt>
-              <dd className="min-w-[120px] flex-1">
-                <FlProgress value={profile.utilization} />
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2">
-              <dt className="fl-muted">{dict.common.status}</dt>
-              <dd>
+              <dt className="fl-muted shrink-0">{h.contractAndStatus}</dt>
+              <dd className="flex flex-wrap items-center justify-end gap-2">
+                <FlChip>{h.contracts[profile.contractType]}</FlChip>
                 <span className={cn("fl-badge", memberStatusBadgeClass(profile.status))}>
                   {h.statuses[profile.status]}
                 </span>
@@ -171,12 +153,12 @@ export function EmployeeDetailDialog({
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 text-[13px]">
-                        <b>{formatEntryValue(entry, h)}</b>
+                        <b>{formatHrEntryValue(entry, h)}</b>
                         <span className="fl-faint fl-tny">
                           {format(new Date(entry.date + "T00:00:00"), "dd MMM yyyy")}
                         </span>
                       </div>
-                      {entry.note ? (
+                      {entry.note?.trim() && entry.type !== "note" ? (
                         <p className="mt-1 text-[12px] fl-muted">{entry.note}</p>
                       ) : null}
                     </div>

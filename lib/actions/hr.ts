@@ -214,6 +214,7 @@ export async function upsertHrEntryAction(
     hours: entry.hours ?? null,
     minutes: entry.minutes ?? null,
     days: entry.days ?? null,
+    leave_end_date: entry.endDate ?? null,
     note: entry.note ?? "",
     created_by: gate.profile.id,
     created_at: entry.createdAt || new Date().toISOString(),
@@ -244,6 +245,7 @@ export async function upsertHrEntryAction(
       hours: row.hours != null ? Number(row.hours) : undefined,
       minutes: row.minutes ?? undefined,
       days: row.days != null ? Number(row.days) : undefined,
+      endDate: row.leave_end_date ?? undefined,
       note: row.note ?? "",
       createdAt: row.created_at,
     },
@@ -388,4 +390,33 @@ export async function deleteHrContractScanAction(
   await supabase.storage.from(HR_BUCKET).remove([row.storage_path as string]);
   revalidateHr(memberId);
   return { success: true, data: undefined };
+}
+
+export async function getHrContractScanSignedUrlAction(
+  memberId: string,
+  scanId: string
+): Promise<ActionResult<string>> {
+  const gate = await requireLeadership();
+  if (!gate.ok) return { success: false, error: gate.error };
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("hr_contract_scans")
+    .select("storage_path")
+    .eq("id", scanId)
+    .eq("organization_id", gate.orgId)
+    .eq("member_id", memberId)
+    .maybeSingle();
+
+  if (error || !row?.storage_path) {
+    return { success: false, error: error?.message ?? "Not found" };
+  }
+
+  const signed = await signScanPaths([row.storage_path as string]);
+  const url = signed.get(row.storage_path as string);
+  if (!url) {
+    return { success: false, error: "Could not sign URL" };
+  }
+
+  return { success: true, data: url };
 }

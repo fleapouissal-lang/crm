@@ -22,6 +22,7 @@ import {
   HrEntryFormDialog,
 } from "@/components/hr/hr-form-dialogs";
 import { ContractScanPanel } from "@/components/hr/contract-scan-panel";
+import { HrEmptyMotif } from "@/components/hr/hr-empty-motif";
 import type { EmployeeProfile, HrEntry, HrEntryType } from "@/lib/hr/types";
 import {
   entryTypeBadgeClass,
@@ -179,9 +180,7 @@ export function SalaryAccountPageClient({
         </div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{member.name}</h1>
         <p className="mt-1 text-sm fl-muted">
-          {profile.roleTitle}
-          {profile.businessUnit?.trim() ? ` · ${profile.businessUnit}` : ""} ·{" "}
-          {h.payrollMonth} {payroll.month}
+          {profile.roleTitle} · {h.payrollMonth} {payroll.month}
         </p>
       </div>
 
@@ -229,7 +228,7 @@ export function SalaryAccountPageClient({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="fl-card fl-pad space-y-4">
+        <div className="fl-card fl-pad space-y-4 fl-hr-member-hero">
           <h3 className="text-sm font-semibold">{h.memberInfo}</h3>
           <CellMain
             initials={member.initials}
@@ -239,10 +238,6 @@ export function SalaryAccountPageClient({
           />
           <dl className="grid gap-2 text-sm">
             <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-              <dt className="fl-muted">{h.businessUnit}</dt>
-              <dd className="font-medium">{profile.businessUnit?.trim() || "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
               <dt className="fl-muted">{dict.fusion.settings.phone}</dt>
               <dd className="font-medium truncate">{phone}</dd>
             </div>
@@ -251,18 +246,13 @@ export function SalaryAccountPageClient({
               <dd className="font-medium truncate">{email}</dd>
             </div>
             <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-              <dt className="fl-muted">{l.contract}</dt>
-              <dd>
-                <FlChip>{h.contracts[profile.contractType]}</FlChip>
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
               <dt className="fl-muted">{h.baseSalary}</dt>
               <dd className="font-medium fl-mono">{formatBaseSalary(profile)}</dd>
             </div>
             <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-              <dt className="fl-muted">{dict.common.status}</dt>
-              <dd>
+              <dt className="fl-muted shrink-0">{h.contractAndStatus}</dt>
+              <dd className="flex flex-wrap items-center justify-end gap-2">
+                <FlChip>{h.contracts[profile.contractType]}</FlChip>
                 <span className={cn("fl-badge", memberStatusBadgeClass(profile.status))}>
                   {profile.status === "active" ? b.active : h.statuses[profile.status]}
                 </span>
@@ -319,7 +309,18 @@ export function SalaryAccountPageClient({
           <FileText className="size-4 text-[var(--text-faint)]" />
         </div>
         {monthEntries.length === 0 ? (
-          <p className="py-8 text-center text-sm fl-faint">{h.noEntries}</p>
+          <HrEmptyMotif
+            icon={FileText}
+            title={h.noEntriesThisMonth}
+            description={h.noEntriesThisMonthHint}
+            size="lg"
+            action={
+              <button type="button" className="fl-btn sm primary" onClick={() => openEntry("bonus")}>
+                <Plus className="size-3.5" strokeWidth={2} />
+                {h.addEntry}
+              </button>
+            }
+          />
         ) : (
           <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
             {monthEntries.map((entry) => (
@@ -342,7 +343,7 @@ export function SalaryAccountPageClient({
                       {format(new Date(entry.date + "T00:00:00"), "dd MMM yyyy")}
                     </span>
                   </div>
-                  {entry.note ? (
+                  {entry.note?.trim() && entry.type !== "note" ? (
                     <p className="mt-1 text-[12px] fl-muted">{entry.note}</p>
                   ) : null}
                 </div>
@@ -363,10 +364,7 @@ export function SalaryAccountPageClient({
 
       <div className="fl-card overflow-hidden">
         <div className="border-b border-[var(--border)] px-4 py-3">
-          <h3 className="text-sm font-semibold">{h.contractsDocuments}</h3>
-          <p className="mt-0.5 text-xs fl-faint">
-            {h.contractTravail} · {h.contractStage} · PDF
-          </p>
+          <h3 className="text-sm font-semibold">{l.contract}</h3>
         </div>
         <div className="fl-pad">
           <ContractScanPanel
@@ -376,7 +374,6 @@ export function SalaryAccountPageClient({
               deleteScan(memberId, scanId);
               toast.success(h.scanDeleted);
             }}
-            quickLabels={[h.contractTravail, h.contractStage]}
           />
         </div>
       </div>
