@@ -1461,7 +1461,7 @@ a.fusion-user-card:hover .fusion-user-meta b {
 .profile-avatar-lg {
   width: 88px;
   height: 88px;
-  border-radius: 22px;
+  border-radius: 9999px;
   display: grid;
   place-items: center;
   flex-shrink: 0;

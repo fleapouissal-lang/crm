@@ -194,7 +194,7 @@ export function ProfileAvatarEditor({
         <button
           type="button"
           className={cn(
-            "absolute -bottom-1 -right-1 grid size-9 place-items-center rounded-xl",
+            "absolute -bottom-0.5 -right-0.5 grid size-9 place-items-center rounded-full",
             "border border-[var(--border)] bg-[var(--bg-2)] text-[var(--text)] shadow-sm",
             "transition hover:border-[var(--gold)] hover:text-[var(--gold)]",
             pending && "pointer-events-none opacity-60"
