@@ -50,7 +50,7 @@ VALUES (
   'project-reports',
   'project-reports',
   false,
-  5242880,
+  10485760,
   ARRAY['application/pdf']
 )
 ON CONFLICT (id) DO UPDATE SET
