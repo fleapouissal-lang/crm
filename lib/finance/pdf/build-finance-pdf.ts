@@ -7,7 +7,11 @@ import {
   type PDFPage,
 } from "pdf-lib";
 import type { Locale } from "@/lib/i18n/types";
-import { FUSION_COMPANY } from "../company-info";
+import {
+  financeIssuerFromOrganization,
+  issuerCompanyLines,
+  type FinanceIssuer,
+} from "../company-info";
 import { formatDateFr, splitTtcAmount } from "../render-template";
 import type { ClientType, DocumentTemplate, InvoiceRecord, QuoteRecord } from "../types";
 import { pdfSafe, formatAmountFr } from "./pdf-text";
@@ -22,8 +26,8 @@ const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const M = 52;
 const CONTENT_W = PAGE_W - M * 2;
-const LOGO_W = 108;
-const LOGO_H = 40;
+const LOGO_W = 128;
+const LOGO_H = 48;
 const HEADER_BOTTOM = PAGE_H - M - 108;
 const FOOTER_HEIGHT = 72;
 const CONTENT_BOTTOM = M + FOOTER_HEIGHT + 16;
@@ -72,19 +76,80 @@ const MONO_THEME: PdfTheme = {
   totalsBar: BLACK,
 };
 
-let logoBytesCache: Uint8Array | null = null;
+const logoBytesCache = new Map<string, Uint8Array | null>();
 
-async function loadLogoBytes(): Promise<Uint8Array | null> {
-  if (typeof window === "undefined") return null;
-  if (logoBytesCache) return logoBytesCache;
+function issuerLogoCandidates(issuer: FinanceIssuer): string[] {
+  const list: string[] = [];
+  const push = (url: string | null | undefined) => {
+    const trimmed = url?.trim();
+    if (trimmed && !list.includes(trimmed)) list.push(trimmed);
+  };
+
+  push(issuer.logoUrl);
+  push(issuer.storedLogoUrl);
+  if (issuer.organizationId) {
+    push(`/api/org-logos/${issuer.organizationId}`);
+  }
+  return list;
+}
+
+async function fetchLogoBytes(url: string): Promise<Uint8Array | null> {
+  if (logoBytesCache.has(url)) return logoBytesCache.get(url) ?? null;
   try {
-    const res = await fetch(FUSION_COMPANY.logoPath);
-    if (!res.ok) return null;
-    logoBytesCache = new Uint8Array(await res.arrayBuffer());
-    return logoBytesCache;
+    const res = await fetch(url, { referrerPolicy: "no-referrer", cache: "no-store" });
+    if (!res.ok) {
+      logoBytesCache.set(url, null);
+      return null;
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (!bytes.byteLength) {
+      logoBytesCache.set(url, null);
+      return null;
+    }
+    logoBytesCache.set(url, bytes);
+    return bytes;
   } catch {
+    logoBytesCache.set(url, null);
     return null;
   }
+}
+
+async function imageBytesToPng(bytes: Uint8Array): Promise<Uint8Array | null> {
+  if (typeof window === "undefined") return null;
+  const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer]);
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("logo_decode_failed"));
+      el.src = objectUrl;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, img.naturalWidth || img.width);
+    canvas.height = Math.max(1, img.naturalHeight || img.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    const pngBlob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/png")
+    );
+    if (!pngBlob) return null;
+    return new Uint8Array(await pngBlob.arrayBuffer());
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function loadLogoBytes(issuer: FinanceIssuer): Promise<Uint8Array | null> {
+  if (typeof window === "undefined") return null;
+  for (const url of issuerLogoCandidates(issuer)) {
+    const bytes = await fetchLogoBytes(url);
+    if (bytes) return bytes;
+  }
+  return null;
 }
 
 function t(value: string): string {
@@ -156,6 +221,7 @@ function drawPageHeader(
   docTitle: string,
   docNumber: string,
   theme: PdfTheme,
+  issuer: FinanceIssuer,
   logo?: PDFImage | null
 ) {
   const rtl = labels.rtl;
@@ -206,16 +272,7 @@ function drawPageHeader(
   });
   y -= 18;
 
-  const companyLines = [
-    `${FUSION_COMPANY.name}  ·  ${FUSION_COMPANY.legalForm}`,
-    `${FUSION_COMPANY.addressLine1}, ${FUSION_COMPANY.addressLine2}`,
-    FUSION_COMPANY.country,
-    `${FUSION_COMPANY.ice}   ${FUSION_COMPANY.rc}   ${FUSION_COMPANY.taxId}`,
-    FUSION_COMPANY.capital,
-    `${FUSION_COMPANY.phone}   ${FUSION_COMPANY.email}   ${FUSION_COMPANY.website}`,
-  ];
-
-  for (const line of companyLines) {
+  for (const line of issuerCompanyLines(issuer)) {
     drawAlignedText(page, line, {
       x: textAnchor,
       y,
@@ -236,6 +293,7 @@ function drawPageFooter(
   labels: PdfLabels,
   pageIndex: number,
   totalPages: number,
+  issuer: FinanceIssuer,
   options: {
     showBankDetails?: boolean;
     footerNote?: string;
@@ -267,30 +325,53 @@ function drawPageFooter(
       color: SLATE,
       align: leftAlign,
     });
-    drawAlignedText(page, `${FUSION_COMPANY.bank}  ·  IBAN ${FUSION_COMPANY.iban}`, {
-      x: leftX,
-      y: footerTop - 24,
-      size: 7.5,
-      font: fonts.regular,
-      color: INK,
-      align: leftAlign,
-    });
+    const bankLine = [issuer.bank, issuer.iban ? `IBAN ${issuer.iban}` : ""]
+      .filter(Boolean)
+      .join("  ·  ");
+    if (bankLine) {
+      drawAlignedText(page, bankLine, {
+        x: leftX,
+        y: footerTop - 24,
+        size: 7.5,
+        font: fonts.regular,
+        color: INK,
+        align: leftAlign,
+      });
+    }
 
-    const legal = `${FUSION_COMPANY.name} ${FUSION_COMPANY.legalForm}  ·  ${FUSION_COMPANY.website}`;
-    drawAlignedText(page, legal, {
-      x: leftX,
-      y: footerTop - 36,
-      size: 6.5,
-      font: fonts.regular,
-      color: MUTED,
-      align: leftAlign,
-    });
+    const legal = [issuer.name, issuer.legalForm, issuer.website]
+      .filter(Boolean)
+      .join("  ·  ");
+    if (legal) {
+      drawAlignedText(page, legal, {
+        x: leftX,
+        y: footerTop - 36,
+        size: 6.5,
+        font: fonts.regular,
+        color: MUTED,
+        align: leftAlign,
+      });
+    }
 
     if (footerNote.trim()) {
       const note = wrapLines(footerNote, fonts.regular, 6.5, CONTENT_W * 0.5)[0] ?? "";
       drawAlignedText(page, note, {
         x: leftX,
         y: footerTop - 48,
+        size: 6.5,
+        font: fonts.regular,
+        color: MUTED,
+        align: leftAlign,
+      });
+    }
+  } else {
+    const legal = [issuer.name, issuer.legalForm, issuer.website]
+      .filter(Boolean)
+      .join("  ·  ");
+    if (legal) {
+      drawAlignedText(page, legal, {
+        x: leftX,
+        y: footerTop - 24,
         size: 6.5,
         font: fonts.regular,
         color: MUTED,
@@ -341,13 +422,14 @@ class PdfWriter {
     private readonly docTitle: string,
     private readonly docNumber: string,
     private readonly logo: PDFImage | null,
+    private readonly issuer: FinanceIssuer,
     private readonly footer: {
       showBankDetails?: boolean;
       footerNote?: string;
       dueLabel?: string;
       dueValue?: string;
     } = {},
-    blackAndWhite = false
+    blackAndWhite = true
   ) {
     this.theme = blackAndWhite ? MONO_THEME : BRAND_THEME;
     this.newPage();
@@ -363,6 +445,7 @@ class PdfWriter {
       this.docTitle,
       this.docNumber,
       this.theme,
+      this.issuer,
       this.logo
     );
     this.y = HEADER_BOTTOM - 20;
@@ -376,7 +459,7 @@ class PdfWriter {
     const total = this.pages.length;
     this.pages.forEach((page, index) => {
       const last = index === total - 1;
-      drawPageFooter(page, this.fonts, this.labels, index + 1, total, {
+      drawPageFooter(page, this.fonts, this.labels, index + 1, total, this.issuer, {
         showBankDetails: this.footer.showBankDetails,
         footerNote: this.footer.footerNote,
         dueLabel: last ? this.footer.dueLabel : undefined,
@@ -540,7 +623,7 @@ class PdfWriter {
 
     const prepared = rows.map((row) => {
       const lineTtc = Math.round(row.quantity * row.unitPriceTtc * 100) / 100;
-      const { ht } = splitTtcAmount(lineTtc);
+      const { ht } = splitTtcAmount(lineTtc, this.issuer.tvaRate);
       const unitHt =
         row.quantity > 0
           ? Math.round((ht / row.quantity) * 100) / 100
@@ -635,7 +718,7 @@ class PdfWriter {
   }
 
   drawTotals(amountTtc: number, currency: string) {
-    const { ht, tva, ttc } = splitTtcAmount(amountTtc);
+    const { ht, tva, ttc } = splitTtcAmount(amountTtc, this.issuer.tvaRate);
     const rtl = this.labels.rtl;
     const boxW = 220;
     const boxX = rtl ? M : PAGE_W - M - boxW;
@@ -663,7 +746,7 @@ class PdfWriter {
     const rows = [
       { label: this.labels.totalHtLabel, value: formatMoneyPdf(ht, currency), bold: false },
       {
-        label: `${this.labels.tva} (${Math.round(FUSION_COMPANY.tvaRate * 100)} %)`,
+        label: `${this.labels.tva} (${Math.round(this.issuer.tvaRate * 100)} %)`,
         value: formatMoneyPdf(tva, currency),
         bold: false,
       },
@@ -728,24 +811,47 @@ async function createFonts(doc: PDFDocument): Promise<Fonts> {
   };
 }
 
-async function embedLogo(doc: PDFDocument): Promise<PDFImage | null> {
-  const bytes = await loadLogoBytes();
+async function embedLogo(
+  doc: PDFDocument,
+  issuer: FinanceIssuer
+): Promise<PDFImage | null> {
+  const bytes = await loadLogoBytes(issuer);
   if (!bytes) return null;
+
   try {
     return await doc.embedPng(bytes);
+  } catch {
+    /* try jpg next */
+  }
+  try {
+    return await doc.embedJpg(bytes);
+  } catch {
+    /* convert via canvas */
+  }
+
+  const png = await imageBytesToPng(bytes);
+  if (!png) return null;
+  try {
+    return await doc.embedPng(png);
   } catch {
     return null;
   }
 }
 
+function resolveIssuer(issuer?: FinanceIssuer | null): FinanceIssuer {
+  return issuer ?? financeIssuerFromOrganization(null);
+}
+
 export async function buildQuotePdfBytes(
   quote: QuoteRecord,
   _template?: DocumentTemplate,
-  locale: Locale = "fr"
+  locale: Locale = "fr",
+  issuerInput?: FinanceIssuer | null
 ): Promise<Uint8Array> {
+  const issuer = resolveIssuer(issuerInput);
   const doc = await PDFDocument.create();
   const fontSet = await createFonts(doc);
-  const logo = await embedLogo(doc);
+  const logo = await embedLogo(doc, issuer);
   const labels = getPdfLabels(locale);
 
   const issueDate = formatDateFr(quote.createdAt);
@@ -761,7 +867,9 @@ export async function buildQuotePdfBytes(
     labels.docQuote,
     quote.number,
     logo,
-    { showBankDetails: false }
+    issuer,
+    { showBankDetails: false },
+    true
   );
 
   writer.drawMetaStrip([
@@ -783,11 +891,13 @@ export async function buildInvoicePdfBytes(
   invoice: InvoiceRecord,
   template?: DocumentTemplate,
   linkedQuote?: QuoteRecord,
-  locale: Locale = "fr"
+  locale: Locale = "fr",
+  issuerInput?: FinanceIssuer | null
 ): Promise<Uint8Array> {
+  const issuer = resolveIssuer(issuerInput);
   const doc = await PDFDocument.create();
   const fontSet = await createFonts(doc);
-  const logo = await embedLogo(doc);
+  const logo = await embedLogo(doc, issuer);
   const labels = getPdfLabels(locale);
 
   const service = linkedQuote?.service || invoice.notes || "Prestation";
@@ -813,6 +923,7 @@ export async function buildInvoicePdfBytes(
     labels.docInvoice,
     invoice.number,
     logo,
+    issuer,
     {
       showBankDetails: true,
       footerNote,
@@ -849,9 +960,10 @@ export function downloadPdfBytes(bytes: Uint8Array, filename: string) {
 export async function downloadQuotePdf(
   quote: QuoteRecord,
   template?: DocumentTemplate,
-  locale: Locale = "fr"
+  locale: Locale = "fr",
+  issuer?: FinanceIssuer | null
 ) {
-  const bytes = await buildQuotePdfBytes(quote, template, locale);
+  const bytes = await buildQuotePdfBytes(quote, template, locale, issuer);
   downloadPdfBytes(bytes, `${quote.number}.pdf`);
 }
 
@@ -859,8 +971,9 @@ export async function downloadInvoicePdf(
   invoice: InvoiceRecord,
   template?: DocumentTemplate,
   linkedQuote?: QuoteRecord,
-  locale: Locale = "fr"
+  locale: Locale = "fr",
+  issuer?: FinanceIssuer | null
 ) {
-  const bytes = await buildInvoicePdfBytes(invoice, template, linkedQuote, locale);
+  const bytes = await buildInvoicePdfBytes(invoice, template, linkedQuote, locale, issuer);
   downloadPdfBytes(bytes, `${invoice.number}.pdf`);
 }

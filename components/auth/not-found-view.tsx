@@ -51,7 +51,7 @@ export function NotFoundView() {
         </div>
 
         <footer className="login-split__legal">
-          <span>© {new Date().getFullYear()} Fusion Leap CRM</span>
+          <span>© {new Date().getFullYear()} CRM</span>
         </footer>
       </section>
 

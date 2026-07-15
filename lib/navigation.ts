@@ -79,6 +79,7 @@ export const workspaceNav: NavItem[] = [
   { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leadership" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
+  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
   { id: "tasks", href: "/tasks?view=list", icon: CheckSquare, labelKey: "tasks", capability: "tasks" },
   { id: "kanban", href: "/tasks?view=board", icon: Columns3, labelKey: "kanbanTasks", capability: "tasks" },
   { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "calendar" },
@@ -106,7 +107,6 @@ export const operationsNav: NavItem[] = [
     capability: "finance_docs",
   },
   { id: "hr", href: "/hr", icon: Users, labelKey: "hr", capability: "leadership" },
-  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
 ];
 
 export const systemNav: NavItem[] = [

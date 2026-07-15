@@ -1,42 +1,38 @@
 "use client";
 
-import { FusionLeapBrand } from "@/components/brand/fusion-leap-logo";
+import { OrgLogo } from "@/components/shared/org-logo";
 import { cn } from "@/lib/utils";
 
 export function CompanyBrand({
+  organizationId,
   name,
   logoUrl,
   collapsed = false,
   className,
 }: {
+  organizationId?: string | null;
   name?: string | null;
   logoUrl?: string | null;
   collapsed?: boolean;
   className?: string;
 }) {
-  if (!logoUrl) {
-    return <FusionLeapBrand collapsed={collapsed} className={className} />;
-  }
-
   return (
     <div
       className={cn(
-        "fusion-brand-logo fusion-org-brand",
-        collapsed && "fusion-brand-logo--icon fusion-org-brand--icon",
+        "fusion-brand-logo fusion-org-brand fusion-org-brand--sidebar",
+        collapsed && "fusion-org-brand--sidebar-collapsed",
         className
       )}
       title={name ?? undefined}
+      aria-label={name ? `${name} logo` : "Company logo"}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={logoUrl}
+      <OrgLogo
+        organizationId={organizationId}
+        logoUrl={logoUrl}
+        size={collapsed ? "md" : "lg"}
+        className="fusion-org-brand__img"
         alt={name ? `${name} logo` : "Company logo"}
-        className="fusion-brand-logo-img fusion-org-brand__img"
-        decoding="async"
       />
-      {!collapsed && name ? (
-        <span className="fusion-org-brand__name">{name}</span>
-      ) : null}
     </div>
   );
 }

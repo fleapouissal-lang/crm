@@ -7,7 +7,9 @@ import { AppHeader } from "@/components/layout/app-header";
 import { CursorGlow } from "@/components/layout/cursor-glow";
 import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
 import { NotificationsProvider, useNotificationsOptional } from "@/components/notifications/notifications-provider";
+import { OrgIssuerProvider } from "@/components/finance/org-issuer-provider";
 import type { Profile } from "@/types/database";
+import type { FinanceOrgInput } from "@/lib/finance/company-info";
 import { cn } from "@/lib/utils";
 import { isPlatformAdmin } from "@/lib/permissions";
 
@@ -56,6 +58,7 @@ function SidebarWithUnread({
 
 export function FusionShell({
   profile,
+  organization,
   organizationName,
   organizationLogoUrl,
   activityDomain,
@@ -65,6 +68,7 @@ export function FusionShell({
   children,
 }: {
   profile: Profile;
+  organization?: FinanceOrgInput | null;
   organizationName?: string | null;
   organizationLogoUrl?: string | null;
   activityDomain?: string | null;
@@ -101,56 +105,58 @@ export function FusionShell({
   const platformAdmin = isPlatformAdmin(profile.role);
 
   return (
-    <NotificationsProvider
-      userId={profile.id}
-      enabled={loadNotifications && !platformAdmin}
-    >
-      <CursorGlow />
-      <AuroraBackground />
-      {!platformAdmin ? (
-        <VerticalModuleGuard activityDomain={activityDomain} enabled />
-      ) : null}
-      <div
-        className={cn(
-          "fusion-app",
-          mounted && sidebarCollapsed && "sidebar-collapsed"
-        )}
+    <OrgIssuerProvider organization={organization}>
+      <NotificationsProvider
+        userId={profile.id}
+        enabled={loadNotifications && !platformAdmin}
       >
-        <SidebarWithUnread
-          profile={profile}
-          organizationName={organizationName}
-          organizationLogoUrl={organizationLogoUrl}
-          activityDomain={platformAdmin ? null : activityDomain}
-          leadCount={leadCount}
-          quoteCount={quoteCount}
-          open={sidebarOpen}
-          collapsed={mounted ? sidebarCollapsed : false}
-          onClose={() => setSidebarOpen(false)}
-          onToggleCollapse={() => {
-            if (typeof window !== "undefined" && window.innerWidth <= 960) {
-              setSidebarOpen(false);
-              return;
-            }
-            toggleCollapse();
-          }}
-        />
+        <CursorGlow />
+        <AuroraBackground />
+        {!platformAdmin ? (
+          <VerticalModuleGuard activityDomain={activityDomain} enabled />
+        ) : null}
         <div
-          className={cn("fusion-scrim", sidebarOpen && "on")}
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden
-        />
-        <div className="fusion-main">
-          <AppHeader
+          className={cn(
+            "fusion-app",
+            mounted && sidebarCollapsed && "sidebar-collapsed"
+          )}
+        >
+          <SidebarWithUnread
             profile={profile}
             organizationName={organizationName}
             organizationLogoUrl={organizationLogoUrl}
             activityDomain={platformAdmin ? null : activityDomain}
+            leadCount={leadCount}
+            quoteCount={quoteCount}
+            open={sidebarOpen}
+            collapsed={mounted ? sidebarCollapsed : false}
+            onClose={() => setSidebarOpen(false)}
+            onToggleCollapse={() => {
+              if (typeof window !== "undefined" && window.innerWidth <= 960) {
+                setSidebarOpen(false);
+                return;
+              }
+              toggleCollapse();
+            }}
           />
-          <div className="fusion-scroll">
-            <div className="fusion-page">{children}</div>
+          <div
+            className={cn("fusion-scrim", sidebarOpen && "on")}
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden
+          />
+          <div className="fusion-main">
+            <AppHeader
+              profile={profile}
+              organizationName={organizationName}
+              organizationLogoUrl={organizationLogoUrl}
+              activityDomain={platformAdmin ? null : activityDomain}
+            />
+            <div className="fusion-scroll">
+              <div className="fusion-page">{children}</div>
+            </div>
           </div>
         </div>
-      </div>
-    </NotificationsProvider>
+      </NotificationsProvider>
+    </OrgIssuerProvider>
   );
 }

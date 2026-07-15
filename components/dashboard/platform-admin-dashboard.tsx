@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Building2,
   CreditCard,
   FileText,
   Globe,
@@ -24,6 +23,7 @@ import { PAYMENT_STATUS_BADGE } from "@/lib/billing/payments";
 import { loadPreferences } from "@/lib/settings/storage";
 import type { CurrencyCode } from "@/lib/settings/types";
 import { cn } from "@/lib/utils";
+import { OrgLogo } from "@/components/shared/org-logo";
 
 export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats }) {
   const dict = useDict();
@@ -311,21 +311,12 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    {company.logo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={company.logo_url}
-                        alt=""
-                        className="size-10 shrink-0 rounded-lg object-cover border border-[var(--border)]"
-                      />
-                    ) : (
-                      <span
-                        className="grid size-10 shrink-0 place-items-center rounded-lg text-white"
-                        style={{ background: "var(--grad-brand)" }}
-                      >
-                        <Building2 className="size-4" />
-                      </span>
-                    )}
+                    <OrgLogo
+                      organizationId={company.id}
+                      logoUrl={company.logo_url}
+                      size="md"
+                      className="shrink-0"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="font-semibold truncate">{company.name}</h4>

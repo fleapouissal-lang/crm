@@ -90,6 +90,10 @@ export function CreateCompanyPageClient() {
   }
 
   function handleSubmit() {
+    if (!logoFile) {
+      toast.error(s.companyLogoRequiredHint);
+      return;
+    }
     startTransition(async () => {
       const fd = new FormData();
       fd.set("organizationName", organizationName);
@@ -106,7 +110,7 @@ export function CreateCompanyPageClient() {
       fd.set("directorName", directorName);
       fd.set("directorEmail", directorEmail);
       fd.set("directorPassword", directorPassword);
-      if (logoFile) fd.set("logo", logoFile);
+      fd.set("logo", logoFile);
 
       const result = await createOrganizationWithDirector(fd);
       if (!result.success) {
@@ -128,7 +132,8 @@ export function CreateCompanyPageClient() {
     emailDomain.trim() &&
     directorName.trim() &&
     directorEmail.trim() &&
-    directorPassword.length >= 6;
+    directorPassword.length >= 6 &&
+    logoFile;
 
   return (
     <div className="fl-create-company space-y-[18px]">
@@ -165,6 +170,8 @@ export function CreateCompanyPageClient() {
             <CompanyLogoPicker
               previewUrl={logoPreview}
               disabled={pending}
+              required
+              allowRemove={false}
               onFileChange={setLogoFile}
               onClear={() => setLogoFile(null)}
             />

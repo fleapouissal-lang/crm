@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Building2, Plus, Search, Shield, Users } from "lucide-react";
+import { Plus, Search, Shield, Users } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import type { PlatformUserRow } from "@/lib/actions/platform-admin";
 import type { Organization } from "@/types/database";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
+import { OrgLogo } from "@/components/shared/org-logo";
 import { cn } from "@/lib/utils";
 
 type UserFilter = "all" | "platform" | "company";
@@ -194,16 +195,11 @@ export function AdminUsersPageClient({
                     <td>
                       {user.organization ? (
                         <span className="inline-flex items-center gap-2">
-                          {user.organization.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={user.organization.logo_url}
-                              alt=""
-                              className="size-5 rounded object-cover border border-[var(--border)]"
-                            />
-                          ) : (
-                            <Building2 className="size-3.5 fl-faint" />
-                          )}
+                          <OrgLogo
+                            organizationId={user.organization.id}
+                            logoUrl={user.organization.logo_url}
+                            size="xs"
+                          />
                           <span className="truncate">
                             {user.organization.name}
                           </span>

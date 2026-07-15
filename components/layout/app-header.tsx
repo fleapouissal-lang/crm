@@ -19,6 +19,8 @@ import { NotificationsBell } from "@/components/notifications/notifications-bell
 import type { Profile } from "@/types/database";
 
 import { isPlatformAdmin } from "@/lib/permissions";
+import { getOrgLogoSrc } from "@/lib/organizations/logo-url";
+import { OrgLogo } from "@/components/shared/org-logo";
 
 export function AppHeader({
   profile,
@@ -38,6 +40,7 @@ export function AppHeader({
   const [greeting, setGreeting] = useState("");
 
   const platformAdmin = isPlatformAdmin(profile.role);
+  const orgLogoSrc = getOrgLogoSrc(profile.organization_id, organizationLogoUrl);
   const pageMeta = useMemo(() => matchPageMeta(pathname), [pathname]);
   const title = useMemo(() => {
     const fallback = dict.nav[pageMeta.titleKey as keyof typeof dict.nav] as string;
@@ -79,21 +82,24 @@ export function AppHeader({
       <div className="fusion-page-head">
         <div className="fusion-page-head__row">
           <h1>{title}</h1>
+          {platformAdmin ? (
+            <span className="fl-badge b-gray fusion-org-badge text-[11px]">
+              <span className="crm-logo__letter crm-logo__letter--badge">C</span>
+              {dict.auth.globalPortal}
+            </span>
+          ) : null}
           {organizationName && !platformAdmin ? (
             <span className="fl-badge b-gray fusion-org-badge text-[11px]">
-              {organizationLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={organizationLogoUrl}
-                  alt=""
+              {orgLogoSrc ? (
+                <OrgLogo
+                  organizationId={profile.organization_id}
+                  logoUrl={organizationLogoUrl}
+                  size="xs"
                   className="fusion-org-badge__logo"
                 />
               ) : null}
               {organizationName} CRM
             </span>
-          ) : null}
-          {platformAdmin ? (
-            <span className="fl-badge b-gray text-[11px]">{dict.auth.globalPortal}</span>
           ) : null}
         </div>
         <p>{greeting || staticSub}</p>

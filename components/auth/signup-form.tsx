@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { CrmLogo } from "@/components/brand/crm-logo";
 import { signUp } from "@/lib/actions/auth";
 import { useDict } from "@/components/shared/i18n-provider";
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
@@ -36,13 +37,7 @@ export function SignupForm() {
         <div className="fl-card fl-pad">
           <div className="mb-6 text-center">
             <div className="fusion-brand mx-auto mb-4 w-fit justify-center">
-              <div className="mark">
-                <Zap className="size-[21px] text-white" fill="white" strokeWidth={0} />
-              </div>
-              <div className="text-left">
-                <div className="name">Fusion Leap</div>
-                <div className="sub">Operations Cloud</div>
-              </div>
+              <CrmLogo variant="compact" />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">
               {dict.auth.createAccount}

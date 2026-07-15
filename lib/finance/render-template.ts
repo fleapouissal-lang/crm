@@ -14,7 +14,8 @@ export function renderQuoteTemplate(content: string, quote: QuoteRecord): string
 export function renderInvoiceTemplate(
   content: string,
   invoice: InvoiceRecord,
-  service?: string
+  service?: string,
+  iban = ""
 ): string {
   const prestation = service || invoice.notes || "—";
   return content
@@ -24,7 +25,7 @@ export function renderInvoiceTemplate(
     .replace(/\{\{devise\}\}/g, invoice.currency)
     .replace(/\{\{echeance\}\}/g, formatDateFr(invoice.dueDate))
     .replace(/\{\{prestation\}\}/g, prestation)
-    .replace(/\{\{iban\}\}/g, FUSION_COMPANY.iban);
+    .replace(/\{\{iban\}\}/g, iban);
 }
 
 export function formatDateFr(iso: string): string {
@@ -41,7 +42,7 @@ export function formatMoneyFr(amount: number, currency: string): string {
   return `${amount.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 }
 
-export function splitTtcAmount(ttc: number, rate = FUSION_COMPANY.tvaRate) {
+export function splitTtcAmount(ttc: number, rate: number = FUSION_COMPANY.tvaRate) {
   const ht = Math.round((ttc / (1 + rate)) * 100) / 100;
   const tva = Math.round((ttc - ht) * 100) / 100;
   return { ht, tva, ttc };

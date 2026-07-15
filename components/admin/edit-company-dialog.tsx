@@ -110,7 +110,12 @@ export function EditCompanyDialog({
           <CompanyLogoPicker
             previewUrl={removeLogo ? null : logoPreview}
             disabled={pending}
-            onFileChange={setLogoFile}
+            required={!company?.logo_url && !logoPreview}
+            allowRemove={false}
+            onFileChange={(file) => {
+              setLogoFile(file);
+              if (file) setRemoveLogo(false);
+            }}
             onClear={() => {
               setLogoFile(null);
               setRemoveLogo(true);

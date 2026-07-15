@@ -9,6 +9,8 @@ import {
   buildQuotePdfBytes,
   downloadPdfBytes,
 } from "@/lib/finance/pdf/build-finance-pdf";
+import { getCurrentFinanceIssuer } from "@/lib/actions/finance-issuer";
+import type { FinanceIssuer } from "@/lib/finance/company-info";
 import {
   loadInvoices,
   loadQuotes,
@@ -33,11 +35,23 @@ export function FinancePdfViewerPage({
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [issuer, setIssuer] = useState<FinanceIssuer | null>(null);
 
   const backHref = kind === "quote" ? "/finance/quotes" : "/finance/invoices";
   const Icon = kind === "quote" ? FileText : Receipt;
 
   useEffect(() => {
+    let cancelled = false;
+    void getCurrentFinanceIssuer().then((next) => {
+      if (!cancelled) setIssuer(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!issuer) return;
     let cancelled = false;
 
     async function load() {
@@ -55,7 +69,7 @@ export function FinancePdfViewerPage({
           const tpl = quote.templateId
             ? loadTemplates().find((t) => t.id === quote.templateId)
             : undefined;
-          const bytes = await buildQuotePdfBytes(quote, tpl, locale);
+          const bytes = await buildQuotePdfBytes(quote, tpl, locale, issuer);
           if (cancelled) return;
           setPdfBytes(bytes);
           setTitle(quote.number);
@@ -74,7 +88,13 @@ export function FinancePdfViewerPage({
         const linked = invoice.quoteId
           ? loadQuotes().find((q) => q.id === invoice.quoteId)
           : undefined;
-        const bytes = await buildInvoicePdfBytes(invoice, tpl, linked, locale);
+        const bytes = await buildInvoicePdfBytes(
+          invoice,
+          tpl,
+          linked,
+          locale,
+          issuer
+        );
         if (cancelled) return;
         setPdfBytes(bytes);
         setTitle(invoice.number);
@@ -87,7 +107,7 @@ export function FinancePdfViewerPage({
     return () => {
       cancelled = true;
     };
-  }, [kind, id, locale, f.documentNotFound, f.pdfError]);
+  }, [kind, id, locale, issuer, f.documentNotFound, f.pdfError]);
 
   useEffect(() => {
     if (!pdfBytes) {

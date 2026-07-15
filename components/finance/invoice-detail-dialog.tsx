@@ -12,7 +12,6 @@ import {
   type InvoiceRecord,
   type QuoteRecord,
 } from "@/lib/finance/types";
-import { renderInvoiceTemplate } from "@/lib/finance/render-template";
 import {
   Dialog,
   DialogContent,
@@ -67,7 +66,7 @@ export function InvoiceDetailDialog({
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{inv.detailTitle}</DialogTitle>
         </DialogHeader>
-        <div className="fl-dialog-body space-y-4">
+        <div className="fl-dialog-body space-y-3">
           <FinanceDocumentPreview
             kind="invoice"
             number={invoice.number}
@@ -83,21 +82,11 @@ export function InvoiceDetailDialog({
             tertiaryLabel={dict.fusion.quotes.service}
             tertiaryValue={service}
             lineItems={items}
+            templateName={template?.name}
           />
 
-          {template ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide fl-faint">
-                {dict.fusion.financeDocs.template}: {template.name}
-              </p>
-              <pre className="max-h-[180px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-                {renderInvoiceTemplate(template.content, invoice, service)}
-              </pre>
-            </div>
-          ) : null}
-
           {invoice.notes ? (
-            <p className="text-sm fl-muted">{invoice.notes}</p>
+            <p className="fl-lux-doc-notes">{invoice.notes}</p>
           ) : null}
         </div>
         <DialogFooter className="fl-dialog-footer flex-wrap gap-2">

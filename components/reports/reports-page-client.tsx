@@ -8,6 +8,7 @@ import { getDateFnsLocale, getIntlLocale } from "@/lib/i18n/locale-utils";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import type { ReportsData, ReportsPeriod } from "@/lib/actions/reports";
 import { PipelineBreakdownChart } from "@/components/dashboard/charts";
+import { ProjectReportsSection } from "@/components/reports/project-reports-section";
 import { StatLine, FlProgress } from "@/components/fusion/primitives";
 import { cn } from "@/lib/utils";
 
@@ -300,6 +301,8 @@ export function ReportsPageClient({ data }: { data: ReportsData }) {
           </div>
         </div>
       ) : null}
+
+      <ProjectReportsSection />
     </div>
   );
 }

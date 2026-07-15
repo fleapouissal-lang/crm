@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" fill="none" role="img" aria-label="Fusion Leap — Intelligent Systems. Limitless Impact.">
+  <defs>
+    <linearGradient id="fl-grad" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff7a3d"/>
+      <stop offset="0.55" stop-color="#e04bb8"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 8)">
+    <path fill="url(#fl-grad)" d="M6 4.5 38 1v6.2L14.2 10.8 6 11.8V4.5Z"/>
+    <path fill="url(#fl-grad)" d="M8.2 16.8 32.5 14v5.6L12.4 22.2 8.2 22.6v-5.8Z"/>
+    <path fill="url(#fl-grad)" d="M6 4.5v32H2V4.5h4Z"/>
+  </g>
+  <text x="52" y="34" fill="#fafafa" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="22" font-weight="700" letter-spacing="0.14em">FUSION LEAP</text>
+  <text x="52" y="54" fill="#a1a1aa" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="8.5" font-weight="500" letter-spacing="0.22em">INTELLIGENT SYSTEMS · LIMITLESS IMPACT</text>
+</svg>

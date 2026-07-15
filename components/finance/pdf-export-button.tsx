@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { useOrgIssuer } from "@/components/finance/org-issuer-provider";
 import { downloadInvoicePdf, downloadQuotePdf } from "@/lib/finance/pdf/build-finance-pdf";
 import type { DocumentTemplate, InvoiceRecord, QuoteRecord } from "@/lib/finance/types";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function QuotePdfExportButton({
 }) {
   const dict = useDict();
   const { locale } = useI18n();
+  const issuer = useOrgIssuer();
   const f = dict.fusion.financeDocs;
   const [pending, startTransition] = useTransition();
 
@@ -32,7 +34,7 @@ export function QuotePdfExportButton({
       onClick={() =>
         startTransition(async () => {
           try {
-            await downloadQuotePdf(quote, template, locale);
+            await downloadQuotePdf(quote, template, locale, issuer);
             toast.success(f.pdfSuccess);
           } catch {
             toast.error(f.pdfError);
@@ -61,6 +63,7 @@ export function InvoicePdfExportButton({
 }) {
   const dict = useDict();
   const { locale } = useI18n();
+  const issuer = useOrgIssuer();
   const f = dict.fusion.financeDocs;
   const [pending, startTransition] = useTransition();
 
@@ -72,7 +75,7 @@ export function InvoicePdfExportButton({
       onClick={() =>
         startTransition(async () => {
           try {
-            await downloadInvoicePdf(invoice, template, linkedQuote, locale);
+            await downloadInvoicePdf(invoice, template, linkedQuote, locale, issuer);
             toast.success(f.pdfSuccess);
           } catch {
             toast.error(f.pdfError);

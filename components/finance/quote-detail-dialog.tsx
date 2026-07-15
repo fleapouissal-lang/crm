@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { ExternalLink, Pencil, Receipt } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
-import { QuotePdfExportButton } from "@/components/finance/pdf-export-button";
 import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
 import {
   QUOTE_STATUS_BADGE,
@@ -13,7 +12,6 @@ import {
   type DocumentTemplate,
   type QuoteRecord,
 } from "@/lib/finance/types";
-import { renderQuoteTemplate } from "@/lib/finance/render-template";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +63,7 @@ export function QuoteDetailDialog({
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{q.detailTitle}</DialogTitle>
         </DialogHeader>
-        <div className="fl-dialog-body space-y-4">
+        <div className="fl-dialog-body space-y-3">
           <FinanceDocumentPreview
             kind="quote"
             number={quote.number}
@@ -74,56 +72,32 @@ export function QuoteDetailDialog({
             clientName={quote.clientName}
             amount={quote.amount}
             currency={quote.currency}
-            secondaryLabel={q.service}
-            secondaryValue={quote.service}
-            tertiaryLabel={q.validity}
-            tertiaryValue={q.validityDaysUnit.replace(
+            secondaryLabel={q.validity}
+            secondaryValue={q.validityDaysUnit.replace(
               "{n}",
               String(quote.validityDays)
             )}
             lineItems={quote.items}
+            templateName={template?.name}
           />
 
           {expiring ? (
-            <p className="rounded-xl border border-[color-mix(in_oklch,var(--rose),transparent_70%)] bg-[color-mix(in_oklch,var(--rose),transparent_92%)] px-4 py-2.5 text-sm text-[var(--rose)]">
+            <p className="rounded-xl border border-[color-mix(in_oklch,var(--rose),transparent_65%)] bg-[color-mix(in_oklch,var(--rose),transparent_92%)] px-4 py-2.5 text-sm text-[var(--rose)]">
               {expiryLabel}
             </p>
           ) : null}
 
-          {template ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide fl-faint">
-                {dict.fusion.financeDocs.template}: {template.name}
-              </p>
-              <pre className="max-h-[180px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-                {renderQuoteTemplate(template.content, quote)}
-              </pre>
-            </div>
-          ) : null}
-
           {quote.notes ? (
-            <p className="text-sm fl-muted">{quote.notes}</p>
+            <p className="fl-lux-doc-notes">{quote.notes}</p>
           ) : null}
         </div>
-        <DialogFooter className="fl-dialog-footer flex-wrap gap-2">
-          <button
-            type="button"
-            className="fl-btn sm ghost"
-            onClick={() => onOpenChange(false)}
-          >
-            {dict.common.cancel}
-          </button>
+        <DialogFooter className="fl-dialog-footer flex-wrap gap-2 sm:justify-end">
           {onViewPdf ? (
             <button type="button" className="fl-btn sm ghost" onClick={onViewPdf}>
               <ExternalLink className="size-4" />
               {q.viewPdf}
             </button>
           ) : null}
-          <QuotePdfExportButton
-            quote={quote}
-            template={template}
-            variant="ghost"
-          />
           {canConvert ? (
             <button
               type="button"

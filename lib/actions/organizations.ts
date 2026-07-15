@@ -141,11 +141,13 @@ export async function updateOrganizationAsAdmin(
   }
 
   const admin = createAdminClient();
-  let logoUrl: string | null | undefined;
+  let logoUrl: string | undefined;
 
   if (removeLogo) {
-    logoUrl = null;
-  } else if (logoFile) {
+    return { success: false, error: "Company logo is required" };
+  }
+
+  if (logoFile) {
     try {
       logoUrl = await uploadOrgLogoFile(admin, organizationId, logoFile);
     } catch (err) {
@@ -306,6 +308,10 @@ export async function createOrganizationWithDirector(
     return { success: false, error: "Password must be at least 6 characters" };
   }
 
+  if (!logoFile) {
+    return { success: false, error: "Company logo is required" };
+  }
+
   try {
     const admin = createAdminClient();
     const { organizationId } = await provisionTenantCompany({
@@ -335,6 +341,7 @@ export async function createOrganizationWithDirector(
           .update({ logo_url: logoUrl })
           .eq("id", organizationId);
       } catch (err) {
+        await deleteOrganization(organizationId);
         const code = err instanceof Error ? err.message : "upload_failed";
         if (code === "invalid_logo_type") {
           return { success: false, error: "Invalid image type (JPG, PNG, WebP, GIF)" };

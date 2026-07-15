@@ -10,11 +10,15 @@ export function CompanyLogoPicker({
   onFileChange,
   onClear,
   disabled,
+  required = false,
+  allowRemove = true,
 }: {
   previewUrl: string | null;
   onFileChange: (file: File | null) => void;
   onClear?: () => void;
   disabled?: boolean;
+  required?: boolean;
+  allowRemove?: boolean;
 }) {
   const dict = useDict();
   const s = dict.fusion.settings;
@@ -39,8 +43,13 @@ export function CompanyLogoPicker({
         )}
       </button>
       <div className="fl-logo-picker__meta">
-        <p className="fl-field-label">{s.companyLogo}</p>
-        <p className="fl-field-hint">{s.companyLogoHint}</p>
+        <p className="fl-field-label">
+          {s.companyLogo}
+          {required ? <span className="fl-field-required"> *</span> : null}
+        </p>
+        <p className="fl-field-hint">
+          {required ? s.companyLogoRequiredHint : s.companyLogoHint}
+        </p>
         <div className="fl-logo-picker__actions">
           <button
             type="button"
@@ -51,7 +60,7 @@ export function CompanyLogoPicker({
             <ImagePlus className="size-3.5" />
             {previewUrl ? s.changeLogo : s.uploadLogo}
           </button>
-          {previewUrl && onClear ? (
+          {previewUrl && onClear && allowRemove ? (
             <button
               type="button"
               className="fl-btn sm ghost text-[var(--rose)]"

@@ -43,6 +43,8 @@ export async function updateSession(request: NextRequest) {
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
+    pathname.startsWith("/api/org-logos/") ||
+    pathname.startsWith("/api/avatars/") ||
     pathname.includes(".");
 
   if (isPublicAsset) {

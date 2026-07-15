@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
-  Building2,
   Loader2,
   Pencil,
   Plus,
@@ -29,6 +28,7 @@ import {
 } from "@/lib/actions/platform-admin";
 import type { Organization } from "@/types/database";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
+import { OrgLogo } from "@/components/shared/org-logo";
 import { cn } from "@/lib/utils";
 
 type CompanyRow = Organization & {
@@ -177,16 +177,12 @@ export function AdminCompaniesPageClient({
                       >
                         <td>
                           <div className="flex items-center gap-2">
-                            {company.logo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={company.logo_url}
-                                alt=""
-                                className="size-8 rounded-lg object-cover border border-[var(--border)]"
-                              />
-                            ) : (
-                              <Building2 className="size-4 fl-faint" />
-                            )}
+                            <OrgLogo
+                              organizationId={company.id}
+                              logoUrl={company.logo_url}
+                              size="sm"
+                              className="fl-tbl-org-logo"
+                            />
                             <div>
                               <b>{company.name}</b>
                               {(company.city || company.country || company.activity_domain) && (

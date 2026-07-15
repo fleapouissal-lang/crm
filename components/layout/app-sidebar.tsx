@@ -28,6 +28,7 @@ import { isPlatformAdmin, hasNavCapability, canViewFinanceDocumentsForRole } fro
 import { signOut } from "@/lib/actions/auth";
 import { clearHrLocalCache } from "@/lib/hr/storage";
 import { CompanyBrand } from "@/components/brand/company-brand";
+import { CrmBrand } from "@/components/brand/crm-brand";
 import { SidebarLuxuryBg } from "@/components/layout/sidebar-luxury-bg";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -231,13 +232,18 @@ export function AppSidebar({
               href="/dashboard"
               className="fusion-brand"
               onClick={onClose}
-              title={organizationName ?? "Fusion Leap"}
+              title={platformAdmin ? "CRM" : (organizationName ?? "CRM")}
             >
-              <CompanyBrand
-                name={organizationName}
-                logoUrl={platformAdmin ? null : organizationLogoUrl}
-                collapsed={collapsed}
-              />
+              {platformAdmin ? (
+                <CrmBrand collapsed={collapsed} />
+              ) : (
+                <CompanyBrand
+                  organizationId={profile.organization_id}
+                  name={organizationName}
+                  logoUrl={organizationLogoUrl}
+                  collapsed={collapsed}
+                />
+              )}
             </Link>
           </div>
         </div>

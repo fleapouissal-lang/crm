@@ -41,7 +41,7 @@ export default async function DashboardLayout({
         .in("stage", ["proposal", "negotiation"]),
       supabase
         .from("organizations")
-        .select("name, logo_url, activity_domain")
+        .select("id, name, logo_url, activity_domain, rc, country, city, phone, email_domain")
         .eq("id", profile.organization_id)
         .single(),
     ]);
@@ -49,6 +49,20 @@ export default async function DashboardLayout({
   return (
     <FusionShell
       profile={profile}
+      organization={
+        orgRes.data
+          ? {
+              id: orgRes.data.id,
+              name: orgRes.data.name,
+              logo_url: orgRes.data.logo_url,
+              rc: orgRes.data.rc,
+              country: orgRes.data.country,
+              city: orgRes.data.city,
+              phone: orgRes.data.phone,
+              email_domain: orgRes.data.email_domain,
+            }
+          : null
+      }
       organizationName={orgRes.data?.name ?? null}
       organizationLogoUrl={orgRes.data?.logo_url ?? null}
       activityDomain={orgRes.data?.activity_domain ?? null}

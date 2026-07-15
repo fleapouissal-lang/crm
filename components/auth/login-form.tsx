@@ -90,7 +90,6 @@ export function LoginForm() {
               />
               <span>{dict.auth.rememberMe}</span>
             </label>
-            <span className="login-split__forgot">{dict.auth.forgotPassword}</span>
           </div>
 
           <button type="submit" className="login-split__submit" disabled={pending}>
@@ -109,7 +108,7 @@ export function LoginForm() {
       </div>
 
       <footer className="login-split__legal">
-        <span>© {new Date().getFullYear()} Fusion Leap CRM</span>
+        <span>© {new Date().getFullYear()} CRM</span>
       </footer>
     </section>
   );
