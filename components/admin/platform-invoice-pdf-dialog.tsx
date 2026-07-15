@@ -108,7 +108,7 @@ export function PlatformInvoicePdfDialog({
               <p className="text-sm fl-faint">{b.invoicePdfLoading}</p>
             </div>
           ) : (
-            <div className="h-[min(70vh,720px)] overflow-hidden border-y border-[var(--border)] bg-[var(--glass-hi)]">
+            <div className="fl-finance-pdf-frame h-[min(70vh,720px)] overflow-hidden rounded-xl border border-[var(--border)] bg-white">
               <object
                 data={`${url}#toolbar=1&navpanes=0`}
                 type="application/pdf"

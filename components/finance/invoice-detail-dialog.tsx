@@ -1,13 +1,13 @@
 "use client";
 
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { Pencil } from "lucide-react";
-import { useDict } from "@/components/shared/i18n-provider";
+import { ExternalLink, Pencil } from "lucide-react";
+import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { InvoicePdfExportButton } from "@/components/finance/pdf-export-button";
+import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
 import {
   INVOICE_STATUS_BADGE,
-  formatMoney,
   type DocumentTemplate,
   type InvoiceRecord,
   type QuoteRecord,
@@ -36,6 +36,7 @@ export function InvoiceDetailDialog({
   template,
   linkedQuote,
   onEdit,
+  onViewPdf,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,62 +44,76 @@ export function InvoiceDetailDialog({
   template?: DocumentTemplate;
   linkedQuote?: QuoteRecord;
   onEdit: () => void;
+  onViewPdf?: () => void;
 }) {
   const dict = useDict();
+  const { locale } = useI18n();
+  const dateLocale = getDateFnsLocale(locale);
   const inv = dict.fusion.invoices;
   if (!invoice) return null;
 
-  const service = linkedQuote?.service || invoice.notes || undefined;
+  const service = linkedQuote?.service || invoice.notes || "—";
   const badge = INVOICE_STATUS_BADGE[invoice.status];
+  const items =
+    invoice.items?.length
+      ? invoice.items
+      : linkedQuote?.items?.length
+        ? linkedQuote.items
+        : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-2xl">
         <DialogHeader className="fl-dialog-header">
-          <DialogTitle>{invoice.number}</DialogTitle>
+          <DialogTitle>{inv.detailTitle}</DialogTitle>
         </DialogHeader>
         <div className="fl-dialog-body space-y-4">
-          <dl className="grid gap-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{inv.client}</dt>
-              <dd className="font-medium">{invoice.clientName}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{inv.amount}</dt>
-              <dd className="fl-mono font-medium">{formatMoney(invoice.amount, invoice.currency)}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{inv.dueDate}</dt>
-              <dd>
-                {format(new Date(invoice.dueDate), "d MMM yyyy", { locale: fr })}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{inv.status}</dt>
-              <dd>
-                <span className={`fl-badge ${badge}`}>{statusLabel(invoice, inv)}</span>
-              </dd>
-            </div>
-            {template ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">{dict.fusion.financeDocs.template}</dt>
-                <dd className="text-right font-medium">{template.name}</dd>
-              </div>
-            ) : null}
-          </dl>
+          <FinanceDocumentPreview
+            kind="invoice"
+            number={invoice.number}
+            statusLabel={statusLabel(invoice, inv)}
+            statusBadge={badge}
+            clientName={invoice.clientName}
+            amount={invoice.amount}
+            currency={invoice.currency}
+            secondaryLabel={inv.dueDate}
+            secondaryValue={format(new Date(invoice.dueDate), "dd MMM yyyy", {
+              locale: dateLocale,
+            })}
+            tertiaryLabel={dict.fusion.quotes.service}
+            tertiaryValue={service}
+            lineItems={items}
+          />
+
           {template ? (
-            <pre className="max-h-[240px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-              {renderInvoiceTemplate(template.content, invoice, service)}
-            </pre>
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide fl-faint">
+                {dict.fusion.financeDocs.template}: {template.name}
+              </p>
+              <pre className="max-h-[180px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
+                {renderInvoiceTemplate(template.content, invoice, service)}
+              </pre>
+            </div>
           ) : null}
+
           {invoice.notes ? (
-            <p className="text-sm text-muted-foreground">{invoice.notes}</p>
+            <p className="text-sm fl-muted">{invoice.notes}</p>
           ) : null}
         </div>
-        <DialogFooter className="fl-dialog-footer">
-          <button type="button" className="fl-btn sm ghost" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="fl-dialog-footer flex-wrap gap-2">
+          <button
+            type="button"
+            className="fl-btn sm ghost"
+            onClick={() => onOpenChange(false)}
+          >
             {dict.common.cancel}
           </button>
+          {onViewPdf ? (
+            <button type="button" className="fl-btn sm ghost" onClick={onViewPdf}>
+              <ExternalLink className="size-4" />
+              {inv.viewPdf}
+            </button>
+          ) : null}
           <InvoicePdfExportButton
             invoice={invoice}
             template={template}

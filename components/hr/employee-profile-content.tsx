@@ -383,13 +383,14 @@ export function EmployeeProfileContent({
             </>
           )}
 
-          {activeTab === "contract" && onUploadScan && onDeleteScan ? (
+          {activeTab === "contract" && (
             <ContractScanPanel
               profile={profile}
+              readOnly={!(onUploadScan && onDeleteScan)}
               onUpload={onUploadScan}
               onDelete={onDeleteScan}
             />
-          ) : null}
+          )}
         </div>
       </div>
     </div>

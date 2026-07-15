@@ -8,7 +8,7 @@ import {
 } from "pdf-lib";
 import type { Locale } from "@/lib/i18n/types";
 import { FUSION_COMPANY } from "../company-info";
-import { formatDateFr, renderQuoteTemplate, splitTtcAmount } from "../render-template";
+import { formatDateFr, splitTtcAmount } from "../render-template";
 import type { ClientType, DocumentTemplate, InvoiceRecord, QuoteRecord } from "../types";
 import { pdfSafe, formatAmountFr } from "./pdf-text";
 import {
@@ -28,17 +28,49 @@ const HEADER_BOTTOM = PAGE_H - M - 108;
 const FOOTER_HEIGHT = 72;
 const CONTENT_BOTTOM = M + FOOTER_HEIGHT + 16;
 
-/* Professional B&W palette — no gold */
+/* Fusion Leap brand palette */
+const IRIS = rgb(0.48, 0.35, 0.95);
+const GOLD = rgb(0.94, 0.58, 0.28);
 const BLACK = rgb(0.04, 0.04, 0.04);
-const INK = rgb(0.12, 0.12, 0.12);
-const SLATE = rgb(0.35, 0.35, 0.35);
-const MUTED = rgb(0.55, 0.55, 0.55);
-const BORDER = rgb(0.82, 0.82, 0.82);
-const SURFACE = rgb(0.96, 0.96, 0.96);
+const INK = rgb(0.12, 0.12, 0.14);
+const SLATE = rgb(0.35, 0.35, 0.38);
+const MUTED = rgb(0.52, 0.52, 0.56);
+const BORDER = rgb(0.86, 0.86, 0.88);
+const SURFACE = rgb(0.97, 0.97, 0.98);
 const WHITE = rgb(1, 1, 1);
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 type DocMeta = { label: string; value: string };
+
+type PdfTheme = {
+  barPrimary: ReturnType<typeof rgb>;
+  barSecondary: ReturnType<typeof rgb>;
+  accent: ReturnType<typeof rgb>;
+  title: ReturnType<typeof rgb>;
+  tableHeader: ReturnType<typeof rgb>;
+  totalAccent: ReturnType<typeof rgb>;
+  totalsBar: ReturnType<typeof rgb>;
+};
+
+const BRAND_THEME: PdfTheme = {
+  barPrimary: IRIS,
+  barSecondary: GOLD,
+  accent: IRIS,
+  title: IRIS,
+  tableHeader: IRIS,
+  totalAccent: IRIS,
+  totalsBar: GOLD,
+};
+
+const MONO_THEME: PdfTheme = {
+  barPrimary: BLACK,
+  barSecondary: BLACK,
+  accent: BLACK,
+  title: BLACK,
+  tableHeader: BLACK,
+  totalAccent: BLACK,
+  totalsBar: BLACK,
+};
 
 let logoBytesCache: Uint8Array | null = null;
 
@@ -123,6 +155,7 @@ function drawPageHeader(
   labels: PdfLabels,
   docTitle: string,
   docNumber: string,
+  theme: PdfTheme,
   logo?: PDFImage | null
 ) {
   const rtl = labels.rtl;
@@ -130,8 +163,14 @@ function drawPageHeader(
   const textAlign: "left" | "right" = rtl ? "right" : "left";
   const logoX = rtl ? M : PAGE_W - M - LOGO_W;
 
-  /* Top accent bar */
-  page.drawRectangle({ x: 0, y: PAGE_H - 6, width: PAGE_W, height: 6, color: BLACK });
+  page.drawRectangle({ x: 0, y: PAGE_H - 5, width: PAGE_W / 2, height: 5, color: theme.barPrimary });
+  page.drawRectangle({
+    x: PAGE_W / 2,
+    y: PAGE_H - 5,
+    width: PAGE_W / 2,
+    height: 5,
+    color: theme.barSecondary,
+  });
 
   if (logo) {
     const aspect = logo.width / logo.height;
@@ -153,7 +192,7 @@ function drawPageHeader(
     y,
     size: 26,
     font: fonts.bold,
-    color: BLACK,
+    color: theme.title,
     align: textAlign,
   });
   y -= 20;
@@ -188,7 +227,7 @@ function drawPageHeader(
     y -= 10;
   }
 
-  drawLine(page, M, HEADER_BOTTOM, PAGE_W - M, HEADER_BOTTOM, BLACK, 1.2);
+  drawLine(page, M, HEADER_BOTTOM, PAGE_W - M, HEADER_BOTTOM, theme.accent, 1.2);
 }
 
 function drawPageFooter(
@@ -293,6 +332,7 @@ class PdfWriter {
   private readonly pages: PDFPage[] = [];
   private page!: PDFPage;
   y = HEADER_BOTTOM - 20;
+  private readonly theme: PdfTheme;
 
   constructor(
     private readonly doc: PDFDocument,
@@ -306,15 +346,25 @@ class PdfWriter {
       footerNote?: string;
       dueLabel?: string;
       dueValue?: string;
-    } = {}
+    } = {},
+    blackAndWhite = false
   ) {
+    this.theme = blackAndWhite ? MONO_THEME : BRAND_THEME;
     this.newPage();
   }
 
   private newPage() {
     this.page = this.doc.addPage([PAGE_W, PAGE_H]);
     this.pages.push(this.page);
-    drawPageHeader(this.page, this.fonts, this.labels, this.docTitle, this.docNumber, this.logo);
+    drawPageHeader(
+      this.page,
+      this.fonts,
+      this.labels,
+      this.docTitle,
+      this.docNumber,
+      this.theme,
+      this.logo
+    );
     this.y = HEADER_BOTTOM - 20;
   }
 
@@ -346,6 +396,15 @@ class PdfWriter {
       width: CONTENT_W,
       height: stripH,
       color: SURFACE,
+      borderColor: BORDER,
+      borderWidth: 0.75,
+    });
+    this.page.drawRectangle({
+      x: M,
+      y: this.y - stripH + 8,
+      width: 4,
+      height: stripH,
+      color: this.theme.accent,
     });
 
     let cy = this.y - 6;
@@ -408,14 +467,14 @@ class PdfWriter {
       color: SURFACE,
     });
 
-    /* Left accent bar */
+    /* Accent bar */
     if (rtl) {
       this.page.drawRectangle({
         x: PAGE_W - M - 3,
         y: this.y - blockH + 6,
         width: 3,
         height: blockH,
-        color: BLACK,
+        color: this.theme.barSecondary,
       });
     } else {
       this.page.drawRectangle({
@@ -423,7 +482,7 @@ class PdfWriter {
         y: this.y - blockH + 6,
         width: 3,
         height: blockH,
-        color: BLACK,
+        color: this.theme.accent,
       });
     }
 
@@ -445,7 +504,7 @@ class PdfWriter {
       y: this.y - 22,
       width: typeW,
       height: 15,
-      borderColor: BLACK,
+      borderColor: this.theme.accent,
       borderWidth: 0.75,
       color: WHITE,
     });
@@ -454,7 +513,7 @@ class PdfWriter {
       y: this.y - 19,
       size: 7.5,
       font: this.fonts.bold,
-      color: BLACK,
+      color: this.theme.accent,
       align: "right",
     });
 
@@ -501,7 +560,7 @@ class PdfWriter {
       y: tableTop - headerH,
       width: CONTENT_W,
       height: headerH,
-      color: BLACK,
+      color: this.theme.accent,
     });
 
     const headers = [this.labels.designation, this.labels.qty, this.labels.unitHt, this.labels.totalHt];
@@ -589,8 +648,11 @@ class PdfWriter {
       width: boxW,
       height: boxH,
       color: SURFACE,
+      borderColor: BORDER,
+      borderWidth: 0.75,
     });
-    drawLine(this.page, boxX, this.y, boxX + boxW, this.y, BLACK, 1.5);
+    this.page.drawRectangle({ x: boxX, y: this.y - 4, width: boxW, height: 4, color: this.theme.totalsBar });
+    drawLine(this.page, boxX, this.y, boxX + boxW, this.y, this.theme.accent, 0.5);
 
     const labelX = rtl ? boxX + 12 : boxX + 12;
     const valueX = rtl ? boxX + boxW - 12 : boxX + boxW - 12;
@@ -624,7 +686,7 @@ class PdfWriter {
         y: cy,
         size,
         font,
-        color: BLACK,
+        color: row.bold ? this.theme.totalAccent : BLACK,
         align: valueAlign,
       });
       cy -= row.bold ? 22 : 16;
@@ -678,7 +740,7 @@ async function embedLogo(doc: PDFDocument): Promise<PDFImage | null> {
 
 export async function buildQuotePdfBytes(
   quote: QuoteRecord,
-  template?: DocumentTemplate,
+  _template?: DocumentTemplate,
   locale: Locale = "fr"
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -712,9 +774,6 @@ export async function buildQuotePdfBytes(
   writer.drawClientBlock(quote.clientName, clientType);
   writer.drawItemsTable(quote.items ?? [], quote.currency);
   writer.drawTotals(quote.amount, quote.currency);
-
-  const body = template ? renderQuoteTemplate(template.content, quote) : "";
-  writer.drawBodyFlow(body);
 
   writer.finalize();
   return doc.save();
@@ -759,7 +818,8 @@ export async function buildInvoicePdfBytes(
       footerNote,
       dueLabel: labels.dueDate,
       dueValue: formatDateFr(invoice.dueDate),
-    }
+    },
+    true
   );
 
   writer.drawMetaStrip([

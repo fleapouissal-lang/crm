@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Loader2, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import {
@@ -35,6 +35,7 @@ export function FinancePdfViewerPage({
   const [url, setUrl] = useState<string | null>(null);
 
   const backHref = kind === "quote" ? "/finance/quotes" : "/finance/invoices";
+  const Icon = kind === "quote" ? FileText : Receipt;
 
   useEffect(() => {
     let cancelled = false;
@@ -102,8 +103,8 @@ export function FinancePdfViewerPage({
   const filename = title ? `${title}.pdf` : "document.pdf";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-100">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
+    <div className="fl-finance-pdf-shell fixed inset-0 z-50 flex flex-col">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--glass-solid)] px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href={backHref}
@@ -113,13 +114,19 @@ export function FinancePdfViewerPage({
             <ArrowLeft className="size-4" />
             <span className="hidden sm:inline">{dict.common.back}</span>
           </Link>
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              {kind === "quote" ? f.kindQuote : f.kindInvoice}
-            </p>
-            <h1 className="truncate text-base font-semibold text-neutral-900">
-              {title || "…"}
-            </h1>
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className="grid size-10 shrink-0 place-items-center rounded-xl text-white"
+              style={{ background: "var(--grad-brand)" }}
+            >
+              <Icon className="size-5" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--iris)]">
+                {kind === "quote" ? f.kindQuote : f.kindInvoice}
+              </p>
+              <h1 className="truncate text-base font-semibold">{title || "…"}</h1>
+            </div>
           </div>
         </div>
         <button
@@ -133,11 +140,11 @@ export function FinancePdfViewerPage({
         </button>
       </header>
 
-      <main className="min-h-0 flex-1 bg-neutral-200 p-2 sm:p-4">
+      <main className="min-h-0 flex-1 p-3 sm:p-5">
         {error ? (
           <div className="flex h-full items-center justify-center">
-            <div className="rounded-xl border border-neutral-200 bg-white px-6 py-8 text-center shadow-sm">
-              <p className="text-sm text-neutral-600">{error}</p>
+            <div className="fl-card fl-pad max-w-md text-center">
+              <p className="text-sm fl-muted">{error}</p>
               <Link href={backHref} className="fl-btn sm primary mt-4 inline-flex">
                 {dict.common.back}
               </Link>
@@ -145,13 +152,13 @@ export function FinancePdfViewerPage({
           </div>
         ) : !url ? (
           <div className="flex h-full items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-neutral-600">
-              <Loader2 className="size-8 animate-spin text-neutral-900" />
-              <p className="text-sm">{f.pdfLoading}</p>
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="size-8 animate-spin text-[var(--iris)]" />
+              <p className="text-sm fl-faint">{f.pdfLoading}</p>
             </div>
           </div>
         ) : (
-          <div className="h-full overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
+          <div className="fl-finance-pdf-frame mx-auto h-full max-w-5xl overflow-hidden rounded-2xl bg-white">
             <object
               data={`${url}#toolbar=1&navpanes=0`}
               type="application/pdf"

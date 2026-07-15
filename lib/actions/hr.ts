@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { isLeadership } from "@/lib/permissions/capabilities";
-import { buildTeamOptions } from "@/lib/team/members";
+import { buildTeamOptions, profileToTeamOption } from "@/lib/team/members";
 import type { ActionResult, Profile } from "@/types/database";
 import type { EmployeeProfile, HrContractScan, HrEntry } from "@/lib/hr/types";
 import { normalizeEmployeeProfile } from "@/lib/hr/types";
@@ -76,6 +76,59 @@ async function signScanPaths(
     })
   );
   return map;
+}
+
+export async function getMyMemberAccount(): Promise<EmployeeProfile | null> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id || profile.role !== "member") {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const orgId = profile.organization_id;
+  const memberId = profile.id;
+
+  const [profilesRes, entriesRes, scansRes] = await Promise.all([
+    supabase
+      .from("hr_employee_profiles")
+      .select("*")
+      .eq("organization_id", orgId)
+      .eq("member_id", memberId)
+      .maybeSingle(),
+    supabase
+      .from("hr_entries")
+      .select("*")
+      .eq("organization_id", orgId)
+      .eq("member_id", memberId)
+      .order("entry_date", { ascending: false }),
+    supabase
+      .from("hr_contract_scans")
+      .select("*")
+      .eq("organization_id", orgId)
+      .eq("member_id", memberId)
+      .order("uploaded_at", { ascending: false }),
+  ]);
+
+  if (profilesRes.error || entriesRes.error || scansRes.error) {
+    console.error(
+      "[hr] member self load failed",
+      profilesRes.error ?? entriesRes.error ?? scansRes.error
+    );
+    return null;
+  }
+
+  const scanRows = (scansRes.data ?? []) as HrScanRow[];
+  const signed = await signScanPaths(scanRows.map((s) => s.storage_path));
+  const member = profileToTeamOption(profile);
+  const [hrProfile] = mergeHrWorkspace(
+    [member],
+    profilesRes.data ? [(profilesRes.data as HrProfileRow)] : [],
+    (entriesRes.data ?? []) as HrEntryRow[],
+    scanRows,
+    signed
+  );
+
+  return hrProfile ?? null;
 }
 
 export async function getHrWorkspace(): Promise<{
@@ -396,15 +449,21 @@ export async function getHrContractScanSignedUrlAction(
   memberId: string,
   scanId: string
 ): Promise<ActionResult<string>> {
-  const gate = await requireLeadership();
-  if (!gate.ok) return { success: false, error: gate.error };
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "Unauthorized" };
+  }
+  const isSelf = profile.id === memberId;
+  if (!isSelf && !isLeadership(profile)) {
+    return { success: false, error: "Forbidden" };
+  }
 
   const supabase = await createClient();
   const { data: row, error } = await supabase
     .from("hr_contract_scans")
     .select("storage_path")
     .eq("id", scanId)
-    .eq("organization_id", gate.orgId)
+    .eq("organization_id", profile.organization_id)
     .eq("member_id", memberId)
     .maybeSingle();
 

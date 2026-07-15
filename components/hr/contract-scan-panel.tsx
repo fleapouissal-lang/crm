@@ -368,10 +368,12 @@ export function ContractScanPanel({
   profile,
   onUpload,
   onDelete,
+  readOnly = false,
 }: {
   profile: EmployeeProfile;
-  onUpload: (input: HrScanUploadInput) => Promise<HrContractScan | null>;
-  onDelete: (scanId: string) => void;
+  onUpload?: (input: HrScanUploadInput) => Promise<HrContractScan | null>;
+  onDelete?: (scanId: string) => void;
+  readOnly?: boolean;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
@@ -383,6 +385,7 @@ export function ContractScanPanel({
   const scans = profile.contractScans ?? [];
 
   async function persistCaptured(captured: CapturedFile) {
+    if (!onUpload) return;
     const scan = await onUpload({
       memberId: profile.memberId,
       file: captured.file,
@@ -452,18 +455,20 @@ export function ContractScanPanel({
         ) : null}
       </dl>
 
-      <ContractDropzone
-        pending={pending}
-        labelValue={docLabel}
-        onLabelChange={setDocLabel}
-        onPickFile={processFile}
-        onDropFile={processFile}
-        onOpenCamera={() => setCameraOpen(true)}
-        dropHint={h.contractDropHint}
-        labelPlaceholder={h.contractDocLabel}
-        uploadPdfLabel={h.uploadContract}
-        takeScanLabel={h.takeScan}
-      />
+      {!readOnly && onUpload ? (
+        <ContractDropzone
+          pending={pending}
+          labelValue={docLabel}
+          onLabelChange={setDocLabel}
+          onPickFile={processFile}
+          onDropFile={processFile}
+          onOpenCamera={() => setCameraOpen(true)}
+          dropHint={h.contractDropHint}
+          labelPlaceholder={h.contractDocLabel}
+          uploadPdfLabel={h.uploadContract}
+          takeScanLabel={h.takeScan}
+        />
+      ) : null}
 
       {scans.length === 0 ? (
         <HrEmptyMotif
@@ -483,21 +488,23 @@ export function ContractScanPanel({
               deleteLabel={dict.common.delete}
               pdfLabel={h.pdfDocument}
               scanLabel={h.scanDocument}
-              onDelete={() => onDelete(scan.id)}
+              onDelete={onDelete ? () => onDelete(scan.id) : undefined}
             />
           ))}
         </div>
       )}
 
-      <ContractCameraDialog
-        open={cameraOpen}
-        onOpenChange={setCameraOpen}
-        onCapture={(captured) => {
-          startTransition(async () => {
-            await persistCaptured(captured);
-          });
-        }}
-      />
+      {!readOnly && onUpload ? (
+        <ContractCameraDialog
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(captured) => {
+            startTransition(async () => {
+              await persistCaptured(captured);
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -517,7 +524,7 @@ function ContractScanCard({
   deleteLabel: string;
   pdfLabel: string;
   scanLabel: string;
-  onDelete: () => void;
+  onDelete?: () => void;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
@@ -591,14 +598,16 @@ function ContractScanCard({
             <ExternalLink className="size-3" strokeWidth={2} />
             {viewLabel}
           </button>
-          <button
-            type="button"
-            className="fl-btn sm ghost text-[11px] text-[var(--rose)]"
-            onClick={onDelete}
-            title={deleteLabel}
-          >
-            <Trash2 className="size-3.5" strokeWidth={2} />
-          </button>
+          {onDelete ? (
+            <button
+              type="button"
+              className="fl-btn sm ghost text-[11px] text-[var(--rose)]"
+              onClick={onDelete}
+              title={deleteLabel}
+            >
+              <Trash2 className="size-3.5" strokeWidth={2} />
+            </button>
+          ) : null}
         </div>
       </div>
     </article>

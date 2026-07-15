@@ -5,9 +5,9 @@ import { ExternalLink, Pencil, Receipt } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { QuotePdfExportButton } from "@/components/finance/pdf-export-button";
+import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
 import {
   QUOTE_STATUS_BADGE,
-  formatMoney,
   isQuoteExpiringSoon,
   quoteExpiryIso,
   type DocumentTemplate,
@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 
 export function QuoteDetailDialog({
   open,
@@ -53,102 +52,58 @@ export function QuoteDetailDialog({
     Boolean(onConvertToInvoice) &&
     (quote.status === "accepted" || quote.status === "sent");
 
+  const expiryLabel = q.expiresOn.replace(
+    "{date}",
+    format(new Date(expiry + "T00:00:00"), "dd MMM yyyy", {
+      locale: dateLocale,
+    })
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
+      <DialogContent className="fl-dialog-content ring-0 sm:max-w-2xl">
         <DialogHeader className="fl-dialog-header">
-          <DialogTitle className="flex flex-wrap items-center gap-2">
-            <span className="fl-mono">{quote.number}</span>
-            <span className={`fl-badge ${badge}`}>{q[quote.status]}</span>
-          </DialogTitle>
+          <DialogTitle>{q.detailTitle}</DialogTitle>
         </DialogHeader>
         <div className="fl-dialog-body space-y-4">
-          <dl className="grid gap-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{q.client}</dt>
-              <dd className="font-medium">{quote.clientName}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{q.service}</dt>
-              <dd className="max-w-[55%] text-right font-medium">
-                {quote.service}
-              </dd>
-            </div>
-            {quote.items?.length ? (
-              <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-3">
-                {quote.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start justify-between gap-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium">{item.description}</p>
-                      <p className="fl-tny fl-faint">
-                        {item.quantity} × {formatMoney(item.unitPriceTtc, quote.currency)}
-                      </p>
-                    </div>
-                    <p className="fl-mono shrink-0">
-                      {formatMoney(
-                        item.quantity * item.unitPriceTtc,
-                        quote.currency
-                      )}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{q.amount}</dt>
-              <dd className="fl-mono font-medium">
-                {formatMoney(quote.amount, quote.currency)}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">{q.validity}</dt>
-              <dd
-                className={cn(
-                  "text-right",
-                  expiring && "text-[var(--rose)]"
-                )}
-              >
-                <div>
-                  {q.validityDaysUnit.replace(
-                    "{n}",
-                    String(quote.validityDays)
-                  )}
-                </div>
-                <div className="fl-tny fl-faint">
-                  {q.expiresOn.replace(
-                    "{date}",
-                    format(new Date(expiry + "T00:00:00"), "dd MMM yyyy", {
-                      locale: dateLocale,
-                    })
-                  )}
-                </div>
-              </dd>
-            </div>
-            {template ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">
-                  {dict.fusion.financeDocs.template}
-                </dt>
-                <dd className="text-right font-medium">{template.name}</dd>
-              </div>
-            ) : null}
-          </dl>
+          <FinanceDocumentPreview
+            kind="quote"
+            number={quote.number}
+            statusLabel={q[quote.status]}
+            statusBadge={badge}
+            clientName={quote.clientName}
+            amount={quote.amount}
+            currency={quote.currency}
+            secondaryLabel={q.service}
+            secondaryValue={quote.service}
+            tertiaryLabel={q.validity}
+            tertiaryValue={q.validityDaysUnit.replace(
+              "{n}",
+              String(quote.validityDays)
+            )}
+            lineItems={quote.items}
+          />
+
+          {expiring ? (
+            <p className="rounded-xl border border-[color-mix(in_oklch,var(--rose),transparent_70%)] bg-[color-mix(in_oklch,var(--rose),transparent_92%)] px-4 py-2.5 text-sm text-[var(--rose)]">
+              {expiryLabel}
+            </p>
+          ) : null}
+
           {template ? (
-            <pre className="max-h-[240px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
-              {renderQuoteTemplate(template.content, quote)}
-            </pre>
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide fl-faint">
+                {dict.fusion.financeDocs.template}: {template.name}
+              </p>
+              <pre className="max-h-[180px] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-4 text-xs leading-relaxed whitespace-pre-wrap">
+                {renderQuoteTemplate(template.content, quote)}
+              </pre>
+            </div>
           ) : null}
+
           {quote.notes ? (
-            <p className="text-sm text-muted-foreground">{quote.notes}</p>
+            <p className="text-sm fl-muted">{quote.notes}</p>
           ) : null}
-          <p className="text-[11px] text-muted-foreground">
-            {format(new Date(quote.updatedAt), "d MMM yyyy · HH:mm", {
-              locale: dateLocale,
-            })}
-          </p>
         </div>
         <DialogFooter className="fl-dialog-footer flex-wrap gap-2">
           <button

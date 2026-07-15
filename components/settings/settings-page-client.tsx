@@ -16,6 +16,7 @@ import {
   Trash2,
   User,
   Users,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
@@ -40,6 +41,7 @@ import {
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { CellMain, FlChip, StatLine } from "@/components/fusion/primitives";
 import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor";
+import { MemberAccountPanel } from "@/components/settings/member-account-panel";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { jobRoleAccessKey } from "@/lib/organizations/job-role-access";
@@ -55,7 +57,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n/types";
 
-type SettingsTab = "profile" | "workspace" | "appearance" | "notifications" | "team";
+type SettingsTab = "profile" | "account" | "workspace" | "appearance" | "notifications" | "team";
 
 function FlToggle({
   checked,
@@ -137,7 +139,9 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const dateLocale = getDateFnsLocale(locale);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    data.isTeamMember ? "account" : "profile"
+  );
   const [fullName, setFullName] = useState(data.profile.full_name ?? "");
   const [phone, setPhone] = useState(data.profile.phone ?? "");
   const [jobTitle, setJobTitle] = useState(data.profile.job_title ?? "");
@@ -146,6 +150,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [emailDomain, setEmailDomain] = useState(data.organization?.email_domain ?? "");
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const platformAdmin = data.profile.role === "platform_admin";
+  const isTeamMember = data.isTeamMember;
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -157,19 +162,47 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
     setPrefs(loadPreferences());
   }, []);
 
-  const tabs: { key: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { key: "profile", label: s.profile, icon: <User className="size-3.5" /> },
-    ...(platformAdmin
-      ? []
-      : [
-          { key: "workspace" as const, label: s.workspace, icon: <Building2 className="size-3.5" /> },
-          { key: "team" as const, label: s.team, icon: <Users className="size-3.5" /> },
-        ]),
-    { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
-    ...(platformAdmin
-      ? []
-      : [{ key: "notifications" as const, label: s.notifications, icon: <Bell className="size-3.5" /> }]),
-  ];
+  const tabs: { key: SettingsTab; label: string; icon: React.ReactNode }[] = isTeamMember
+    ? [
+        {
+          key: "account",
+          label: s.account,
+          icon: <Wallet className="size-3.5" />,
+        },
+        { key: "profile", label: s.profile, icon: <User className="size-3.5" /> },
+        {
+          key: "appearance",
+          label: s.appearance,
+          icon: <Palette className="size-3.5" />,
+        },
+      ]
+    : [
+        { key: "profile", label: s.profile, icon: <User className="size-3.5" /> },
+        ...(platformAdmin
+          ? []
+          : [
+              {
+                key: "workspace" as const,
+                label: s.workspace,
+                icon: <Building2 className="size-3.5" />,
+              },
+              {
+                key: "team" as const,
+                label: s.team,
+                icon: <Users className="size-3.5" />,
+              },
+            ]),
+        { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
+        ...(platformAdmin
+          ? []
+          : [
+              {
+                key: "notifications" as const,
+                label: s.notifications,
+                icon: <Bell className="size-3.5" />,
+              },
+            ]),
+      ];
 
   function updatePrefs(patch: Partial<WorkspacePreferences>) {
     const next = { ...prefs, ...patch };
@@ -260,6 +293,20 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
           </button>
         ))}
       </div>
+
+      {activeTab === "account" && isTeamMember && data.memberAccount ? (
+        <MemberAccountPanel
+          profile={data.memberAccount}
+          crmProfile={data.profile}
+        />
+      ) : null}
+
+      {activeTab === "account" && isTeamMember && !data.memberAccount ? (
+        <div className="fl-card fl-pad mx-auto max-w-lg text-center">
+          <h3 className="text-[15px] font-semibold">{s.accountTitle}</h3>
+          <p className="mt-2 text-sm fl-faint">{s.accountEmpty}</p>
+        </div>
+      ) : null}
 
       {activeTab === "profile" ? (
         <div className="space-y-[18px]">
@@ -470,7 +517,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "workspace" && !platformAdmin ? (
+      {activeTab === "workspace" && !platformAdmin && !isTeamMember ? (
         <div className="space-y-[18px]">
           <div className="grid g-4">
             <div className="fl-card fl-pad">
@@ -639,7 +686,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "notifications" && !platformAdmin ? (
+      {activeTab === "notifications" && !platformAdmin && !isTeamMember ? (
         <div className="fl-card fl-pad">
           <h3 className="text-[15px] font-semibold">{s.notifications}</h3>
           <p className="mt-1 text-sm fl-faint">{l.appearanceHint}</p>
@@ -672,7 +719,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
-      {activeTab === "team" && !platformAdmin ? (
+      {activeTab === "team" && !platformAdmin && !isTeamMember ? (
         <div className="space-y-[18px]">
           <div className="fl-card fl-pad">
             <h3 className="text-[15px] font-semibold">{s.functionsTitle}</h3>
@@ -800,6 +847,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         </div>
       ) : null}
 
+      {!isTeamMember ? (
       <div className="fl-card fl-pad border border-[color-mix(in_oklch,var(--rose),transparent_70%)]">
         <h3 className="text-[15px] font-semibold text-[var(--rose)]">
           {s.dangerZone}
@@ -819,6 +867,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
           </button>
         </SettingRow>
       </div>
+      ) : null}
     </div>
   );
 }

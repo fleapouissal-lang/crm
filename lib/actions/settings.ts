@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { getOrgJobRoles } from "@/lib/actions/organizations";
 import { canManageUsers } from "@/lib/permissions";
+import { getMyMemberAccount } from "@/lib/actions/hr";
+import type { EmployeeProfile } from "@/lib/hr/types";
 import type { ActionResult, Organization, OrgJobRole, Profile } from "@/types/database";
 
 export interface SettingsData {
@@ -20,6 +22,8 @@ export interface SettingsData {
   };
   isAdmin: boolean;
   canManageUsers: boolean;
+  isTeamMember: boolean;
+  memberAccount: EmployeeProfile | null;
 }
 
 export async function getSettingsData(): Promise<SettingsData | null> {
@@ -35,8 +39,13 @@ export async function getSettingsData(): Promise<SettingsData | null> {
       stats: { members: 0, leads: 0, tasks: 0, activities: 0 },
       isAdmin: false,
       canManageUsers: false,
+      isTeamMember: false,
+      memberAccount: null,
     };
   }
+
+  const isTeamMember = profile.role === "member";
+  const memberAccount = isTeamMember ? await getMyMemberAccount() : null;
 
   const supabase = await createClient();
   const orgId = profile.organization_id;
@@ -85,6 +94,8 @@ export async function getSettingsData(): Promise<SettingsData | null> {
     stats,
     isAdmin: profile.role === "admin",
     canManageUsers: canManageUsers(profile.role),
+    isTeamMember,
+    memberAccount,
   };
 }
 

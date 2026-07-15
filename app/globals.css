@@ -6950,3 +6950,36 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   opacity: 0.7;
   cursor: wait;
 }
+
+/* Finance document preview (devis / facture) */
+.fl-finance-doc {
+  position: relative;
+}
+.fl-finance-doc__bar {
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    var(--iris) 0%,
+    var(--iris) 50%,
+    var(--gold) 50%,
+    var(--gold) 100%
+  );
+}
+.fl-finance-doc--mono .fl-finance-doc__bar {
+  background: var(--text);
+}
+.fl-finance-doc__head {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--glass-solid), transparent 8%) 0%,
+    var(--glass-solid) 100%
+  );
+}
+.fl-finance-pdf-shell {
+  background: color-mix(in oklch, var(--bg), var(--glass-hi) 40%);
+}
+.fl-finance-pdf-frame {
+  box-shadow:
+    0 24px 48px -28px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in oklch, var(--border), transparent 20%);
+}
