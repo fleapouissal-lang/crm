@@ -27,7 +27,7 @@ export function PasswordInput({
   const inputClasses = cn("pe-11", inputClassName);
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative w-full", className)}>
       {native ? (
         <input
           {...props}

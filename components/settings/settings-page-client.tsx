@@ -44,6 +44,8 @@ import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor
 import { MemberAccountPanel } from "@/components/settings/member-account-panel";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { jobRoleAccessKey } from "@/lib/organizations/job-role-access";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -127,8 +129,8 @@ const AVATAR_GRADIENTS = [
 
 const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
-  fr: "Français",
-  ar: "العربية",
+  fr: "FranÃ§ais",
+  ar: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©",
 };
 
 export function SettingsPageClient({ data }: { data: SettingsData }) {
@@ -156,6 +158,10 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [prefs, setPrefs] = useState<WorkspacePreferences>(DEFAULT_PREFERENCES);
   const [pending, startTransition] = useTransition();
+  const teamPagination = useAdaptivePagination(data.team, {
+    rowHeight: 68,
+    resetKey: activeTab,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -420,7 +426,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               </div>
               <div className="flex justify-between gap-3">
                 <span className="fl-faint">{l.organizationName}</span>
-                <span>{data.organization?.name ?? "—"}</span>
+                <span>{data.organization?.name ?? "â€”"}</span>
               </div>
               {phone ? (
                 <div className="flex justify-between gap-3">
@@ -789,11 +795,11 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                       </td>
                     </tr>
                   ) : (
-                    data.team.map((member, i) => {
+                    teamPagination.pageItems.map((member, i) => {
                       const name =
                         member.full_name ?? member.email ?? dict.common.user;
                       const jobRoleName =
-                        member.job_role?.name ?? member.job_title ?? "—";
+                        member.job_role?.name ?? member.job_title ?? "â€”";
                       return (
                         <tr key={member.id}>
                           <td>
@@ -808,7 +814,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                               }
                             />
                           </td>
-                          <td className="fl-muted">{member.email ?? "—"}</td>
+                          <td className="fl-muted">{member.email ?? "â€”"}</td>
                           <td>
                             <FlChip>{jobRoleName}</FlChip>
                           </td>
@@ -836,6 +842,13 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 </tbody>
               </table>
             </div>
+            <DataPagination
+              page={teamPagination.page}
+              pageSize={teamPagination.pageSize}
+              totalItems={teamPagination.totalItems}
+              totalPages={teamPagination.totalPages}
+              onPageChange={teamPagination.setPage}
+            />
             <TeamMemberDialog
               open={memberDialogOpen}
               onOpenChange={setMemberDialogOpen}

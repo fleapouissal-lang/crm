@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { Plus, Search, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
 import type { Profile } from "@/types/database";
 import { AvatarStack, FlProgress } from "@/components/fusion/primitives";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
@@ -20,6 +21,7 @@ import {
   type ProjectTab,
 } from "@/lib/projects/types";
 import { loadProjects, saveProjects } from "@/lib/projects/storage";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import {
   buildTeamOptions,
   getTeamMembers,
@@ -45,7 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 function tabLabel(base: string, count: number) {
-  return `${base} · ${count}`;
+  return `${base} Â· ${count}`;
 }
 
 function ProjectRowActions({
@@ -201,6 +203,11 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
       );
     });
   }, [projects, phaseTab, search, statusFilter, memberFilter, teamOptions]);
+
+  const pagination = useAdaptivePagination(filtered, {
+    rowHeight: 66,
+    resetKey: `${phaseTab}:${statusFilter}:${memberFilter}:${search}`,
+  });
 
   const hasActiveFilters =
     search.trim() !== "" || statusFilter !== "all" || memberFilter !== "all";
@@ -423,7 +430,7 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
                   </td>
                 </tr>
               ) : (
-                filtered.map((proj) => {
+                pagination.pageItems.map((proj) => {
                   const members = getTeamMembers(proj.teamMemberIds, teamOptions);
                   const lead = members[0];
                   return (
@@ -498,7 +505,7 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
                             </span>
                           </div>
                         ) : (
-                          <span className="fl-faint">—</span>
+                          <span className="fl-faint">â€”</span>
                         )}
                       </td>
                       <td className="fl-muted">
@@ -525,6 +532,13 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <ProjectFormDialog

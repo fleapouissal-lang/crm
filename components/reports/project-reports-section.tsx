@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import {
   deleteProjectReportAction,
@@ -23,6 +24,7 @@ import {
 import { loadProjects } from "@/lib/projects/storage";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 
 export function ProjectReportsSection() {
   const dict = useDict();
@@ -69,6 +71,11 @@ export function ProjectReportsSection() {
     }
     return map;
   }, [reports]);
+  const pagination = useAdaptivePagination(projects, {
+    rowHeight: 112,
+    minDesktopRows: 4,
+    maxDesktopRows: 12,
+  });
 
   function handleUpload(project: ProjectRecord, file: File | null) {
     if (!file) return;
@@ -145,8 +152,9 @@ export function ProjectReportsSection() {
           {r.noProjectsForReports}
         </p>
       ) : (
-        <ul className="divide-y divide-[var(--border)]">
-          {projects.map((project) => {
+        <div>
+          <ul className="divide-y divide-[var(--border)]">
+            {pagination.pageItems.map((project) => {
             const projectReports = reportsByProject.get(project.id) ?? [];
             const uploading = uploadingProjectId === project.id && pending;
 
@@ -218,7 +226,7 @@ export function ProjectReportsSection() {
                             <p className="fl-tny fl-faint">
                               {format(
                                 new Date(report.uploadedAt),
-                                "dd MMM yyyy · HH:mm",
+                                "dd MMM yyyy Â· HH:mm",
                                 { locale: dateLocale }
                               )}
                             </p>
@@ -250,9 +258,19 @@ export function ProjectReportsSection() {
                 )}
               </li>
             );
-          })}
-        </ul>
+            })}
+          </ul>
+        </div>
       )}
+      {!loading && projects.length > 0 ? (
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
+      ) : null}
     </div>
   );
 }

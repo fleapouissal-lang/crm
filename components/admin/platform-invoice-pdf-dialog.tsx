@@ -79,10 +79,7 @@ export function PlatformInvoicePdfDialog({
       <DialogContent className="fl-dialog-content max-h-[92vh] sm:max-w-4xl">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle className="flex items-center gap-3">
-            <span
-              className="grid size-10 place-items-center rounded-xl text-white"
-              style={{ background: "var(--grad-brand)" }}
-            >
+            <span className="grid size-10 place-items-center rounded-xl bg-[#111114] text-white">
               <Eye className="size-5" strokeWidth={2} />
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">

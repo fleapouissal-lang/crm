@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
@@ -12,6 +12,8 @@ import {
 import { toast } from "sonner";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { RecordPaymentDialog } from "@/components/admin/record-payment-dialog";
 import {
@@ -84,6 +86,8 @@ export function AdminPaymentsPageClient({
       byBrand,
     };
   }, [payments]);
+
+  const pagination = useAdaptivePagination(payments, { rowHeight: 62 });
 
   function refresh() {
     startTransition(async () => {
@@ -193,11 +197,11 @@ export function AdminPaymentsPageClient({
                   </td>
                 </tr>
               ) : (
-                payments.map((row) => (
+                pagination.pageItems.map((row) => (
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "—"}</b>
+                      <b>{row.organization?.name ?? "â€”"}</b>
                       {row.invoice?.number ? (
                         <div className="fl-faint fl-tny">{row.invoice.number}</div>
                       ) : null}
@@ -213,13 +217,13 @@ export function AdminPaymentsPageClient({
                       {row.method === "card" ? (
                         <span className="inline-flex items-center gap-1.5 text-xs">
                           <CreditCard className="size-3.5 fl-faint" />
-                          {row.card_brand ? p.cardBrands[row.card_brand] : "—"}
+                          {row.card_brand ? p.cardBrands[row.card_brand] : "â€”"}
                           {row.card_last4 ? (
-                            <span className="fl-mono fl-faint">•••• {row.card_last4}</span>
+                            <span className="fl-mono fl-faint">â€¢â€¢â€¢â€¢ {row.card_last4}</span>
                           ) : null}
                         </span>
                       ) : (
-                        "—"
+                        "â€”"
                       )}
                     </td>
                     <td>
@@ -237,7 +241,7 @@ export function AdminPaymentsPageClient({
                         ? format(new Date(row.paid_at), "dd MMM yyyy", {
                             locale: dateLocale,
                           })
-                        : "—"}
+                        : "â€”"}
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
@@ -300,6 +304,13 @@ export function AdminPaymentsPageClient({
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <RecordPaymentDialog

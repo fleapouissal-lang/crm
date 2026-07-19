@@ -152,10 +152,7 @@ export function PlatformQuoteDialog({
       <DialogContent className="fl-dialog-content fl-dialog-content--lg max-h-[92vh] overflow-hidden sm:max-w-2xl">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle className="flex items-center gap-3">
-            <span
-              className="grid size-10 place-items-center rounded-xl text-white"
-              style={{ background: "var(--grad-brand)" }}
-            >
+            <span className="grid size-10 place-items-center rounded-xl bg-[#111114] text-white">
               <FileText className="size-5" strokeWidth={2} />
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">

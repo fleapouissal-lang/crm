@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import type { TeamMemberOption } from "@/lib/team/members";
 import type {
   EmployeeProfile,
@@ -87,6 +89,10 @@ function HrEntryList({
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
+  const pagination = useAdaptivePagination(entries, {
+    rowHeight: 64,
+    resetKey: entries[0]?.id ?? "",
+  });
 
   if (entries.length === 0) {
     return (
@@ -103,8 +109,12 @@ function HrEntryList({
   }
 
   return (
-    <ul className="fl-hr-log divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
-      {entries.map((entry) => (
+    <div
+     
+      className="overflow-hidden rounded-xl border border-[var(--border)]"
+    >
+      <ul className="fl-hr-log divide-y divide-[var(--border)]">
+      {pagination.pageItems.map((entry) => (
         <li key={entry.id} className="flex flex-wrap items-start gap-3 px-4 py-3.5">
           <span
             className={cn(
@@ -127,7 +137,15 @@ function HrEntryList({
           </div>
         </li>
       ))}
-    </ul>
+      </ul>
+      <DataPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        totalPages={pagination.totalPages}
+        onPageChange={pagination.setPage}
+      />
+    </div>
   );
 }
 
@@ -152,7 +170,6 @@ export function EmployeeProfileContent({
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
-  const l = dict.fusion.labels;
   const b = dict.fusion.badges;
 
   const [activeTab, setActiveTab] = useState<HrProfileTab>("overview");
@@ -185,7 +202,7 @@ export function EmployeeProfileContent({
   const kpis = [
     {
       label: h.baseSalary,
-      value: formatBaseSalary(profile, "—"),
+      value: formatBaseSalary(profile, "â€”"),
     },
     {
       label: h.totalBonus,
@@ -242,13 +259,13 @@ export function EmployeeProfileContent({
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted shrink-0">{dict.fusion.settings.phone}</dt>
             <dd className="font-medium text-end truncate">
-              {profile.phone?.trim() || member.phone || "—"}
+              {profile.phone?.trim() || member.phone || "â€”"}
             </dd>
           </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted shrink-0">{h.email}</dt>
             <dd className="font-medium text-end truncate">
-              {profile.email?.trim() || member.email || "—"}
+              {profile.email?.trim() || member.email || "â€”"}
             </dd>
           </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">

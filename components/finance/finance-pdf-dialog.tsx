@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Eye, FileDown, Loader2 } from "lucide-react";
-import {
-  buildPlatformQuotePdfBytes,
-  downloadPdfBytes,
-} from "@/lib/billing/build-platform-quote-pdf";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { useOrgIssuer } from "@/components/finance/org-issuer-provider";
+import {
+  buildInvoicePdfBytes,
+  buildQuotePdfBytes,
+  downloadPdfBytes,
+} from "@/lib/finance/pdf/build-finance-pdf";
+import type {
+  DocumentTemplate,
+  InvoiceRecord,
+  QuoteRecord,
+} from "@/lib/finance/types";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PlatformQuote } from "@/types/database";
 
 function toBlobPart(bytes: Uint8Array): BlobPart {
   return bytes.buffer.slice(
@@ -23,24 +29,44 @@ function toBlobPart(bytes: Uint8Array): BlobPart {
   ) as BlobPart;
 }
 
-export function PlatformQuotePdfDialog({
+export function FinancePdfDialog({
   open,
   onOpenChange,
+  kind,
   quote,
+  invoice,
+  template,
+  linkedQuote,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  quote: PlatformQuote | null;
+  kind: "quote" | "invoice";
+  quote?: QuoteRecord | null;
+  invoice?: InvoiceRecord | null;
+  template?: DocumentTemplate;
+  linkedQuote?: QuoteRecord;
 }) {
   const dict = useDict();
   const { locale } = useI18n();
-  const b = dict.fusion.platformBilling;
+  const issuer = useOrgIssuer();
+  const f = dict.fusion.financeDocs;
+  const title =
+    kind === "quote"
+      ? dict.fusion.quotes.viewPdf
+      : dict.fusion.invoices.viewPdf;
+  const number =
+    kind === "quote" ? quote?.number : invoice?.number;
+  const clientName =
+    kind === "quote" ? quote?.clientName : invoice?.clientName;
+
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const recordId = kind === "quote" ? quote?.id : invoice?.id;
+
   useEffect(() => {
-    if (!open || !quote) {
+    if (!open || !recordId) {
       setPdfBytes(null);
       setError(null);
       return;
@@ -50,18 +76,42 @@ export function PlatformQuotePdfDialog({
     setPdfBytes(null);
     setError(null);
 
-    void buildPlatformQuotePdfBytes(quote, locale)
+    const run =
+      kind === "quote" && quote
+        ? buildQuotePdfBytes(quote, template, locale, issuer)
+        : kind === "invoice" && invoice
+          ? buildInvoicePdfBytes(
+              invoice,
+              template,
+              linkedQuote,
+              locale,
+              issuer
+            )
+          : Promise.reject(new Error("missing record"));
+
+    void run
       .then((bytes) => {
         if (!cancelled) setPdfBytes(bytes);
       })
       .catch(() => {
-        if (!cancelled) setError(b.quotePdfError);
+        if (!cancelled) setError(f.pdfError);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [open, quote, locale, b.quotePdfError]);
+  }, [
+    open,
+    recordId,
+    kind,
+    quote,
+    invoice,
+    template,
+    linkedQuote,
+    locale,
+    issuer,
+    f.pdfError,
+  ]);
 
   useEffect(() => {
     if (!pdfBytes) {
@@ -74,38 +124,39 @@ export function PlatformQuotePdfDialog({
     return () => URL.revokeObjectURL(next);
   }, [pdfBytes]);
 
-  if (!quote) return null;
+  if (kind === "quote" && !quote) return null;
+  if (kind === "invoice" && !invoice) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content max-h-[92vh] sm:max-w-4xl">
+      <DialogContent className="fl-dialog-content max-h-[96vh] w-[min(96vw,72rem)] sm:max-w-6xl">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-[#111114] text-white">
               <Eye className="size-5" strokeWidth={2} />
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span>{b.viewQuotePdf}</span>
+              <span>{title}</span>
               <span className="truncate text-xs font-normal fl-faint fl-mono">
-                {quote.number}
-                {quote.organization?.name ? ` · ${quote.organization.name}` : ""}
+                {number}
+                {clientName ? ` · ${clientName}` : ""}
               </span>
             </span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="fl-dialog-body min-h-[55vh] p-0 sm:p-0">
+        <div className="fl-dialog-body min-h-[62vh] p-0 sm:p-0">
           {error ? (
-            <div className="flex min-h-[55vh] items-center justify-center px-6">
+            <div className="flex min-h-[62vh] items-center justify-center px-6">
               <p className="text-sm fl-faint">{error}</p>
             </div>
           ) : !url ? (
-            <div className="flex min-h-[55vh] flex-col items-center justify-center gap-3">
+            <div className="flex min-h-[62vh] flex-col items-center justify-center gap-3">
               <Loader2 className="size-7 animate-spin text-[var(--text-dim)]" />
-              <p className="text-sm fl-faint">{b.quotePdfLoading}</p>
+              <p className="text-sm fl-faint">{f.pdfLoading}</p>
             </div>
           ) : (
-            <div className="fl-finance-pdf-frame h-[min(70vh,720px)] overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+            <div className="fl-finance-pdf-frame h-[min(78vh,860px)] overflow-hidden rounded-xl border border-[var(--border)] bg-white">
               <object
                 data={`${url}#toolbar=1&navpanes=0`}
                 type="application/pdf"
@@ -113,7 +164,7 @@ export function PlatformQuotePdfDialog({
               >
                 <iframe
                   src={`${url}#toolbar=1&navpanes=0`}
-                  title={quote.number}
+                  title={number ?? "PDF"}
                   className="h-full w-full border-0"
                 />
               </object>
@@ -132,9 +183,9 @@ export function PlatformQuotePdfDialog({
           <button
             type="button"
             className="fl-btn primary"
-            disabled={!pdfBytes}
+            disabled={!pdfBytes || !number}
             onClick={() =>
-              pdfBytes && downloadPdfBytes(pdfBytes, `${quote.number}.pdf`)
+              pdfBytes && number && downloadPdfBytes(pdfBytes, `${number}.pdf`)
             }
           >
             <FileDown className="size-4" />

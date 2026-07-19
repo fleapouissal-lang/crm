@@ -4,6 +4,18 @@ export type QuoteStatus = "draft" | "sent" | "accepted" | "expired" | "refused";
 
 export type InvoiceStatus = "draft" | "pending" | "paid" | "overdue";
 
+export type ExpenseStatus = "draft" | "pending" | "paid" | "cancelled";
+
+export type ExpenseCategory =
+  | "rent"
+  | "salaries"
+  | "software"
+  | "marketing"
+  | "travel"
+  | "supplies"
+  | "utilities"
+  | "other";
+
 export type ClientType = "particulier" | "pro";
 
 export interface DocumentTemplate {
@@ -74,6 +86,39 @@ export const INVOICE_STATUS_BADGE: Record<InvoiceStatus, string> = {
   paid: "b-green",
   overdue: "b-rose",
 };
+
+export const EXPENSE_STATUS_BADGE: Record<ExpenseStatus, string> = {
+  draft: "b-gray",
+  pending: "b-amber",
+  paid: "b-green",
+  cancelled: "b-rose",
+};
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  "rent",
+  "salaries",
+  "software",
+  "marketing",
+  "travel",
+  "supplies",
+  "utilities",
+  "other",
+];
+
+export interface ExpenseRecord {
+  id: string;
+  number: string;
+  title: string;
+  category: ExpenseCategory;
+  vendor: string;
+  amount: number;
+  currency: string;
+  date: string;
+  status: ExpenseStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export function formatMoney(amount: number, currency: string): string {
   return `${amount.toLocaleString("fr-FR")} ${currency}`;
@@ -205,6 +250,18 @@ export function nextInvoiceNumber(invoices: InvoiceRecord[]): string {
   const prefix = `FAC-${year}-`;
   const nums = invoices
     .map((i) => i.number)
+    .filter((n) => n.startsWith(prefix))
+    .map((n) => parseInt(n.slice(prefix.length), 10))
+    .filter((n) => !Number.isNaN(n));
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  return `${prefix}${String(next).padStart(3, "0")}`;
+}
+
+export function nextExpenseNumber(expenses: ExpenseRecord[]): string {
+  const year = new Date().getFullYear();
+  const prefix = `DEP-${year}-`;
+  const nums = expenses
+    .map((e) => e.number)
     .filter((n) => n.startsWith(prefix))
     .map((n) => parseInt(n.slice(prefix.length), 10))
     .filter((n) => !Number.isNaN(n));

@@ -15,6 +15,8 @@ import {
 import { toast } from "sonner";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { EditCompanyDialog } from "@/components/admin/edit-company-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
@@ -49,6 +51,8 @@ export function AdminCompaniesPageClient({
   const [loading, setLoading] = useState(true);
   const [editCompany, setEditCompany] = useState<CompanyRow | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const pagination = useAdaptivePagination(companies, { rowHeight: 66 });
 
   useEffect(() => {
     let cancelled = false;
@@ -168,7 +172,7 @@ export function AdminCompaniesPageClient({
                     </td>
                   </tr>
                 ) : (
-                  companies.map((company) => {
+                  pagination.pageItems.map((company) => {
                     const active = company.is_active !== false;
                     return (
                       <tr
@@ -203,14 +207,14 @@ export function AdminCompaniesPageClient({
                                         company.country),
                                   ]
                                     .filter(Boolean)
-                                    .join(" · ")}
+                                    .join(" Â· ")}
                                 </div>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="fl-muted">@{company.email_domain ?? "—"}</td>
-                        <td className="fl-muted">{company.directorEmail ?? "—"}</td>
+                        <td className="fl-muted">@{company.email_domain ?? "â€”"}</td>
+                        <td className="fl-muted">{company.directorEmail ?? "â€”"}</td>
                         <td>
                           <span className="inline-flex items-center gap-1 fl-muted">
                             <Users className="size-3.5" />
@@ -288,6 +292,15 @@ export function AdminCompaniesPageClient({
             </table>
           )}
         </div>
+        {!loading ? (
+          <DataPagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
+        ) : null}
       </div>
 
       <EditCompanyDialog

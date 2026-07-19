@@ -1,4 +1,9 @@
-import type { DocumentTemplate, InvoiceRecord, QuoteRecord } from "./types";
+import type {
+  DocumentTemplate,
+  ExpenseRecord,
+  InvoiceRecord,
+  QuoteRecord,
+} from "./types";
 
 const now = new Date().toISOString();
 
@@ -202,6 +207,65 @@ export const SEED_INVOICES: InvoiceRecord[] = [
         unitPriceTtc: 2500,
       },
     ],
+    createdAt: now,
+    updatedAt: now,
+  },
+];
+
+export const SEED_EXPENSES: ExpenseRecord[] = [
+  {
+    id: "exp-1",
+    number: "DEP-2026-001",
+    title: "Loyer bureaux — juillet",
+    category: "rent",
+    vendor: "Immobilière Atlas",
+    amount: 18500,
+    currency: "MAD",
+    date: "2026-07-01",
+    status: "paid",
+    notes: "",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "exp-2",
+    number: "DEP-2026-002",
+    title: "Abonnements SaaS (Figma, Notion)",
+    category: "software",
+    vendor: "Divers",
+    amount: 2400,
+    currency: "MAD",
+    date: "2026-07-05",
+    status: "paid",
+    notes: "",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "exp-3",
+    number: "DEP-2026-003",
+    title: "Campagne Meta Ads",
+    category: "marketing",
+    vendor: "Meta",
+    amount: 6500,
+    currency: "MAD",
+    date: "2026-07-12",
+    status: "pending",
+    notes: "Lead gen Q3",
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "exp-4",
+    number: "DEP-2026-004",
+    title: "Déplacement client Casablanca",
+    category: "travel",
+    vendor: "ONCF / Taxi",
+    amount: 820,
+    currency: "MAD",
+    date: "2026-07-15",
+    status: "draft",
+    notes: "",
     createdAt: now,
     updatedAt: now,
   },

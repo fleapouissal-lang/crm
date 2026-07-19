@@ -9,9 +9,12 @@ import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { StatLine } from "@/components/fusion/primitives";
 import { EmptyState } from "@/components/shared/page-header";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
 import { QuoteFormDialog } from "@/components/finance/quote-form-dialog";
 import { QuoteDetailDialog } from "@/components/finance/quote-detail-dialog";
+import { FinancePdfDialog } from "@/components/finance/finance-pdf-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -58,6 +61,7 @@ export function QuotesPageClient() {
   const [templates, setTemplates] = useState(loadTemplates());
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [active, setActive] = useState<QuoteRecord | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | "all">("all");
@@ -110,6 +114,11 @@ export function QuotesPageClient() {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [quotes, search, statusFilter]);
 
+  const pagination = useAdaptivePagination(filtered, {
+    rowHeight: 64,
+    resetKey: `${statusFilter}:${search}`,
+  });
+
   const hasFilters = search.trim() !== "" || statusFilter !== "all";
   const templatesById = useMemo(
     () => new Map(templates.map((t) => [t.id, t])),
@@ -147,7 +156,9 @@ export function QuotesPageClient() {
   }
 
   function viewQuotePdf(row: QuoteRecord) {
-    window.open(`/finance/quotes/${row.id}`, "_blank", "noopener,noreferrer");
+    setActive(row);
+    setDetailOpen(false);
+    setPdfOpen(true);
   }
 
   function convertToInvoice(row: QuoteRecord) {
@@ -179,8 +190,8 @@ export function QuotesPageClient() {
       templateId: row.templateId,
       quoteId: row.id,
       notes: row.notes
-        ? `${row.notes}\n\n← ${row.number}`
-        : `← ${row.number}`,
+        ? `${row.notes}\n\nâ† ${row.number}`
+        : `â† ${row.number}`,
       items,
       createdAt: now,
       updatedAt: now,
@@ -316,12 +327,20 @@ export function QuotesPageClient() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => {
+                {pagination.pageItems.map((row) => {
                   const expiring = isQuoteExpiringSoon(row);
                   const expiry = quoteExpiryIso(row);
                   return (
                     <tr key={row.id}>
-                      <td className="fl-mono">{row.number}</td>
+                      <td className="fl-mono">
+                        <button
+                          type="button"
+                          className="text-left underline-offset-2 hover:underline"
+                          onClick={() => openDetail(row)}
+                        >
+                          {row.number}
+                        </button>
+                      </td>
                       <td>
                         <b>{row.clientName}</b>
                       </td>
@@ -360,7 +379,7 @@ export function QuotesPageClient() {
                       <td>
                         <FinanceRowActions
                           label={row.number}
-                          onView={() => openDetail(row)}
+                          onView={() => viewQuotePdf(row)}
                           onEdit={() => openEdit(row)}
                           onDelete={() => handleDelete(row.id)}
                           onConvert={
@@ -378,6 +397,13 @@ export function QuotesPageClient() {
             </table>
           )}
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <QuoteFormDialog
@@ -402,6 +428,18 @@ export function QuotesPageClient() {
         onViewPdf={() => active && viewQuotePdf(active)}
         onConvertToInvoice={
           active ? () => convertToInvoice(active) : undefined
+        }
+      />
+
+      <FinancePdfDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        kind="quote"
+        quote={active}
+        template={
+          active?.templateId
+            ? templatesById.get(active.templateId)
+            : undefined
         }
       />
     </div>

@@ -1,10 +1,21 @@
-import type { DocumentTemplate, InvoiceRecord, QuoteRecord } from "./types";
+import type {
+  DocumentTemplate,
+  ExpenseRecord,
+  InvoiceRecord,
+  QuoteRecord,
+} from "./types";
 import { normalizeInvoice, normalizeQuote } from "./types";
-import { SEED_INVOICES, SEED_QUOTES, SEED_TEMPLATES } from "./seed";
+import {
+  SEED_EXPENSES,
+  SEED_INVOICES,
+  SEED_QUOTES,
+  SEED_TEMPLATES,
+} from "./seed";
 
 const TEMPLATES_KEY = "fusion-finance-templates-v1";
 const QUOTES_KEY = "fusion-finance-quotes-v2";
 const INVOICES_KEY = "fusion-finance-invoices-v2";
+const EXPENSES_KEY = "fusion-finance-expenses-v1";
 
 function load<T>(key: string, seed: T[]): T[] {
   if (typeof window === "undefined") return seed;
@@ -45,6 +56,14 @@ export function loadInvoices(): InvoiceRecord[] {
 
 export function saveInvoices(invoices: InvoiceRecord[]): void {
   save(INVOICES_KEY, invoices.map(normalizeInvoice));
+}
+
+export function loadExpenses(): ExpenseRecord[] {
+  return load(EXPENSES_KEY, SEED_EXPENSES);
+}
+
+export function saveExpenses(expenses: ExpenseRecord[]): void {
+  save(EXPENSES_KEY, expenses);
 }
 
 export function getTemplateById(id: string | null): DocumentTemplate | undefined {

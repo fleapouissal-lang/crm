@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, cloneElement } from "react";
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,30 +41,43 @@ export function ConfirmDialog({
           setOpen(true);
         },
       })}
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-            <AlertDialogDescription>{description}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={pending}
-              variant={variant === "destructive" ? "destructive" : "default"}
-              onClick={(e) => {
-                e.preventDefault();
-                startTransition(async () => {
-                  await onConfirm();
-                  setOpen(false);
-                });
-              }}
-            >
-              {pending ? "Working…" : confirmLabel}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {variant === "destructive" ? (
+        <DeleteConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title={title}
+          description={description}
+          confirmLabel={confirmLabel}
+          onConfirm={onConfirm}
+        />
+      ) : (
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogContent className="fl-dialog-content ring-0">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{title}</AlertDialogTitle>
+              <AlertDialogDescription>{description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="fl-btn sm ghost" disabled={pending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="fl-btn sm primary"
+                disabled={pending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  startTransition(async () => {
+                    await onConfirm();
+                    setOpen(false);
+                  });
+                }}
+              >
+                {pending ? "Working…" : confirmLabel}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }

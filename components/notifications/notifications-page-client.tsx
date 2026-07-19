@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { FlAva } from "@/components/fusion/primitives";
 import { savePreferences } from "@/lib/settings/storage";
 import type { WorkspacePreferences } from "@/lib/settings/types";
@@ -24,6 +25,7 @@ import {
   type AppNotification,
 } from "@/components/notifications/notifications-provider";
 import { cn } from "@/lib/utils";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 
 type NotifFilter = "all" | "unread" | "tasks" | "leads";
 
@@ -137,6 +139,10 @@ export function NotificationsPageClient() {
       return true;
     });
   }, [items, filter]);
+  const pagination = useAdaptivePagination(filtered, {
+    rowHeight: 82,
+    resetKey: filter,
+  });
 
   function updatePrefs(patch: Partial<WorkspacePreferences>) {
     const next = { ...prefs, ...patch };
@@ -210,7 +216,7 @@ export function NotificationsPageClient() {
               >
                 {f.label}
                 {f.key === "unread" && unreadCount > 0
-                  ? ` · ${unreadCount}`
+                  ? ` Â· ${unreadCount}`
                   : ""}
               </button>
             ))}
@@ -234,7 +240,7 @@ export function NotificationsPageClient() {
               <p className="mt-1 text-xs fl-faint">{n.emptyHint}</p>
             </div>
           ) : (
-            filtered.map((item) => (
+            pagination.pageItems.map((item) => (
               <div
                 key={item.id}
                 role="button"
@@ -269,7 +275,7 @@ export function NotificationsPageClient() {
                   </div>
                   <p className="text-[13px] leading-snug">{item.text}</p>
                   <div className="at-time">
-                    {item.actorName ?? dict.common.user} ·{" "}
+                    {item.actorName ?? dict.common.user} Â·{" "}
                     {formatDistanceToNow(new Date(item.createdAt), {
                       addSuffix: true,
                       locale: dateLocale,
@@ -283,6 +289,13 @@ export function NotificationsPageClient() {
               </div>
             ))
           )}
+          <DataPagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </div>
         <p className="mt-2 text-center text-[11px] fl-faint">
           {n.readSwitchHint}{" "}

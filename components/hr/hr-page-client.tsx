@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import type { Profile } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import {
   EmployeeProfileFormDialog,
@@ -189,6 +191,11 @@ export function HrPageClient({
     });
   }, [teamOptions, profileByMember, search, deptFilter]);
 
+  const pagination = useAdaptivePagination(filteredMembers, {
+    rowHeight: 68,
+    resetKey: `${deptFilter}:${search}`,
+  });
+
   function openMember(
     memberId: string,
     mode: "entry" | "profile" | "quick",
@@ -328,7 +335,7 @@ export function HrPageClient({
                   </td>
                 </tr>
               ) : (
-                filteredMembers.map((member) => {
+                pagination.pageItems.map((member) => {
                   const profile = profileByMember.get(member.id)!;
                   const entries = profile.entries;
                   const phone = profile.phone?.trim() || member.phone || "";
@@ -358,7 +365,7 @@ export function HrPageClient({
                       </td>
                       <td className="max-w-[180px]">
                         <div className="truncate text-[13px]">
-                          {phone || email || "—"}
+                          {phone || email || "â€”"}
                         </div>
                         {phone && email ? (
                           <div className="truncate text-[11px] fl-faint">{email}</div>
@@ -416,6 +423,13 @@ export function HrPageClient({
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <HrEntryFormDialog

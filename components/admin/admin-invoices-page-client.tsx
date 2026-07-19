@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CheckCircle2, Eye, FilePenLine, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PlatformInvoiceDialog } from "@/components/admin/platform-invoice-dialog";
 import { PlatformInvoicePdfDialog } from "@/components/admin/platform-invoice-pdf-dialog";
@@ -56,6 +58,8 @@ export function AdminInvoicesPageClient({
       total: invoices.length,
     };
   }, [invoices]);
+
+  const pagination = useAdaptivePagination(invoices, { rowHeight: 60 });
 
   function refresh() {
     startTransition(async () => {
@@ -158,11 +162,11 @@ export function AdminInvoicesPageClient({
                   </td>
                 </tr>
               ) : (
-                invoices.map((row) => (
+                pagination.pageItems.map((row) => (
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "—"}</b>
+                      <b>{row.organization?.name ?? "â€”"}</b>
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">
@@ -171,7 +175,7 @@ export function AdminInvoicesPageClient({
                         resolvePlatformCurrency(row.currency, currency)
                       )}
                     </td>
-                    <td className="fl-faint fl-tny">{row.due_date ?? "—"}</td>
+                    <td className="fl-faint fl-tny">{row.due_date ?? "â€”"}</td>
                     <td className="fl-faint fl-tny">
                       {b.billingReasons[row.billing_reason]}
                     </td>
@@ -247,6 +251,13 @@ export function AdminInvoicesPageClient({
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <PlatformInvoiceDialog

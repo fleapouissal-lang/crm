@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Eye, FilePenLine, Plus, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PlatformQuoteDialog } from "@/components/admin/platform-quote-dialog";
 import { PlatformQuotePdfDialog } from "@/components/admin/platform-quote-pdf-dialog";
@@ -50,6 +52,8 @@ export function AdminQuotesPageClient({
     const value = open.reduce((n, q) => n + Number(q.amount), 0);
     return { open: open.length, accepted: accepted.length, value };
   }, [quotes]);
+
+  const pagination = useAdaptivePagination(quotes, { rowHeight: 60 });
 
   function refresh() {
     startTransition(async () => {
@@ -147,11 +151,11 @@ export function AdminQuotesPageClient({
                   </td>
                 </tr>
               ) : (
-                quotes.map((row) => (
+                pagination.pageItems.map((row) => (
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "—"}</b>
+                      <b>{row.organization?.name ?? "â€”"}</b>
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">
@@ -235,6 +239,13 @@ export function AdminQuotesPageClient({
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <PlatformQuoteDialog

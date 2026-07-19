@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import type { Lead, Profile, Role } from "@/types/database";
 import { LeadStageBadge } from "@/components/shared/status-badge";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { EmptyState } from "@/components/shared/page-header";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { LeadFormDialog } from "@/components/leads/lead-form";
@@ -14,6 +15,7 @@ import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import { deleteLead } from "@/lib/actions/leads";
 import { canDeleteLead } from "@/lib/permissions";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { Users } from "lucide-react";
 import {
   AlertDialog,
@@ -123,6 +125,7 @@ export function LeadTable({
   const dict = useDict();
   const { locale } = useI18n();
   const [editLead, setEditLead] = useState<Lead | null>(null);
+  const pagination = useAdaptivePagination(leads, { rowHeight: 64 });
 
   if (leads.length === 0) {
     return (
@@ -136,7 +139,8 @@ export function LeadTable({
 
   return (
     <>
-      <div className="fl-card fl-tbl-wrap">
+      <div className="fl-card overflow-hidden">
+        <div className="fl-tbl-wrap">
         <div className="hidden md:block">
           <table className="fl-tbl">
             <thead>
@@ -150,7 +154,7 @@ export function LeadTable({
               </tr>
             </thead>
             <tbody>
-              {leads.map((lead) => (
+              {pagination.pageItems.map((lead) => (
                 <tr key={lead.id}>
                   <td>
                     <Link href={`/leads/${lead.id}`} className="font-medium hover:underline">
@@ -161,7 +165,7 @@ export function LeadTable({
                     )}
                   </td>
                   <td>
-                    <div className="text-sm">{lead.contact_name ?? "—"}</div>
+                    <div className="text-sm">{lead.contact_name ?? "â€”"}</div>
                     {lead.email && (
                       <div className="fl-faint text-xs">{lead.email}</div>
                     )}
@@ -183,7 +187,7 @@ export function LeadTable({
                         <span className="text-sm">{lead.assigned_profile.full_name}</span>
                       </div>
                     ) : (
-                      <span className="text-sm fl-faint">—</span>
+                      <span className="text-sm fl-faint">â€”</span>
                     )}
                   </td>
                   <td className="fl-mono">
@@ -202,7 +206,7 @@ export function LeadTable({
           </table>
         </div>
         <ul className="divide-y divide-[var(--border)] md:hidden">
-          {leads.map((lead) => (
+          {pagination.pageItems.map((lead) => (
             <li key={lead.id} className="flex items-start gap-2 p-4">
               <Link href={`/leads/${lead.id}`} className="block min-w-0 flex-1 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -231,6 +235,14 @@ export function LeadTable({
             </li>
           ))}
         </ul>
+        </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <LeadFormDialog

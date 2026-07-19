@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
-import { LineItemsEditor } from "@/components/finance/line-items-editor";
+import { FinanceDocumentEditor } from "@/components/finance/finance-document-editor";
 import type {
   ClientType,
   DocumentTemplate,
@@ -15,20 +15,12 @@ import type {
   QuoteStatus,
 } from "@/lib/finance/types";
 import {
+  QUOTE_STATUS_BADGE,
   createEmptyLineItem,
   documentAmountTtc,
   nextQuoteNumber,
   summarizeService,
 } from "@/lib/finance/types";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +28,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 
-const STATUSES: QuoteStatus[] = ["draft", "sent", "accepted", "expired", "refused"];
-const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
+const STATUSES: QuoteStatus[] = [
+  "draft",
+  "sent",
+  "accepted",
+  "expired",
+  "refused",
+];
 
 const schema = z.object({
   clientName: z.string().min(1),
@@ -58,30 +54,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-function Field({
-  label,
-  htmlFor,
-  error,
-  children,
-  className,
-}: {
-  label: string;
-  htmlFor?: string;
-  error?: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("fl-field", className)}>
-      <label className="fl-field-label" htmlFor={htmlFor}>
-        {label}
-      </label>
-      {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
-    </div>
-  );
-}
 
 export function QuoteFormDialog({
   open,
@@ -111,7 +83,6 @@ export function QuoteFormDialog({
   );
 
   const {
-    register,
     handleSubmit,
     reset,
     setValue,
@@ -130,10 +101,14 @@ export function QuoteFormDialog({
     },
   });
 
-  const status = watch("status");
-  const templateId = watch("templateId");
+  const status = watch("status") as QuoteStatus;
+  const templateId = watch("templateId") || "";
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
+  const clientName = watch("clientName") || "";
+  const validityDays = watch("validityDays") || "30";
+  const notes = watch("notes") || "";
+  const number = quote?.number ?? nextQuoteNumber(existingQuotes);
 
   useEffect(() => {
     if (!open) return;
@@ -174,7 +149,6 @@ export function QuoteFormDialog({
 
     const now = new Date().toISOString();
     const id = quote?.id ?? `q-${crypto.randomUUID().slice(0, 8)}`;
-    const number = quote?.number ?? nextQuoteNumber(existingQuotes);
     const cleaned = validItems.map((row) => ({
       ...row,
       description: row.description.trim(),
@@ -203,134 +177,64 @@ export function QuoteFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-2xl">
+      <DialogContent className="fl-dialog-content fl-dialog-content--doc ring-0 max-h-[96vh]">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{isEdit ? f.editQuote : q.newQuote}</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="fl-dialog-body max-h-[70vh] space-y-4 overflow-y-auto"
-        >
-          {isEdit ? (
-            <p className="text-sm text-muted-foreground">
-              {q.reference}{" "}
-              <span className="fl-mono font-medium text-foreground">
-                {quote?.number}
-              </span>
-            </p>
-          ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={q.client}
-              htmlFor="q-client"
-              error={errors.clientName?.message}
-            >
-              <Input id="q-client" className="fl-inp" {...register("clientName")} />
-            </Field>
-            <Field label={f.clientType}>
-              <Select
-                value={clientType}
-                onValueChange={(v) =>
-                  v && setValue("clientType", v as ClientType)
-                }
-              >
-                <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue>
-                    {
-                      f[
-                        clientType === "pro" ? "clientPro" : "clientParticulier"
-                      ]
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {CLIENT_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {f[type === "pro" ? "clientPro" : "clientParticulier"]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label={f.currency} htmlFor="q-currency">
-              <Input id="q-currency" className="fl-inp" {...register("currency")} />
-            </Field>
-            <Field
-              label={q.validity}
-              htmlFor="q-validity"
-              error={errors.validityDays?.message}
-            >
-              <Input
-                id="q-validity"
-                type="number"
-                min={1}
-                max={365}
-                className="fl-inp"
-                {...register("validityDays")}
-              />
-            </Field>
-            <Field label={q.status}>
-              <Select
-                value={status}
-                onValueChange={(v) => v && setValue("status", v)}
-              >
-                <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue>
-                    {q[status as QuoteStatus] ?? status}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {q[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field label={f.applyTemplate}>
-            <Select
-              value={templateId || "none"}
-              onValueChange={(v) =>
-                setValue("templateId", !v || v === "none" ? "" : v)
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="fl-dialog-body max-h-[min(78vh,880px)] space-y-0 overflow-y-auto px-4 py-3 sm:px-5">
+            <FinanceDocumentEditor
+              kind="quote"
+              number={number}
+              statusFieldLabel={q.status}
+              statusBadge={QUOTE_STATUS_BADGE[status] ?? "b-gray"}
+              status={status}
+              statusOptions={STATUSES.map((s) => ({
+                value: s,
+                label: q[s],
+              }))}
+              onStatusChange={(v) =>
+                setValue("status", v, { shouldValidate: true })
               }
-            >
-              <SelectTrigger className="fl-inp h-auto w-full">
-                <SelectValue>
-                  {templateId
-                    ? quoteTemplates.find((t) => t.id === templateId)?.name ??
-                      f.noTemplate
-                    : f.noTemplate}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{f.noTemplate}</SelectItem>
-                {quoteTemplates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <LineItemsEditor
-            items={items}
-            currency={currency}
-            onChange={setItems}
-            error={linesError ?? undefined}
-          />
-
-          <Field label={dict.common.notes} htmlFor="q-notes">
-            <Textarea
-              id="q-notes"
-              className="fl-inp min-h-[80px]"
-              {...register("notes")}
+              clientName={clientName}
+              onClientNameChange={(v) =>
+                setValue("clientName", v, { shouldValidate: true })
+              }
+              clientNameError={errors.clientName ? q.client : undefined}
+              clientType={clientType}
+              onClientTypeChange={(v) =>
+                setValue("clientType", v, { shouldValidate: true })
+              }
+              currency={currency}
+              onCurrencyChange={(v) =>
+                setValue("currency", v, { shouldValidate: true })
+              }
+              templateId={templateId}
+              templates={quoteTemplates}
+              onTemplateChange={(v) => setValue("templateId", v)}
+              metaFields={[
+                {
+                  key: "validity",
+                  label: q.validity,
+                  kind: "number",
+                  value: validityDays,
+                  min: 1,
+                  max: 365,
+                  onChange: (v) =>
+                    setValue("validityDays", v, { shouldValidate: true }),
+                  error: errors.validityDays
+                    ? q.validityDaysUnit.replace("{n}", "1–365")
+                    : undefined,
+                },
+              ]}
+              items={items}
+              onItemsChange={setItems}
+              notes={notes}
+              onNotesChange={(v) => setValue("notes", v)}
+              linesError={linesError ?? undefined}
             />
-          </Field>
+          </div>
+
           <DialogFooter className="fl-dialog-footer">
             <button
               type="button"

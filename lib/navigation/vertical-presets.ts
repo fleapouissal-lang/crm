@@ -5,6 +5,7 @@ import {
   Calendar,
   ClipboardList,
   Columns3,
+  CircleDollarSign,
   FileText,
   FolderKanban,
   Home,
@@ -24,6 +25,7 @@ export const ALWAYS_VISIBLE_NAV_IDS = [
   "dashboard",
   "quotes",
   "invoices",
+  "expenses",
   "hr",
   "notifications",
   "settings",
@@ -42,6 +44,7 @@ export type VerticalNavId =
   | "finance"
   | "quotes"
   | "invoices"
+  | "expenses"
   | "hr"
   | "reports"
   | "notifications"
@@ -71,6 +74,7 @@ const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "finance",
   "quotes",
   "invoices",
+  "expenses",
   "hr",
   "reports",
   "notifications",
@@ -95,6 +99,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "sales",
       "quotes",
       "invoices",
+      "expenses",
       "hr",
       "reports",
       "notifications",
@@ -108,6 +113,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       sales: "sales",
       quotes: "quotes",
       invoices: "invoices",
+      expenses: "expenses",
       reports: "reports",
     },
     iconOverrides: {
@@ -118,6 +124,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       clients: Building2,
       quotes: FileText,
       invoices: Receipt,
+      expenses: CircleDollarSign,
     },
   },
   finance_insurance: {
@@ -128,6 +135,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "finance",
       "quotes",
       "invoices",
+      "expenses",
       "hr",
       "calendar",
       "reports",
@@ -139,6 +147,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       finance: "finance",
       quotes: "quotes",
       invoices: "invoices",
+      expenses: "expenses",
       calendar: "calendar",
       reports: "reports",
     },
@@ -147,6 +156,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       finance: Wallet,
       quotes: FileText,
       invoices: Receipt,
+      expenses: CircleDollarSign,
       calendar: ClipboardList,
     },
   },
@@ -161,6 +171,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "sales",
       "quotes",
       "invoices",
+      "expenses",
       "hr",
       "reports",
       "notifications",
@@ -174,6 +185,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       sales: "sales",
       quotes: "quotes",
       invoices: "invoices",
+      expenses: "expenses",
     },
     iconOverrides: {
       projects: Home,
@@ -181,6 +193,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       clients: Users,
       calendar: Calendar,
       tasks: Columns3,
+      expenses: CircleDollarSign,
     },
   },
 };
@@ -227,6 +240,7 @@ export function pathnameToNavId(pathname: string): VerticalNavId | null {
   if (pathname.startsWith("/marketing")) return "marketing";
   if (pathname.startsWith("/finance/quotes")) return "quotes";
   if (pathname.startsWith("/finance/invoices")) return "invoices";
+  if (pathname.startsWith("/finance/expenses")) return "expenses";
   if (pathname.startsWith("/finance/templates")) return "finance";
   if (pathname.startsWith("/finance")) return "finance";
   if (pathname.startsWith("/hr")) return "hr";

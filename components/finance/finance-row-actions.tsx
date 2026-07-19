@@ -1,19 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Eye, Pencil, Receipt, Trash2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 export function FinanceRowActions({
   label,
@@ -35,7 +26,6 @@ export function FinanceRowActions({
   const dict = useDict();
   const f = dict.fusion.financeDocs;
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
 
   const actions: RowActionItem[] = [
     {
@@ -70,31 +60,19 @@ export function FinanceRowActions({
   return (
     <>
       <RowActionsMenu actions={actions} />
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="fl-dialog-content ring-0">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{f.deleteTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {f.deleteConfirm.replace("{{name}}", label)}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="fl-btn sm">{dict.common.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              className="fl-btn sm destructive"
-              disabled={pending}
-              onClick={() =>
-                startTransition(() => {
-                  onDelete();
-                  setDeleteOpen(false);
-                })
-              }
-            >
-              {dict.common.delete}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={f.deleteTitle}
+        description={
+          <>
+            {f.deleteConfirm.split("{{name}}")[0]}
+            <strong className="fl-delete-dialog__name">{label}</strong>
+            {f.deleteConfirm.split("{{name}}")[1] ?? ""}
+          </>
+        }
+        onConfirm={onDelete}
+      />
     </>
   );
 }

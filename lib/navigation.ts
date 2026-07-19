@@ -14,6 +14,7 @@ import {
   Wallet,
   FileText,
   Receipt,
+  CircleDollarSign,
   BarChart3,
   Bell,
   Settings,
@@ -46,6 +47,7 @@ export const navLabelKeys = {
   finance: "finance",
   quotes: "quotes",
   invoices: "invoices",
+  expenses: "expenses",
   templates: "templates",
   hr: "hr",
   reports: "reports",
@@ -106,6 +108,14 @@ export const operationsNav: NavItem[] = [
     adminOnly: true,
     capability: "finance_docs",
   },
+  {
+    id: "expenses",
+    href: "/finance/expenses",
+    icon: CircleDollarSign,
+    labelKey: "expenses",
+    adminOnly: true,
+    capability: "finance_docs",
+  },
   { id: "hr", href: "/hr", icon: Users, labelKey: "hr", capability: "leadership" },
 ];
 
@@ -128,6 +138,7 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/finance": { titleKey: "finance", subtitleKey: "financeSub" },
   "/finance/quotes": { titleKey: "quotes", subtitleKey: "quotesSub" },
   "/finance/invoices": { titleKey: "invoices", subtitleKey: "invoicesSub" },
+  "/finance/expenses": { titleKey: "expenses", subtitleKey: "expensesSub" },
   "/finance/templates": { titleKey: "templates", subtitleKey: "templatesSub" },
   "/hr": { titleKey: "hr", subtitleKey: "hrSub" },
   "/reports": { titleKey: "reports", subtitleKey: "reportsSub" },
@@ -158,6 +169,7 @@ export function matchPageMeta(pathname: string) {
   if (pathname.startsWith("/hr/")) return pageMetaKeys["/hr"];
   if (pathname.startsWith("/finance/quotes")) return pageMetaKeys["/finance/quotes"];
   if (pathname.startsWith("/finance/invoices")) return pageMetaKeys["/finance/invoices"];
+  if (pathname.startsWith("/finance/expenses")) return pageMetaKeys["/finance/expenses"];
   if (pathname.startsWith("/finance/templates")) return pageMetaKeys["/finance/templates"];
   for (const key of Object.keys(pageMetaKeys)) {
     if (pathname === key || pathname.startsWith(key + "/")) {

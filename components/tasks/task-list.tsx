@@ -18,9 +18,11 @@ import {
   TaskStatusBadge,
 } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/page-header";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { TaskFormDialog } from "@/components/tasks/task-form";
 import { canDeleteTaskForProfile } from "@/lib/permissions";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -218,6 +220,19 @@ export function TaskList({
       tasks.filter((t) => taskMatchesProjectFilter(t.id, projectFilter, projectLinks)),
     [tasks, projectFilter, projectLinks]
   );
+  const orderedTasks = useMemo(() => {
+    const sectionRank = (task: Task) => {
+      if (task.status === "done" || task.status === "cancelled") return 3;
+      if (task.due_date && task.due_date < today) return 0;
+      if (task.due_date === today) return 1;
+      return 2;
+    };
+    return [...filteredTasks].sort((a, b) => sectionRank(a) - sectionRank(b));
+  }, [filteredTasks, today]);
+  const pagination = useAdaptivePagination(orderedTasks, {
+    rowHeight: 61,
+    resetKey: projectFilter,
+  });
 
   if (filteredTasks.length === 0) {
     return (
@@ -230,26 +245,26 @@ export function TaskList({
   }
 
   const grouped = {
-    overdue: filteredTasks.filter(
+    overdue: pagination.pageItems.filter(
       (t) =>
         t.due_date &&
         t.due_date < today &&
         t.status !== "done" &&
         t.status !== "cancelled"
     ),
-    today: filteredTasks.filter(
+    today: pagination.pageItems.filter(
       (t) =>
         t.due_date === today &&
         t.status !== "done" &&
         t.status !== "cancelled"
     ),
-    upcoming: filteredTasks.filter(
+    upcoming: pagination.pageItems.filter(
       (t) =>
         (!t.due_date || t.due_date > today) &&
         t.status !== "done" &&
         t.status !== "cancelled"
     ),
-    done: filteredTasks.filter(
+    done: pagination.pageItems.filter(
       (t) => t.status === "done" || t.status === "cancelled"
     ),
   };
@@ -357,6 +372,14 @@ export function TaskList({
             </div>
           );
         })}
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+          className="rounded-xl border border-[var(--border)]"
+        />
       </div>
 
       <TaskFormDialog

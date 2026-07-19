@@ -12,9 +12,17 @@ function directLogoUrl(logoUrl: string | null | undefined): string | null {
   return null;
 }
 
-function proxyLogoUrl(organizationId: string | null | undefined): string | null {
+function proxyLogoUrl(
+  organizationId: string | null | undefined,
+  logoUrl?: string | null
+): string | null {
   if (!organizationId) return null;
-  return `/api/org-logos/${organizationId}`;
+  const cacheKey = logoUrl?.includes("?v=")
+    ? logoUrl.split("?v=")[1]?.split("&")[0]
+    : null;
+  return cacheKey
+    ? `/api/org-logos/${organizationId}?v=${encodeURIComponent(cacheKey)}`
+    : `/api/org-logos/${organizationId}`;
 }
 
 export function OrgLogo({
@@ -30,13 +38,14 @@ export function OrgLogo({
   className?: string;
   alt?: string;
 }) {
+  // Prefer same-origin proxy first — public Supabase URLs often 404 when the bucket is private.
   const candidates = useMemo(() => {
     const list: string[] = [];
+    const proxy = proxyLogoUrl(organizationId, logoUrl);
     const primary = getOrgLogoSrc(organizationId, logoUrl);
     const direct = directLogoUrl(logoUrl);
-    const proxy = proxyLogoUrl(organizationId);
 
-    for (const url of [primary, direct, proxy]) {
+    for (const url of [proxy, primary, direct]) {
       if (url && !list.includes(url)) list.push(url);
     }
     return list;
@@ -48,7 +57,7 @@ export function OrgLogo({
   useEffect(() => {
     setIndex(0);
     setFailed(false);
-  }, [candidates]);
+  }, [candidates.join("|")]);
 
   const sizeClass =
     size === "xs"
@@ -63,27 +72,34 @@ export function OrgLogo({
     return (
       <span
         className={cn("org-logo org-logo--fallback", sizeClass, className)}
-        aria-hidden={!alt}
+        aria-label={alt || undefined}
+        role={alt ? "img" : undefined}
       >
         <Building2 className="org-logo__icon" strokeWidth={1.75} />
       </span>
     );
   }
 
+  const src = candidates[index]!;
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={candidates[index]}
+      key={src}
+      src={src}
       alt={alt}
       className={cn("org-logo", sizeClass, className)}
       decoding="async"
       referrerPolicy="no-referrer"
       onError={() => {
-        if (index + 1 < candidates.length) {
-          setIndex((i) => i + 1);
-          return;
-        }
-        setFailed(true);
+        setIndex((current) => {
+          const next = current + 1;
+          if (next >= candidates.length) {
+            setFailed(true);
+            return current;
+          }
+          return next;
+        });
       }}
     />
   );

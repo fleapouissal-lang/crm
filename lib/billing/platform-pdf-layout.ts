@@ -17,11 +17,11 @@ export const CONTENT_W = PAGE_W - M * 2;
 export const IRIS = rgb(0.48, 0.35, 0.95);
 export const GOLD = rgb(0.94, 0.58, 0.28);
 export const BLACK = rgb(0.06, 0.06, 0.06);
-export const INK = rgb(0.14, 0.14, 0.16);
-export const SLATE = rgb(0.38, 0.38, 0.42);
-export const MUTED = rgb(0.52, 0.52, 0.56);
-export const BORDER = rgb(0.88, 0.88, 0.9);
-export const SURFACE = rgb(0.97, 0.97, 0.98);
+export const INK = rgb(0.12, 0.12, 0.12);
+export const SLATE = rgb(0.35, 0.35, 0.35);
+export const MUTED = rgb(0.48, 0.48, 0.48);
+export const BORDER = rgb(0.82, 0.82, 0.82);
+export const SURFACE = rgb(0.96, 0.96, 0.96);
 export const WHITE = rgb(1, 1, 1);
 
 export type PdfFonts = { regular: PDFFont; bold: PDFFont };
@@ -117,7 +117,23 @@ export function drawRight(
 
 export function drawBrandBar(page: PDFPage, monochrome = false) {
   const theme = layoutTheme(monochrome);
-  page.drawRectangle({ x: 0, y: PAGE_H - 5, width: PAGE_W / 2, height: 5, color: theme.barPrimary });
+  if (monochrome) {
+    page.drawRectangle({
+      x: 0,
+      y: PAGE_H - 4,
+      width: PAGE_W,
+      height: 4,
+      color: BLACK,
+    });
+    return;
+  }
+  page.drawRectangle({
+    x: 0,
+    y: PAGE_H - 5,
+    width: PAGE_W / 2,
+    height: 5,
+    color: theme.barPrimary,
+  });
   page.drawRectangle({
     x: PAGE_W / 2,
     y: PAGE_H - 5,
@@ -157,7 +173,7 @@ export function drawPremiumHeader(
       height: drawH,
     });
   } else {
-    drawText(page, FUSION_COMPANY.name, M, PAGE_H - M - 18, 16, fonts.bold, theme.accent);
+    drawText(page, FUSION_COMPANY.name, M, PAGE_H - M - 18, 16, fonts.bold, BLACK);
   }
 
   drawText(page, FUSION_COMPANY.legalForm, M, PAGE_H - M - 36, 8, fonts.regular, MUTED);
@@ -171,8 +187,16 @@ export function drawPremiumHeader(
     MUTED
   );
 
-  drawRight(page, opts.docKind.toUpperCase(), PAGE_W - M, PAGE_H - M - 16, 11, fonts.bold, theme.accent);
-  drawRight(page, opts.docNumber, PAGE_W - M, PAGE_H - M - 34, 16, fonts.bold, BLACK);
+  drawRight(
+    page,
+    opts.docKind.toUpperCase(),
+    PAGE_W - M,
+    PAGE_H - M - 16,
+    10,
+    fonts.bold,
+    opts.monochrome ? BLACK : theme.accent
+  );
+  drawRight(page, opts.docNumber, PAGE_W - M, PAGE_H - M - 34, 15, fonts.bold, BLACK);
 
   const ribbonY = PAGE_H - M - 88;
   page.drawRectangle({
@@ -180,16 +204,22 @@ export function drawPremiumHeader(
     y: ribbonY,
     width: CONTENT_W,
     height: 44,
-    color: SURFACE,
+    color: opts.monochrome ? WHITE : SURFACE,
     borderColor: BORDER,
-    borderWidth: 0.75,
+    borderWidth: 0.8,
   });
-  page.drawRectangle({ x: M, y: ribbonY, width: 4, height: 44, color: theme.accent });
+  page.drawRectangle({
+    x: M,
+    y: ribbonY,
+    width: opts.monochrome ? 2.5 : 4,
+    height: 44,
+    color: BLACK,
+  });
 
   drawText(page, opts.subtitle, M + 14, ribbonY + 26, 11, fonts.bold, BLACK);
   drawText(page, opts.metaLine, M + 14, ribbonY + 10, 8.5, fonts.regular, SLATE);
 
-  return ribbonY - 16;
+  return ribbonY - 18;
 }
 
 export function drawPartyCards(
@@ -204,6 +234,7 @@ export function drawPartyCards(
   const theme = layoutTheme(monochrome);
   const colW = (CONTENT_W - 14) / 2;
   const cardH = 82;
+  const rail = monochrome ? 2.5 : 3;
 
   page.drawRectangle({
     x: M,
@@ -212,7 +243,7 @@ export function drawPartyCards(
     height: cardH,
     color: WHITE,
     borderColor: BORDER,
-    borderWidth: 0.75,
+    borderWidth: 0.8,
   });
   page.drawRectangle({
     x: M + colW + 14,
@@ -221,13 +252,19 @@ export function drawPartyCards(
     height: cardH,
     color: WHITE,
     borderColor: BORDER,
-    borderWidth: 0.75,
+    borderWidth: 0.8,
   });
-  page.drawRectangle({ x: M, y: y - cardH, width: 3, height: cardH, color: theme.accent });
+  page.drawRectangle({
+    x: M,
+    y: y - cardH,
+    width: rail,
+    height: cardH,
+    color: theme.accent,
+  });
   page.drawRectangle({
     x: M + colW + 14,
     y: y - cardH,
-    width: 3,
+    width: rail,
     height: cardH,
     color: theme.accentAlt,
   });
@@ -244,7 +281,7 @@ export function drawPartyCards(
     drawText(page, recipientSub, rx + 12, y - 52, 8.5, fonts.regular, SLATE);
   }
 
-  return y - cardH - 20;
+  return y - cardH - 22;
 }
 
 export function drawLineTable(
@@ -259,28 +296,28 @@ export function drawLineTable(
   const theme = layoutTheme(monochrome);
   page.drawRectangle({
     x: M,
-    y: y - 24,
+    y: y - 26,
     width: CONTENT_W,
-    height: 24,
+    height: 26,
     color: theme.accent,
   });
-  drawText(page, labels.description.toUpperCase(), M + 10, y - 16, 8, fonts.bold, WHITE);
-  drawRight(page, labels.amount.toUpperCase(), PAGE_W - M - 10, y - 16, 8, fonts.bold, WHITE);
-  y -= 24;
+  drawText(page, labels.description.toUpperCase(), M + 10, y - 17, 8, fonts.bold, WHITE);
+  drawRight(page, labels.amount.toUpperCase(), PAGE_W - M - 10, y - 17, 8, fonts.bold, WHITE);
+  y -= 26;
 
   page.drawRectangle({
     x: M,
-    y: y - 40,
+    y: y - 42,
     width: CONTENT_W,
-    height: 40,
+    height: 42,
     color: WHITE,
     borderColor: BORDER,
-    borderWidth: 0.75,
+    borderWidth: 0.8,
   });
-  drawText(page, lineLabel, M + 10, y - 24, 10, fonts.regular, INK);
-  drawRight(page, amount, PAGE_W - M - 10, y - 24, 11, fonts.bold, BLACK);
+  drawText(page, lineLabel, M + 10, y - 25, 10, fonts.regular, INK);
+  drawRight(page, amount, PAGE_W - M - 10, y - 25, 11, fonts.bold, BLACK);
 
-  return y - 56;
+  return y - 58;
 }
 
 export function drawMetaGrid(
@@ -301,16 +338,16 @@ export function drawMetaGrid(
       y: y - boxH,
       width: boxW,
       height: boxH,
-      color: SURFACE,
+      color: WHITE,
       borderColor: BORDER,
-      borderWidth: 0.6,
+      borderWidth: 0.7,
     });
     drawText(page, label.toUpperCase(), x + 8, y - 16, 6.5, fonts.bold, MUTED);
     const valueSize = value.length > 18 ? 8 : 9;
     drawText(page, value, x + 8, y - 34, valueSize, fonts.bold, BLACK);
   });
 
-  return y - boxH - 18;
+  return y - boxH - 20;
 }
 
 export function drawAmountHighlight(
@@ -322,25 +359,42 @@ export function drawAmountHighlight(
   monochrome = false
 ): number {
   const theme = layoutTheme(monochrome);
-  const boxW = 240;
-  const boxH = 56;
+  const boxW = 248;
+  const boxH = 58;
   const boxX = PAGE_W - M - boxW;
 
-  page.drawRectangle({
-    x: boxX,
-    y: y - boxH,
-    width: boxW,
-    height: boxH,
-    color: SURFACE,
-    borderColor: BORDER,
-    borderWidth: 0.75,
-  });
-  page.drawRectangle({ x: boxX, y: y - 4, width: boxW, height: 4, color: theme.highlight });
+  if (monochrome) {
+    page.drawRectangle({
+      x: boxX,
+      y: y - boxH,
+      width: boxW,
+      height: boxH,
+      color: BLACK,
+    });
+    drawText(page, label.toUpperCase(), boxX + 14, y - 20, 7, fonts.bold, rgb(0.72, 0.72, 0.72));
+    drawRight(page, amount, PAGE_W - M - 14, y - 40, 16, fonts.bold, WHITE);
+  } else {
+    page.drawRectangle({
+      x: boxX,
+      y: y - boxH,
+      width: boxW,
+      height: boxH,
+      color: SURFACE,
+      borderColor: BORDER,
+      borderWidth: 0.75,
+    });
+    page.drawRectangle({
+      x: boxX,
+      y: y - 4,
+      width: boxW,
+      height: 4,
+      color: theme.highlight,
+    });
+    drawText(page, label.toUpperCase(), boxX + 12, y - 20, 7, fonts.bold, MUTED);
+    drawRight(page, amount, PAGE_W - M - 12, y - 40, 16, fonts.bold, theme.accent);
+  }
 
-  drawText(page, label.toUpperCase(), boxX + 12, y - 20, 7, fonts.bold, MUTED);
-  drawRight(page, amount, PAGE_W - M - 12, y - 40, 16, fonts.bold, theme.accent);
-
-  return y - boxH - 16;
+  return y - boxH - 18;
 }
 
 export function drawNotesBlock(
@@ -361,12 +415,17 @@ export function drawNotesBlock(
   return y - 8;
 }
 
-export function drawPremiumFooter(page: PDFPage, fonts: PdfFonts, thanks: string, bankLine?: string) {
+export function drawPremiumFooter(
+  page: PDFPage,
+  fonts: PdfFonts,
+  thanks: string,
+  bankLine?: string
+) {
   const footerTop = M + 58;
   page.drawLine({
     start: { x: M, y: footerTop },
     end: { x: PAGE_W - M, y: footerTop },
-    thickness: 0.6,
+    thickness: 0.7,
     color: BORDER,
   });
 

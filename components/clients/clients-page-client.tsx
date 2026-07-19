@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Eye, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DataPagination } from "@/components/shared/data-pagination";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { CellMain, StatLine, FlDelta } from "@/components/fusion/primitives";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
@@ -18,6 +19,7 @@ import {
   type ClientStatusKey,
 } from "@/lib/clients/types";
 import { loadClients, saveClients } from "@/lib/clients/storage";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -160,6 +162,10 @@ export function ClientsPageClient() {
     });
   }, [clients, marketTab, search, statusFilter]);
 
+  const pagination = useAdaptivePagination(filtered, {
+    resetKey: `${marketTab}:${statusFilter}:${search}`,
+  });
+
   const kpis = useMemo(() => {
     const activeRetainers = clients.filter((x) => x.statusKey === "active").length;
     const withValue = clients.filter((x) => x.valueAmount != null);
@@ -174,7 +180,7 @@ export function ClientsPageClient() {
     return {
       total: String(clients.length),
       retainers: String(activeRetainers),
-      avgK: avg > 0 ? String(avg) : "—",
+      avgK: avg > 0 ? String(avg) : "â€”",
     };
   }, [clients]);
 
@@ -227,7 +233,7 @@ export function ClientsPageClient() {
           {
             label: c.avgAccountValue,
             value: kpis.avgK,
-            unit: kpis.avgK !== "—" ? "K" : undefined,
+            unit: kpis.avgK !== "â€”" ? "K" : undefined,
             foot: l.annualized,
           },
           { label: c.retention, value: "92%", foot: l.rolling12Months },
@@ -346,7 +352,7 @@ export function ClientsPageClient() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((client) => (
+                pagination.pageItems.map((client) => (
                   <tr key={client.id}>
                     <td>
                       <CellMain
@@ -384,6 +390,13 @@ export function ClientsPageClient() {
             </tbody>
           </table>
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <ClientFormDialog

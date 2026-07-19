@@ -1,10 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { Building2, CreditCard, Loader2, Pencil } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { EditSubscriptionDialog } from "@/components/admin/edit-subscription-dialog";
 import { getAllOrganizations } from "@/lib/actions/platform-admin";
 import {
@@ -68,6 +70,8 @@ export function AdminSubscriptionsPageClient({
     return { byPlan, mrr, trialing };
   }, [companies]);
 
+  const pagination = useAdaptivePagination(companies, { rowHeight: 64 });
+
   function refresh() {
     startTransition(async () => {
       setLoading(true);
@@ -78,7 +82,7 @@ export function AdminSubscriptionsPageClient({
   }
 
   function formatDate(value: string | null) {
-    if (!value) return "—";
+    if (!value) return "â€”";
     return format(new Date(value), "dd MMM yyyy", { locale: dateLocale });
   }
 
@@ -91,7 +95,7 @@ export function AdminSubscriptionsPageClient({
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{s.mrrLabel}</div>
-          <StatLine value={`€${stats.mrr}`} />
+          <StatLine value={`â‚¬${stats.mrr}`} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{s.trialingCount}</div>
@@ -136,7 +140,7 @@ export function AdminSubscriptionsPageClient({
                     </td>
                   </tr>
                 ) : (
-                  companies.map((company) => {
+                  pagination.pageItems.map((company) => {
                     const plan = (company.plan ?? "free") as PlanKey;
                     const status = company.subscription_status ?? "active";
                     return (
@@ -147,7 +151,7 @@ export function AdminSubscriptionsPageClient({
                             <div>
                               <b>{company.name}</b>
                               <div className="fl-faint fl-tny">
-                                @{company.email_domain ?? "—"}
+                                @{company.email_domain ?? "â€”"}
                               </div>
                             </div>
                           </div>
@@ -188,6 +192,13 @@ export function AdminSubscriptionsPageClient({
             </table>
           )}
         </div>
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <EditSubscriptionDialog

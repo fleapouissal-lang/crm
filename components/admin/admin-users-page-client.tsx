@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { Plus, Search, Shield, Users } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
+import { DataPagination } from "@/components/shared/data-pagination";
+import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { CreatePlatformUserDialog } from "@/components/admin/create-platform-user-dialog";
 import { Input } from "@/components/ui/input";
@@ -66,6 +68,11 @@ export function AdminUsersPageClient({
       return hay.includes(q);
     });
   }, [initialUsers, query, dict.roles, filter]);
+
+  const pagination = useAdaptivePagination(filtered, {
+    rowHeight: 64,
+    resetKey: `${filter}:${query}`,
+  });
 
   const filters: { key: UserFilter; label: string }[] = [
     { key: "all", label: d.filterAllUsers },
@@ -154,7 +161,7 @@ export function AdminUsersPageClient({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user) => (
+                {pagination.pageItems.map((user) => (
                   <tr key={user.id}>
                     <td>
                       <div className="flex items-center gap-2">
@@ -166,7 +173,7 @@ export function AdminUsersPageClient({
                         />
                         <div className="min-w-0">
                           <b className="block truncate">
-                            {user.full_name ?? "—"}
+                            {user.full_name ?? "â€”"}
                           </b>
                           {user.job_title ? (
                             <span className="fl-faint fl-tny block truncate">
@@ -176,7 +183,7 @@ export function AdminUsersPageClient({
                         </div>
                       </div>
                     </td>
-                    <td className="fl-muted">{user.email ?? "—"}</td>
+                    <td className="fl-muted">{user.email ?? "â€”"}</td>
                     <td>
                       <span
                         className={cn(
@@ -222,6 +229,13 @@ export function AdminUsersPageClient({
             </table>
           </div>
         )}
+        <DataPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          totalItems={pagination.totalItems}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+        />
       </div>
 
       <CreatePlatformUserDialog
