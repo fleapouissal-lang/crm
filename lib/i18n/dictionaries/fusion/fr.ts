@@ -23,7 +23,7 @@ export const fusionFr: FusionDictionary = {
     merged: "Fusionné",
     sent: "Envoyé",
     internal: "Interne",
-    overdueCount: "4 en retard",
+    overdueCount: "0 en retard",
     dueAug22: "Échéance 22 août",
     dueJul10: "Échéance 10 juil.",
   },
@@ -244,7 +244,7 @@ export const fusionFr: FusionDictionary = {
     cashFlow: "Flux de trésorerie",
     cashFlowSub: "Entrées vs sorties · MAD · 8 mois",
     expenseBreakdown: "Répartition dépenses",
-    bankNote: "Bank of Africa · BMCE",
+    bankNote: "Aucun compte bancaire configuré",
   },
   quotes: {
     openQuotes: "Devis en cours",

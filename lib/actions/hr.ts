@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { getOrgJobRoles } from "@/lib/actions/organizations";
+import { canManageUsers } from "@/lib/permissions";
 import { isLeadership } from "@/lib/permissions/capabilities";
 import { buildTeamOptions, profileToTeamOption } from "@/lib/team/members";
-import type { ActionResult, Profile } from "@/types/database";
+import type { ActionResult, OrgJobRole, Profile, Role } from "@/types/database";
 import type { EmployeeProfile, HrContractScan, HrEntry } from "@/lib/hr/types";
 import { normalizeEmployeeProfile } from "@/lib/hr/types";
 import {
@@ -134,6 +136,10 @@ export async function getMyMemberAccount(): Promise<EmployeeProfile | null> {
 export async function getHrWorkspace(): Promise<{
   teamProfiles: Profile[];
   hrProfiles: EmployeeProfile[];
+  canManageUsers: boolean;
+  actorRole: Role;
+  jobRoles: OrgJobRole[];
+  emailDomain: string | null;
 } | null> {
   const gate = await requireLeadership();
   if (!gate.ok) return null;
@@ -141,8 +147,9 @@ export async function getHrWorkspace(): Promise<{
   const teamProfiles = await getOrgProfiles();
   const team = buildTeamOptions(teamProfiles);
   const supabase = await createClient();
+  const manageUsers = canManageUsers(gate.profile.role);
 
-  const [profilesRes, entriesRes, scansRes] = await Promise.all([
+  const [profilesRes, entriesRes, scansRes, jobRoles, orgRes] = await Promise.all([
     supabase
       .from("hr_employee_profiles")
       .select("*")
@@ -157,14 +164,31 @@ export async function getHrWorkspace(): Promise<{
       .select("*")
       .eq("organization_id", gate.orgId)
       .order("uploaded_at", { ascending: false }),
+    getOrgJobRoles(gate.orgId),
+    supabase
+      .from("organizations")
+      .select("email_domain")
+      .eq("id", gate.orgId)
+      .maybeSingle(),
   ]);
+
+  const meta = {
+    canManageUsers: manageUsers,
+    actorRole: gate.profile.role,
+    jobRoles,
+    emailDomain: orgRes.data?.email_domain ?? null,
+  };
 
   if (profilesRes.error || entriesRes.error || scansRes.error) {
     console.error(
       "[hr] load failed",
       profilesRes.error ?? entriesRes.error ?? scansRes.error
     );
-    return { teamProfiles, hrProfiles: mergeHrWorkspace(team, [], [], [], new Map()) };
+    return {
+      teamProfiles,
+      hrProfiles: mergeHrWorkspace(team, [], [], [], new Map()),
+      ...meta,
+    };
   }
 
   const scanRows = (scansRes.data ?? []) as HrScanRow[];
@@ -179,6 +203,7 @@ export async function getHrWorkspace(): Promise<{
       scanRows,
       signed
     ),
+    ...meta,
   };
 }
 

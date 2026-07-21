@@ -108,7 +108,7 @@ export const ar = {
     calendarSub: "يوليو 2026",
     salesSub: "حصة الربع الثالث 104%",
     marketingSub: "توليد الطلب في الخليج والمغرب",
-    financeSub: "642K MAD نقد · 11 شهر runway",
+    financeSub: "الخزينة والمستحقات والتدفق النقدي",
     quotesSub: "عروض الخدمات · المواقع والتسويق",
     invoicesSub: "فوترة العملاء · دفعات ومراحل",
     expensesSub: "تكاليف الأعمال · إيجار، أدوات، تسويق…",

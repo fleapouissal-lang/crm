@@ -55,22 +55,7 @@ export async function getOrgJobRoles(organizationId?: string): Promise<OrgJobRol
     .select("*")
     .eq("organization_id", orgId);
 
-  let roles = (data as OrgJobRole[]) ?? [];
-
-  // Seed defaults when the org has none (director or manager can trigger).
-  if (
-    roles.length === 0 &&
-    profile?.organization_id === orgId &&
-    canManageUsers(profile.role)
-  ) {
-    try {
-      roles = await seedOrgJobRoles(orgId);
-    } catch {
-      /* keep empty */
-    }
-  }
-
-  return sortJobRolesByCatalog(roles);
+  return sortJobRolesByCatalog((data as OrgJobRole[]) ?? []);
 }
 
 export async function getCreatedOrganizations(): Promise<Organization[]> {
@@ -460,6 +445,7 @@ export async function createTeamMember(input: {
   }
 
   revalidatePath("/settings");
+  revalidatePath("/hr");
   return { success: true, data: undefined };
 }
 

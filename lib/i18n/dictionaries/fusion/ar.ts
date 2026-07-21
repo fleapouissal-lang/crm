@@ -23,7 +23,7 @@ export const fusionAr: FusionDictionary = {
     merged: "مُدمج",
     sent: "مُرسل",
     internal: "داخلي",
-    overdueCount: "4 متأخرة",
+    overdueCount: "0 متأخرة",
     dueAug22: "الاستحقاق 22 أغسطس",
     dueJul10: "الاستحقاق 10 يوليو",
   },
@@ -244,7 +244,7 @@ export const fusionAr: FusionDictionary = {
     cashFlow: "التدفق النقدي",
     cashFlowSub: "الداخل مقابل الخارج · MAD · 8 أشهر",
     expenseBreakdown: "تفصيل المصروفات",
-    bankNote: "Bank of Africa · BMCE",
+    bankNote: "لا يوجد حساب بنكي مُعدّ",
   },
   quotes: {
     openQuotes: "عروض جارية",

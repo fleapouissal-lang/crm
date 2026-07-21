@@ -36,12 +36,14 @@ export function TeamMemberDialog({
   jobRoles,
   emailDomain,
   actorRole,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jobRoles: OrgJobRole[];
   emailDomain: string | null;
   actorRole: Role;
+  onCreated?: () => void;
 }) {
   const dict = useDict();
   const s = dict.fusion.settings;
@@ -115,6 +117,7 @@ export function TeamMemberDialog({
       toast.success(s.memberCreated);
       reset();
       onOpenChange(false);
+      onCreated?.();
     });
   }
 

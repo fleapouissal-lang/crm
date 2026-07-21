@@ -1,17 +1,17 @@
 import type { ClientRecord } from "./types";
-import { SEED_CLIENTS } from "./seed";
 
-const STORAGE_KEY = "fusion-clients-v1";
+/** Bumped to drop demo seed previously auto-loaded into v1. */
+const STORAGE_KEY = "fusion-clients-v2";
 
 export function loadClients(): ClientRecord[] {
-  if (typeof window === "undefined") return SEED_CLIENTS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SEED_CLIENTS;
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as ClientRecord[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_CLIENTS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return SEED_CLIENTS;
+    return [];
   }
 }
 
@@ -23,6 +23,7 @@ export function saveClients(clients: ClientRecord[]): void {
 export function resetClients(): ClientRecord[] {
   if (typeof window !== "undefined") {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("fusion-clients-v1");
   }
-  return [...SEED_CLIENTS];
+  return [];
 }

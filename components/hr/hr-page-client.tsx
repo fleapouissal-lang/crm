@@ -17,7 +17,7 @@ import {
   StickyNote,
   Wallet,
 } from "lucide-react";
-import type { Profile } from "@/types/database";
+import type { OrgJobRole, Profile, Role } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
@@ -27,6 +27,7 @@ import {
   EmployeeProfileFormDialog,
   HrEntryFormDialog,
 } from "@/components/hr/hr-form-dialogs";
+import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import type {
   EmployeeProfile,
   HrDepartment,
@@ -129,12 +130,21 @@ function MemberRowActions({
 export function HrPageClient({
   profiles,
   initialHrProfiles,
+  canManageUsers = false,
+  actorRole = "member",
+  jobRoles = [],
+  emailDomain = null,
 }: {
   profiles: Profile[];
   initialHrProfiles: EmployeeProfile[];
+  canManageUsers?: boolean;
+  actorRole?: Role;
+  jobRoles?: OrgJobRole[];
+  emailDomain?: string | null;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
+  const s = dict.fusion.settings;
   const l = dict.fusion.labels;
   const b = dict.fusion.badges;
   const router = useRouter();
@@ -150,6 +160,7 @@ export function HrPageClient({
 
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<HrDepartment | "all">("all");
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
   const [entryOpen, setEntryOpen] = useState(false);
   const [profileFormOpen, setProfileFormOpen] = useState(false);
@@ -310,6 +321,17 @@ export function HrPageClient({
                 <X className="size-3.5" strokeWidth={2} />
               </button>
             )}
+
+            {canManageUsers ? (
+              <button
+                type="button"
+                className="fl-btn primary sm shrink-0"
+                onClick={() => setMemberDialogOpen(true)}
+              >
+                <Plus strokeWidth={2} />
+                <span className="hidden sm:inline">{s.addMember}</span>
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -447,6 +469,17 @@ export function HrPageClient({
         member={activeMember}
         onSave={handleSaveProfile}
       />
+
+      {canManageUsers ? (
+        <TeamMemberDialog
+          open={memberDialogOpen}
+          onOpenChange={setMemberDialogOpen}
+          jobRoles={jobRoles}
+          emailDomain={emailDomain}
+          actorRole={actorRole}
+          onCreated={() => router.refresh()}
+        />
+      ) : null}
     </div>
   );
 }

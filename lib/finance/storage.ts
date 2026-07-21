@@ -5,27 +5,38 @@ import type {
   QuoteRecord,
 } from "./types";
 import { normalizeInvoice, normalizeQuote } from "./types";
-import {
-  SEED_EXPENSES,
-  SEED_INVOICES,
-  SEED_QUOTES,
-  SEED_TEMPLATES,
-} from "./seed";
 
-const TEMPLATES_KEY = "fusion-finance-templates-v1";
-const QUOTES_KEY = "fusion-finance-quotes-v2";
-const INVOICES_KEY = "fusion-finance-invoices-v2";
-const EXPENSES_KEY = "fusion-finance-expenses-v1";
+const TEMPLATES_KEY = "fusion-finance-templates-v2";
+const QUOTES_KEY = "fusion-finance-quotes-v3";
+const INVOICES_KEY = "fusion-finance-invoices-v3";
+const EXPENSES_KEY = "fusion-finance-expenses-v2";
 
-function load<T>(key: string, seed: T[]): T[] {
-  if (typeof window === "undefined") return seed;
+const LEGACY_KEYS = [
+  "fusion-finance-templates-v1",
+  "fusion-finance-quotes-v1",
+  "fusion-finance-quotes-v2",
+  "fusion-finance-invoices-v1",
+  "fusion-finance-invoices-v2",
+  "fusion-finance-expenses-v1",
+];
+
+function clearLegacyKeys() {
+  if (typeof window === "undefined") return;
+  for (const key of LEGACY_KEYS) {
+    localStorage.removeItem(key);
+  }
+}
+
+function load<T>(key: string): T[] {
+  if (typeof window === "undefined") return [];
+  clearLegacyKeys();
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return seed;
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as T[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : seed;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return seed;
+    return [];
   }
 }
 
@@ -35,7 +46,7 @@ function save<T>(key: string, data: T[]): void {
 }
 
 export function loadTemplates(): DocumentTemplate[] {
-  return load(TEMPLATES_KEY, SEED_TEMPLATES);
+  return load<DocumentTemplate>(TEMPLATES_KEY);
 }
 
 export function saveTemplates(templates: DocumentTemplate[]): void {
@@ -43,7 +54,7 @@ export function saveTemplates(templates: DocumentTemplate[]): void {
 }
 
 export function loadQuotes(): QuoteRecord[] {
-  return load(QUOTES_KEY, SEED_QUOTES).map(normalizeQuote);
+  return load<QuoteRecord>(QUOTES_KEY).map(normalizeQuote);
 }
 
 export function saveQuotes(quotes: QuoteRecord[]): void {
@@ -51,7 +62,7 @@ export function saveQuotes(quotes: QuoteRecord[]): void {
 }
 
 export function loadInvoices(): InvoiceRecord[] {
-  return load(INVOICES_KEY, SEED_INVOICES).map(normalizeInvoice);
+  return load<InvoiceRecord>(INVOICES_KEY).map(normalizeInvoice);
 }
 
 export function saveInvoices(invoices: InvoiceRecord[]): void {
@@ -59,7 +70,7 @@ export function saveInvoices(invoices: InvoiceRecord[]): void {
 }
 
 export function loadExpenses(): ExpenseRecord[] {
-  return load(EXPENSES_KEY, SEED_EXPENSES);
+  return load<ExpenseRecord>(EXPENSES_KEY);
 }
 
 export function saveExpenses(expenses: ExpenseRecord[]): void {
@@ -69,4 +80,13 @@ export function saveExpenses(expenses: ExpenseRecord[]): void {
 export function getTemplateById(id: string | null): DocumentTemplate | undefined {
   if (!id) return undefined;
   return loadTemplates().find((t) => t.id === id);
+}
+
+/** Wipe all company finance local data (quotes, invoices, expenses, templates). */
+export function clearAllFinanceLocalData(): void {
+  if (typeof window === "undefined") return;
+  clearLegacyKeys();
+  for (const key of [TEMPLATES_KEY, QUOTES_KEY, INVOICES_KEY, EXPENSES_KEY]) {
+    localStorage.removeItem(key);
+  }
 }

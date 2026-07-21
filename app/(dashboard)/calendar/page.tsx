@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { CalendarPage } from "@/components/pages/fusion-static-pages";
+import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
 import { getCurrentProfile } from "@/lib/actions/auth";
+import { getTasks } from "@/lib/actions/tasks";
 import { canAccessCalendar, isPlatformAdmin } from "@/lib/permissions";
 
 export default async function CalendarRoutePage() {
@@ -9,5 +10,8 @@ export default async function CalendarRoutePage() {
   if (!isPlatformAdmin(profile.role) && !canAccessCalendar(profile)) {
     redirect("/dashboard");
   }
-  return <CalendarPage />;
+
+  const tasks = isPlatformAdmin(profile.role) ? [] : await getTasks();
+
+  return <CalendarPageClient tasks={tasks} />;
 }

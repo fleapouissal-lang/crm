@@ -21,7 +21,7 @@ export const fusionEn = {
     merged: "Merged",
     sent: "Sent",
     internal: "Internal",
-    overdueCount: "4 overdue",
+    overdueCount: "0 overdue",
     dueAug22: "Due Aug 22",
     dueJul10: "Due Jul 10",
   },
@@ -242,7 +242,7 @@ export const fusionEn = {
     cashFlow: "Cash flow",
     cashFlowSub: "Inflow vs outflow · MAD · trailing 8 months",
     expenseBreakdown: "Expense breakdown",
-    bankNote: "Bank of Africa · BMCE",
+    bankNote: "No bank account configured",
   },
   quotes: {
     openQuotes: "Open quotes",

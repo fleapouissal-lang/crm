@@ -108,7 +108,7 @@ export const en = {
     calendarSub: "July 2026",
     salesSub: "Q3 quota at 104% attainment",
     marketingSub: "Demand generation across Gulf & Morocco",
-    financeSub: "642K MAD cash · 11 months runway",
+    financeSub: "Cash, receivables and cash-flow",
     quotesSub: "Service quotes · websites & marketing",
     invoicesSub: "Client billing · deposits & milestones",
     expensesSub: "Business costs · rent, tools, marketing…",

@@ -102,7 +102,7 @@ export const fr = {
     calendarSub: "Juillet 2026",
     salesSub: "Quota T3 à 104%",
     marketingSub: "Génération de demande Golfe & Maroc",
-    financeSub: "642K MAD trésorerie · 11 mois runway",
+    financeSub: "Trésorerie, créances et cash-flow",
     quotesSub: "Devis prestations · sites & marketing",
     invoicesSub: "Facturation clients · acomptes & jalons",
     expensesSub: "Charges & frais · loyer, outils, marketing…",

@@ -5,7 +5,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import { canManageCompanies } from "@/lib/permissions";
 import { PLAN_PRICES_EUR, type PlanKey } from "@/lib/billing/plans";
-import { seedOrgJobRoles } from "@/lib/actions/organizations";
 import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { buildCompanyEmail } from "@/lib/organizations/domain";
 import type {
@@ -203,16 +202,7 @@ export async function getOrgJobRolesAsPlatformAdmin(
     .select("*")
     .eq("organization_id", organizationId);
 
-  let roles = (data as OrgJobRole[]) ?? [];
-  if (roles.length === 0) {
-    try {
-      roles = await seedOrgJobRoles(organizationId, admin);
-    } catch {
-      roles = [];
-    }
-  }
-
-  return sortJobRolesByCatalog(roles);
+  return sortJobRolesByCatalog((data as OrgJobRole[]) ?? []);
 }
 
 export async function createPlatformManagedUser(input: {
