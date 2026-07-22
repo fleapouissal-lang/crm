@@ -1,5 +1,5 @@
-import { SalesPage } from "@/components/pages/fusion-static-pages";
+import { SalesOverviewPage } from "@/components/sales/sales-overview-page";
 
 export default function SalesRoutePage() {
-  return <SalesPage />;
+  return <SalesOverviewPage />;
 }

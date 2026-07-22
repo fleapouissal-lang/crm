@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useDict } from "@/components/shared/i18n-provider";
 import type { FusionDictionary } from "@/lib/i18n/dictionaries/fusion/en";
 import {
@@ -15,100 +14,6 @@ import {
 } from "@/components/fusion/primitives";
 
 type BadgeKey = keyof FusionDictionary["badges"];
-
-export function SalesPage() {
-  const dict = useDict();
-  const s = dict.fusion.sales;
-  const l = dict.fusion.labels;
-
-  return (
-    <div className="space-y-[18px]">
-      <div className="grid g-4">
-        <div className="fl-card fl-pad">
-          <div className="k-label">{s.quotaAttainment}</div>
-          <StatLine value="0%" />
-          <FlProgress value={0} className="mt-3 [&>i]:!bg-[var(--emerald)]" />
-        </div>
-        <div className="fl-card fl-pad">
-          <div className="k-label">{s.closedQ3}</div>
-          <StatLine value="0" unit="SAR" />
-        </div>
-        <div className="fl-card fl-pad">
-          <div className="k-label">{s.avgDealSize}</div>
-          <StatLine value="0" unit="SAR" />
-          <div className="k-foot fl-faint mt-2">{l.gulfAccounts}</div>
-        </div>
-        <div className="fl-card fl-pad">
-          <div className="k-label">{s.salesCycle}</div>
-          <StatLine value="0" unit={l.days} />
-        </div>
-      </div>
-      <div className="grid gap-[18px] lg:grid-cols-[1.6fr_1fr]">
-        <div className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{s.bookingsForecast}</h3>
-              <div className="ch-sub">{s.bookingsForecastSub}</div>
-            </div>
-            <div className="fl-seg">
-              <button type="button">Q2</button>
-              <button type="button" className="on">
-                Q3
-              </button>
-              <button type="button">Q4</button>
-            </div>
-          </div>
-          <div className="fl-pad flex h-[250px] items-center justify-center">
-            <p className="text-[13px] text-[var(--muted)]">{dict.fusion.reports.noData}</p>
-          </div>
-        </div>
-        <div className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{s.repLeaderboard}</h3>
-              <div className="ch-sub">{l.quarterToDate}</div>
-            </div>
-          </div>
-          <div className="fl-pad flex h-[200px] items-center justify-center">
-            <p className="text-[13px] text-[var(--muted)]">{dict.fusion.reports.noData}</p>
-          </div>
-        </div>
-      </div>
-      <div className="fl-card">
-        <div className="fl-card-head">
-          <div>
-            <h3>{s.recentDeals}</h3>
-            <div className="ch-sub">{s.recentDealsSub}</div>
-          </div>
-          <Link href="/leads" className="fl-btn sm ghost">
-            {l.openCrm}
-          </Link>
-        </div>
-        <div className="fl-tbl-wrap">
-          <table className="fl-tbl">
-            <thead>
-              <tr>
-                <th>{l.deal}</th>
-                <th>{l.owner}</th>
-                <th>{dict.common.value}</th>
-                <th>{dict.common.stage}</th>
-                <th>{l.probability}</th>
-                <th>{l.closeDate}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={6} className="py-10 text-center text-sm fl-faint">
-                  {dict.fusion.reports.noData}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function MarketingPage() {
   const dict = useDict();
