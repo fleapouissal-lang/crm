@@ -179,16 +179,16 @@ export function ClientsPageClient() {
               1000
           )
         : 0;
-    const retentionPct =
-      hasClients
-        ? Math.round(((activeRetainers + partners) / clients.length) * 100)
-        : 0;
+    const retentionPct = hasClients
+      ? Math.round(((activeRetainers + partners) / clients.length) * 100)
+      : 0;
     return {
       hasClients,
-      total: hasClients ? String(clients.length) : "—",
-      retainers: hasClients ? String(activeRetainers) : "—",
-      avgK: hasClients && avg > 0 ? String(avg) : "—",
-      retention: hasClients ? `${retentionPct}%` : "—",
+      total: String(clients.length),
+      retainers: String(activeRetainers),
+      avgK: hasClients && avg > 0 ? String(avg) : "-",
+      showAvgUnit: hasClients && avg > 0,
+      retention: hasClients ? `${retentionPct}%` : "-",
     };
   }, [clients]);
 
@@ -245,7 +245,7 @@ export function ClientsPageClient() {
           {
             label: c.avgAccountValue,
             value: kpis.avgK,
-            unit: kpis.avgK !== "—" ? "K" : undefined,
+            unit: kpis.showAvgUnit ? "K" : undefined,
             foot: kpis.hasClients ? l.annualized : empty,
           },
           {
