@@ -1,7 +1,6 @@
 "use client";
 
 import { useDict } from "@/components/shared/i18n-provider";
-import type { FusionDictionary } from "@/lib/i18n/dictionaries/fusion/en";
 import {
   CellMain,
   StatLine,
@@ -9,65 +8,7 @@ import {
   FlProgress,
   FlChip,
   FlAva,
-  Sparkline,
-  FunnelBar,
 } from "@/components/fusion/primitives";
-
-type BadgeKey = keyof FusionDictionary["badges"];
-
-export function MarketingPage() {
-  const dict = useDict();
-  const m = dict.fusion.marketing;
-  const l = dict.fusion.labels;
-  const emptySpark = [0, 0, 0, 0, 0, 0, 0, 0];
-
-  return (
-    <div className="space-y-[18px]">
-      <div className="grid g-4">
-        {[
-          { l: m.sourcedPipeline, v: "0", u: "SAR", c: "var(--iris)" },
-          { l: m.costPerLead, v: "0", u: "MAD", c: "var(--emerald)" },
-          { l: m.siteSessions, v: "0", c: "var(--gold)" },
-          { l: m.mqlSql, v: "0%", c: "var(--sky)" },
-        ].map((k) => (
-          <div key={k.l} className="fl-card fl-pad">
-            <div className="k-label">{k.l}</div>
-            <StatLine value={k.v} unit={k.u} />
-            <Sparkline data={emptySpark} color={k.c} />
-          </div>
-        ))}
-      </div>
-      <div className="grid gap-[18px] lg:grid-cols-[1.5fr_1fr]">
-        <div className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{m.channelPerformance}</h3>
-              <div className="ch-sub">{m.channelPerformanceSub}</div>
-            </div>
-          </div>
-          <div className="fl-pad flex h-[250px] items-center justify-center">
-            <p className="text-[13px] text-[var(--muted)]">{dict.fusion.reports.noData}</p>
-          </div>
-        </div>
-        <div className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{m.conversionFunnel}</h3>
-              <div className="ch-sub">{m.conversionFunnelSub}</div>
-            </div>
-          </div>
-          <div className="fl-pad">
-            <FunnelBar label={l.visitors} value="0" width="0%" color="var(--iris)" />
-            <FunnelBar label={dict.nav.leads} value="0" width="0%" color="var(--iris-2)" />
-            <FunnelBar label={l.mql} value="0" width="0%" color="var(--sky)" />
-            <FunnelBar label={l.sql} value="0" width="0%" color="var(--gold)" />
-            <FunnelBar label={l.opportunity} value="0" width="0%" color="var(--emerald)" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function HrPage() {
   const dict = useDict();

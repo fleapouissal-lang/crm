@@ -1,5 +1,5 @@
-import { MarketingPage } from "@/components/pages/fusion-static-pages";
+import { MarketingOverviewPage } from "@/components/marketing/marketing-overview-page";
 
 export default function MarketingRoutePage() {
-  return <MarketingPage />;
+  return <MarketingOverviewPage />;
 }
