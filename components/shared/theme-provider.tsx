@@ -6,9 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useServerInsertedHTML } from "next/navigation";
 
 export type AppTheme = "light" | "dark";
 
@@ -38,9 +40,25 @@ function applyTheme(theme: AppTheme) {
   }
 }
 
+/** Inline bootstrap for FOUC prevention — must stay sync with STORAGE_KEY. */
+export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<AppTheme>("light");
   const [mounted, setMounted] = useState(false);
+  const scriptInserted = useRef(false);
+
+  // Inject outside the React client tree (avoids React 19 script warning).
+  useServerInsertedHTML(() => {
+    if (scriptInserted.current) return null;
+    scriptInserted.current = true;
+    return (
+      <script
+        id="theme-bootstrap"
+        dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
+      />
+    );
+  });
 
   useEffect(() => {
     setThemeState(readDomTheme());
@@ -74,6 +92,3 @@ export function useTheme() {
   }
   return ctx;
 }
-
-/** Inline bootstrap for root layout — must stay sync with STORAGE_KEY. */
-export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;

@@ -10,7 +10,6 @@ import {
   CheckSquare,
   Calendar,
   TrendingUp,
-  Megaphone,
   Wallet,
   FileText,
   Receipt,
@@ -89,7 +88,6 @@ export const workspaceNav: NavItem[] = [
 
 export const operationsNav: NavItem[] = [
   { id: "sales", href: "/sales", icon: TrendingUp, labelKey: "sales", capability: "leadership" },
-  { id: "marketing", href: "/marketing", icon: Megaphone, labelKey: "marketing", capability: "leadership" },
   { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance", capability: "leadership" },
   {
     id: "quotes",
@@ -134,7 +132,6 @@ export const pageMetaKeys: Record<string, { titleKey: keyof typeof navLabelKeys;
   "/tasks/new": { titleKey: "newTask", subtitleKey: "tasksSub" },
   "/calendar": { titleKey: "calendar", subtitleKey: "calendarSub" },
   "/sales": { titleKey: "sales", subtitleKey: "salesSub" },
-  "/marketing": { titleKey: "marketing", subtitleKey: "marketingSub" },
   "/finance": { titleKey: "finance", subtitleKey: "financeSub" },
   "/finance/quotes": { titleKey: "quotes", subtitleKey: "quotesSub" },
   "/finance/invoices": { titleKey: "invoices", subtitleKey: "invoicesSub" },

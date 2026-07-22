@@ -70,7 +70,6 @@ const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "kanban",
   "calendar",
   "sales",
-  "marketing",
   "finance",
   "quotes",
   "invoices",
@@ -236,8 +235,9 @@ export function pathnameToNavId(pathname: string): VerticalNavId | null {
   if (pathname.startsWith("/projects")) return "projects";
   if (pathname.startsWith("/tasks")) return "tasks";
   if (pathname.startsWith("/calendar")) return "calendar";
-  if (pathname.startsWith("/sales")) return "sales";
-  if (pathname.startsWith("/marketing")) return "marketing";
+  if (pathname.startsWith("/sales") || pathname.startsWith("/marketing")) {
+    return "sales";
+  }
   if (pathname.startsWith("/finance/quotes")) return "quotes";
   if (pathname.startsWith("/finance/invoices")) return "invoices";
   if (pathname.startsWith("/finance/expenses")) return "expenses";
