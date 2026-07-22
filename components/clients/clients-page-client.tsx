@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
-import { CellMain, StatLine, FlDelta } from "@/components/fusion/primitives";
+import { CellMain, StatLine } from "@/components/fusion/primitives";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ClientDetailDialog } from "@/components/clients/client-detail-dialog";
 import {
@@ -167,7 +167,9 @@ export function ClientsPageClient() {
   });
 
   const kpis = useMemo(() => {
+    const hasClients = clients.length > 0;
     const activeRetainers = clients.filter((x) => x.statusKey === "active").length;
+    const partners = clients.filter((x) => x.statusKey === "partner").length;
     const withValue = clients.filter((x) => x.valueAmount != null);
     const avg =
       withValue.length > 0
@@ -177,13 +179,20 @@ export function ClientsPageClient() {
               1000
           )
         : 0;
+    const retentionPct =
+      hasClients
+        ? Math.round(((activeRetainers + partners) / clients.length) * 100)
+        : 0;
     return {
-      total: String(clients.length),
-      retainers: String(activeRetainers),
-      avgK: avg > 0 ? String(avg) : "â€”",
+      hasClients,
+      total: hasClients ? String(clients.length) : "—",
+      retainers: hasClients ? String(activeRetainers) : "—",
+      avgK: hasClients && avg > 0 ? String(avg) : "—",
+      retention: hasClients ? `${retentionPct}%` : "—",
     };
   }, [clients]);
 
+  const empty = f.reports.noData;
   const hasActiveFilters = search.trim() !== "" || statusFilter !== "all";
 
   function openEdit(client: ClientRecord) {
@@ -223,28 +232,32 @@ export function ClientsPageClient() {
     <div className="space-y-[18px]">
       <div className="grid g-4">
         {[
-          { label: c.totalAccounts, value: kpis.total, foot: l.across3Markets },
+          {
+            label: c.totalAccounts,
+            value: kpis.total,
+            foot: kpis.hasClients ? l.across3Markets : empty,
+          },
           {
             label: c.activeRetainers,
             value: kpis.retainers,
-            delta: clients.length > 4 ? "1" : undefined,
-            foot: l.thisQuarter,
+            foot: kpis.hasClients ? l.thisQuarter : empty,
           },
           {
             label: c.avgAccountValue,
             value: kpis.avgK,
-            unit: kpis.avgK !== "â€”" ? "K" : undefined,
-            foot: l.annualized,
+            unit: kpis.avgK !== "—" ? "K" : undefined,
+            foot: kpis.hasClients ? l.annualized : empty,
           },
-          { label: c.retention, value: "92%", foot: l.rolling12Months },
+          {
+            label: c.retention,
+            value: kpis.retention,
+            foot: kpis.hasClients ? l.rolling12Months : empty,
+          },
         ].map((k) => (
           <div key={k.label} className="fl-card fl-pad">
             <div className="k-label">{k.label}</div>
             <StatLine value={k.value} unit={k.unit} />
-            <div className="k-foot mt-2">
-              {k.delta ? <FlDelta up>{k.delta}</FlDelta> : null}
-              {k.foot}
-            </div>
+            <div className="k-foot mt-2 fl-faint">{k.foot}</div>
           </div>
         ))}
       </div>
