@@ -8,6 +8,7 @@ export const taskSchema = z.object({
   due_date: z.string().optional().nullable().or(z.literal("")),
   assigned_to: z.string().uuid().optional().nullable().or(z.literal("")),
   lead_id: z.string().uuid().optional().nullable().or(z.literal("")),
+  project_id: z.string().uuid().optional().nullable().or(z.literal("")),
 });
 
 export type TaskFormValues = z.infer<typeof taskSchema>;

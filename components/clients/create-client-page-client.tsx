@@ -18,7 +18,7 @@ import {
   gradientForId,
   initialsFromName,
 } from "@/lib/clients/types";
-import { loadClients, saveClients } from "@/lib/clients/storage";
+import { upsertClient } from "@/lib/actions/clients";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -121,10 +121,13 @@ export function CreateClientPageClient() {
   });
 
   function onSubmit(values: ClientFormValues) {
-    startTransition(() => {
+    startTransition(async () => {
       const record = toClientRecord(values);
-      const existing = loadClients();
-      saveClients([record, ...existing]);
+      const result = await upsertClient(record);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success(cl.createdClient);
       router.push("/clients");
       router.refresh();

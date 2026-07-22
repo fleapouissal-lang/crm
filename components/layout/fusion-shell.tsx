@@ -12,10 +12,9 @@ import type { Profile } from "@/types/database";
 import type { FinanceOrgInput } from "@/lib/finance/company-info";
 import { cn } from "@/lib/utils";
 import { isPlatformAdmin } from "@/lib/permissions";
-import { clearDemoLocalData } from "@/lib/settings/storage";
+import { migrateLocalCrmToDb } from "@/lib/crm/migrate-local-to-db";
 
 const SIDEBAR_COLLAPSED_KEY = "fusion-sidebar-collapsed";
-const LOCAL_DEMO_PURGE_KEY = "fusion-local-demo-purged-v1";
 
 function SidebarWithUnread({
   profile,
@@ -87,13 +86,14 @@ export function FusionShell({
     setMounted(true);
     try {
       setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
-      if (localStorage.getItem(LOCAL_DEMO_PURGE_KEY) !== "1") {
-        clearDemoLocalData();
-        localStorage.setItem(LOCAL_DEMO_PURGE_KEY, "1");
-      }
     } catch {
       /* ignore */
     }
+    void migrateLocalCrmToDb().then((didMigrate) => {
+      if (didMigrate) {
+        window.location.reload();
+      }
+    });
   }, []);
 
   const toggleCollapse = useCallback(() => {

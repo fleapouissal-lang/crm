@@ -12,10 +12,10 @@ import {
 import { getCurrentFinanceIssuer } from "@/lib/actions/finance-issuer";
 import type { FinanceIssuer } from "@/lib/finance/company-info";
 import {
-  loadInvoices,
-  loadQuotes,
-  loadTemplates,
-} from "@/lib/finance/storage";
+  getInvoices,
+  getQuotes,
+  getTemplates,
+} from "@/lib/actions/finance-docs";
 
 function toBlobPart(bytes: Uint8Array): BlobPart {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart;
@@ -61,13 +61,18 @@ export function FinancePdfViewerPage({
 
       try {
         if (kind === "quote") {
-          const quote = loadQuotes().find((row) => row.id === id);
+          const [quotes, templates] = await Promise.all([
+            getQuotes(),
+            getTemplates(),
+          ]);
+          if (cancelled) return;
+          const quote = quotes.find((row) => row.id === id);
           if (!quote) {
             setError(f.documentNotFound);
             return;
           }
           const tpl = quote.templateId
-            ? loadTemplates().find((t) => t.id === quote.templateId)
+            ? templates.find((t) => t.id === quote.templateId)
             : undefined;
           const bytes = await buildQuotePdfBytes(quote, tpl, locale, issuer);
           if (cancelled) return;
@@ -76,17 +81,22 @@ export function FinancePdfViewerPage({
           return;
         }
 
-        const invoice = loadInvoices().find((row) => row.id === id);
+        const [invoices, templates, quotes] = await Promise.all([
+          getInvoices(),
+          getTemplates(),
+          getQuotes(),
+        ]);
+        if (cancelled) return;
+        const invoice = invoices.find((row) => row.id === id);
         if (!invoice) {
           setError(f.documentNotFound);
           return;
         }
-        const templates = loadTemplates();
         const tpl = invoice.templateId
           ? templates.find((t) => t.id === invoice.templateId)
           : undefined;
         const linked = invoice.quoteId
-          ? loadQuotes().find((q) => q.id === invoice.quoteId)
+          ? quotes.find((q) => q.id === invoice.quoteId)
           : undefined;
         const bytes = await buildInvoicePdfBytes(
           invoice,

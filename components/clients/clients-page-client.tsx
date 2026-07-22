@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus, Eye, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -18,10 +18,11 @@ import {
   type ClientRecord,
   type ClientStatusKey,
 } from "@/lib/clients/types";
-import { loadClients, saveClients } from "@/lib/clients/storage";
+import { deleteClient, upsertClient } from "@/lib/actions/clients";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -119,15 +120,19 @@ function ClientRowActions({
   );
 }
 
-export function ClientsPageClient() {
+export function ClientsPageClient({
+  initialClients = [],
+}: {
+  initialClients?: ClientRecord[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const f = dict.fusion;
   const l = f.labels;
   const c = f.clients;
   const cl = dict.clients;
 
-  const [clients, setClients] = useState<ClientRecord[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [clients, setClients] = useState<ClientRecord[]>(initialClients);
   const [marketTab, setMarketTab] = useState<ClientMarketTab>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatusKey | "all">("all");
@@ -137,14 +142,8 @@ export function ClientsPageClient() {
   const [activeClient, setActiveClient] = useState<ClientRecord | null>(null);
 
   useEffect(() => {
-    setClients(loadClients());
-    setHydrated(true);
-  }, []);
-
-  const persist = useCallback((next: ClientRecord[]) => {
-    setClients(next);
-    saveClients(next);
-  }, []);
+    setClients(initialClients);
+  }, [initialClients]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -207,27 +206,40 @@ export function ClientsPageClient() {
     setDetailOpen(true);
   }
 
-  function handleSave(record: ClientRecord) {
+  async function handleSave(record: ClientRecord) {
     const exists = clients.some((x) => x.id === record.id);
-    const next = exists
-      ? clients.map((x) => (x.id === record.id ? record : x))
-      : [record, ...clients];
-    persist(next);
+    const result = await upsertClient(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setClients((prev) => {
+      const idx = prev.findIndex((x) => x.id === result.data.id || x.id === record.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
     toast.success(exists ? cl.updatedClient : cl.createdClient);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(clients.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteClient(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setClients((prev) => prev.filter((x) => x.id !== id));
     toast.success(cl.deletedClient);
+    router.refresh();
   }
 
   function clearFilters() {
     setSearch("");
     setStatusFilter("all");
-  }
-
-  if (!hydrated) {
-    return <div className="h-40 animate-pulse rounded-xl bg-[var(--glass-hi)]" />;
   }
 
   return (

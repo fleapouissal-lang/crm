@@ -24,10 +24,12 @@ import {
   documentAmountTtc,
   nextInvoiceNumber,
   type ClientType,
+  type DocumentTemplate,
   type FinanceLineItem,
+  type InvoiceRecord,
   type InvoiceStatus,
 } from "@/lib/finance/types";
-import { loadInvoices, loadTemplates, saveInvoices } from "@/lib/finance/storage";
+import { upsertInvoice } from "@/lib/actions/finance-docs";
 import { cn } from "@/lib/utils";
 
 const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
@@ -75,14 +77,20 @@ function defaultDueDate() {
   return d.toISOString().slice(0, 10);
 }
 
-export function CreateInvoicePageClient() {
+export function CreateInvoicePageClient({
+  initialInvoices = [],
+  initialTemplates = [],
+}: {
+  initialInvoices?: InvoiceRecord[];
+  initialTemplates?: DocumentTemplate[];
+}) {
   const dict = useDict();
   const router = useRouter();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
   const templates = useMemo(
-    () => loadTemplates().filter((t) => t.kind === "invoice"),
-    []
+    () => initialTemplates.filter((t) => t.kind === "invoice"),
+    [initialTemplates]
   );
   const [items, setItems] = useState<FinanceLineItem[]>([
     createEmptyLineItem(),
@@ -119,7 +127,7 @@ export function CreateInvoicePageClient() {
     return inv[key as keyof typeof inv] as string;
   }
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     const validItems = items.filter(
       (row) => row.description.trim() && lineItemHasAmount(row)
     );
@@ -130,7 +138,6 @@ export function CreateInvoicePageClient() {
     setLinesError(null);
     setSaving(true);
 
-    const existing = loadInvoices();
     const now = new Date().toISOString();
     const cleaned = validItems.map((row) => ({
       ...row,
@@ -139,9 +146,9 @@ export function CreateInvoicePageClient() {
       unitPriceTtc: Number(row.unitPriceTtc) || 0,
     }));
 
-    const record = {
+    const record: InvoiceRecord = {
       id: `inv-${crypto.randomUUID().slice(0, 8)}`,
-      number: nextInvoiceNumber(existing),
+      number: nextInvoiceNumber(initialInvoices),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
       amount: documentAmountTtc(cleaned),
@@ -156,9 +163,15 @@ export function CreateInvoicePageClient() {
       updatedAt: now,
     };
 
-    saveInvoices([record, ...existing]);
+    const result = await upsertInvoice(record);
+    if (!result.success) {
+      toast.error(result.error);
+      setSaving(false);
+      return;
+    }
     toast.success(f.invoiceCreated);
     router.push("/finance/invoices");
+    router.refresh();
   }
 
   return (

@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FileText, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -20,12 +21,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { DocumentTemplate, TemplateKind } from "@/lib/finance/types";
-import { loadTemplates, saveTemplates } from "@/lib/finance/storage";
+import { deleteTemplate, upsertTemplate } from "@/lib/actions/finance-docs";
 
-export function TemplatesPageClient() {
+export function TemplatesPageClient({
+  initialTemplates = [],
+}: {
+  initialTemplates?: DocumentTemplate[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const f = dict.fusion.financeDocs;
-  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>(initialTemplates);
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [active, setActive] = useState<DocumentTemplate | null>(null);
@@ -33,13 +39,8 @@ export function TemplatesPageClient() {
   const [kindFilter, setKindFilter] = useState<TemplateKind | "all">("all");
 
   useEffect(() => {
-    setTemplates(loadTemplates());
-  }, []);
-
-  const persist = useCallback((next: DocumentTemplate[]) => {
-    setTemplates(next);
-    saveTemplates(next);
-  }, []);
+    setTemplates(initialTemplates);
+  }, [initialTemplates]);
 
   const quoteCount = templates.filter((t) => t.kind === "quote").length;
   const invoiceCount = templates.filter((t) => t.kind === "invoice").length;
@@ -76,18 +77,37 @@ export function TemplatesPageClient() {
 
   const hasFilters = search.trim() !== "" || kindFilter !== "all";
 
-  function handleSave(record: DocumentTemplate) {
+  async function handleSave(record: DocumentTemplate) {
     const exists = templates.some((t) => t.id === record.id);
-    const next = exists
-      ? templates.map((t) => (t.id === record.id ? record : t))
-      : [record, ...templates];
-    persist(next);
+    const result = await upsertTemplate(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setTemplates((prev) => {
+      const idx = prev.findIndex(
+        (t) => t.id === result.data.id || t.id === record.id
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
     toast.success(exists ? f.templateUpdated : f.templateCreated);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(templates.filter((t) => t.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteTemplate(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
     toast.success(f.templateDeleted);
+    router.refresh();
   }
 
   function clearFilters() {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FileText, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -31,16 +32,16 @@ import {
   isQuotePastExpiry,
   nextInvoiceNumber,
   quoteExpiryIso,
+  type DocumentTemplate,
+  type InvoiceRecord,
   type QuoteRecord,
   type QuoteStatus,
 } from "@/lib/finance/types";
 import {
-  loadInvoices,
-  loadQuotes,
-  loadTemplates,
-  saveInvoices,
-  saveQuotes,
-} from "@/lib/finance/storage";
+  deleteQuote,
+  upsertInvoice,
+  upsertQuote,
+} from "@/lib/actions/finance-docs";
 
 const STATUS_FILTERS: Array<QuoteStatus | "all"> = [
   "all",
@@ -51,14 +52,24 @@ const STATUS_FILTERS: Array<QuoteStatus | "all"> = [
   "refused",
 ];
 
-export function QuotesPageClient() {
+export function QuotesPageClient({
+  initialQuotes = [],
+  initialTemplates = [],
+  initialInvoices = [],
+}: {
+  initialQuotes?: QuoteRecord[];
+  initialTemplates?: DocumentTemplate[];
+  initialInvoices?: InvoiceRecord[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const { locale } = useI18n();
   const dateLocale = getDateFnsLocale(locale);
   const q = dict.fusion.quotes;
   const f = dict.fusion.financeDocs;
-  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
-  const [templates, setTemplates] = useState(loadTemplates());
+  const [quotes, setQuotes] = useState<QuoteRecord[]>(initialQuotes);
+  const [templates, setTemplates] = useState(initialTemplates);
+  const [invoices, setInvoices] = useState(initialInvoices);
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -67,28 +78,32 @@ export function QuotesPageClient() {
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | "all">("all");
 
   useEffect(() => {
-    const loaded = loadQuotes();
+    setTemplates(initialTemplates);
+    setInvoices(initialInvoices);
+  }, [initialTemplates, initialInvoices]);
+
+  useEffect(() => {
     const now = new Date().toISOString();
-    let changed = false;
-    const withExpiry = loaded.map((row) => {
+    const expired: QuoteRecord[] = [];
+    const withExpiry = initialQuotes.map((row) => {
       if (
         (row.status === "draft" || row.status === "sent") &&
         isQuotePastExpiry(row)
       ) {
-        changed = true;
-        return { ...row, status: "expired" as const, updatedAt: now };
+        const next = { ...row, status: "expired" as const, updatedAt: now };
+        expired.push(next);
+        return next;
       }
       return row;
     });
-    if (changed) saveQuotes(withExpiry);
     setQuotes(withExpiry);
-    setTemplates(loadTemplates());
-  }, []);
-
-  const persist = useCallback((next: QuoteRecord[]) => {
-    setQuotes(next);
-    saveQuotes(next);
-  }, []);
+    if (expired.length > 0) {
+      void (async () => {
+        await Promise.all(expired.map((row) => upsertQuote(row)));
+        router.refresh();
+      })();
+    }
+  }, [initialQuotes, router]);
 
   const openQuotes = quotes.filter(
     (x) => x.status === "draft" || x.status === "sent"
@@ -125,23 +140,42 @@ export function QuotesPageClient() {
     [templates]
   );
 
-  function handleSave(record: QuoteRecord) {
+  async function handleSave(record: QuoteRecord) {
     const exists = quotes.some((x) => x.id === record.id);
-    const next = exists
-      ? quotes.map((x) => (x.id === record.id ? record : x))
-      : [record, ...quotes];
-    persist(next);
-    setActive(record);
+    const result = await upsertQuote(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setQuotes((prev) => {
+      const idx = prev.findIndex(
+        (x) => x.id === result.data.id || x.id === record.id
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
+    setActive(result.data);
     toast.success(exists ? f.quoteUpdated : f.quoteCreated);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(quotes.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteQuote(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setQuotes((prev) => prev.filter((x) => x.id !== id));
     if (active?.id === id) {
       setActive(null);
       setDetailOpen(false);
     }
     toast.success(f.quoteDeleted);
+    router.refresh();
   }
 
   function openDetail(row: QuoteRecord) {
@@ -161,8 +195,7 @@ export function QuotesPageClient() {
     setPdfOpen(true);
   }
 
-  function convertToInvoice(row: QuoteRecord) {
-    const invoices = loadInvoices();
+  async function convertToInvoice(row: QuoteRecord) {
     const now = new Date().toISOString();
     const due = new Date();
     due.setDate(due.getDate() + 30);
@@ -178,7 +211,7 @@ export function QuotesPageClient() {
         ]
     ).map((item) => ({ ...item, id: `li-${crypto.randomUUID().slice(0, 8)}` }));
 
-    const invoice = {
+    const invoice: InvoiceRecord = {
       id: `inv-${crypto.randomUUID().slice(0, 8)}`,
       number: nextInvoiceNumber(invoices),
       clientName: row.clientName,
@@ -186,27 +219,39 @@ export function QuotesPageClient() {
       amount: row.amount,
       currency: row.currency,
       dueDate: due.toISOString().slice(0, 10),
-      status: "pending" as const,
+      status: "pending",
       templateId: row.templateId,
       quoteId: row.id,
       notes: row.notes
-        ? `${row.notes}\n\nâ† ${row.number}`
-        : `â† ${row.number}`,
+        ? `${row.notes}\n\n← ${row.number}`
+        : `← ${row.number}`,
       items,
       createdAt: now,
       updatedAt: now,
     };
-    saveInvoices([invoice, ...invoices]);
-    if (row.status !== "accepted") {
-      const next = quotes.map((x) =>
-        x.id === row.id
-          ? { ...x, status: "accepted" as const, updatedAt: now }
-          : x
-      );
-      persist(next);
-      setActive({ ...row, status: "accepted", updatedAt: now });
+
+    const invResult = await upsertInvoice(invoice);
+    if (!invResult.success) {
+      toast.error(invResult.error);
+      return;
     }
+    setInvoices((prev) => [invResult.data, ...prev]);
+
+    if (row.status !== "accepted") {
+      const accepted = { ...row, status: "accepted" as const, updatedAt: now };
+      const quoteResult = await upsertQuote(accepted);
+      if (!quoteResult.success) {
+        toast.error(quoteResult.error);
+        return;
+      }
+      setQuotes((prev) =>
+        prev.map((x) => (x.id === row.id ? quoteResult.data : x))
+      );
+      setActive(quoteResult.data);
+    }
+
     toast.success(q.convertedToInvoice);
+    router.refresh();
   }
 
   function clearFilters() {

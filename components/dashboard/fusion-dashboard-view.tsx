@@ -27,9 +27,7 @@ import { FlProgress } from "@/components/fusion/primitives";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import { isLeadership } from "@/lib/permissions/capabilities";
-import { loadProjects } from "@/lib/projects/storage";
 import { projectMatchesMember, type ProjectRecord } from "@/lib/projects/types";
-import { buildTeamOptions } from "@/lib/team/members";
 import type { Profile } from "@/types/database";
 import { EmptyState } from "@/components/shared/page-header";
 
@@ -46,9 +44,11 @@ function formatCompact(value: number, locale: string) {
 export function FusionDashboardView({
   stats,
   profile,
+  projects: allProjects = [],
 }: {
   stats: DashboardStats;
   profile: Profile;
+  projects?: ProjectRecord[];
 }) {
   const dict = useDict();
   const { locale } = useI18n();
@@ -56,7 +56,13 @@ export function FusionDashboardView({
   const leadership = isLeadership(profile);
 
   if (!leadership) {
-    return <MemberDashboardView stats={stats} profile={profile} />;
+    return (
+      <MemberDashboardView
+        stats={stats}
+        profile={profile}
+        projects={allProjects}
+      />
+    );
   }
 
   const quickActions = [
@@ -183,20 +189,23 @@ export function FusionDashboardView({
 function MemberDashboardView({
   stats,
   profile,
+  projects: allProjects = [],
 }: {
   stats: DashboardStats;
   profile: Profile;
+  projects?: ProjectRecord[];
 }) {
   const dict = useDict();
   const { locale } = useI18n();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
 
   useEffect(() => {
-    const all = loadProjects(buildTeamOptions([profile]));
     setProjects(
-      all.filter((p) => projectMatchesMember(p, profile.id)).slice(0, 6)
+      allProjects
+        .filter((p: ProjectRecord) => projectMatchesMember(p, profile.id))
+        .slice(0, 6)
     );
-  }, [profile]);
+  }, [allProjects, profile.id]);
 
   return (
     <div className="space-y-[18px]">

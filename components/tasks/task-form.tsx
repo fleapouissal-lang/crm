@@ -10,10 +10,6 @@ import { taskSchema, type TaskFormValues } from "@/lib/validations/task";
 import { createTask, updateTask } from "@/lib/actions/tasks";
 import type { Lead, Profile, Task } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
-import {
-  getTaskProjectId,
-  setTaskProjectId,
-} from "@/lib/tasks/project-links";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
@@ -102,6 +98,7 @@ export function TaskFormDialog({
       due_date: "",
       assigned_to: "",
       lead_id: "",
+      project_id: "",
     },
   });
 
@@ -115,8 +112,9 @@ export function TaskFormDialog({
         due_date: task?.due_date ?? defaultDueDate ?? "",
         assigned_to: task?.assigned_to ?? "",
         lead_id: task?.lead_id ?? defaultLeadId ?? "",
+        project_id: task?.project_id ?? "",
       });
-      setProjectId(task ? getTaskProjectId(task.id) ?? "" : "");
+      setProjectId(task?.project_id ?? "");
     }
   }, [open, task, defaultLeadId, defaultDueDate, reset]);
 
@@ -140,17 +138,18 @@ export function TaskFormDialog({
 
   function onSubmit(values: TaskFormValues) {
     startTransition(async () => {
+      const payload = {
+        ...values,
+        project_id: projectId || null,
+      };
       const result = isEdit
-        ? await updateTask(task!.id, values)
-        : await createTask(values);
+        ? await updateTask(task!.id, payload)
+        : await createTask(payload);
 
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-
-      const savedId = isEdit ? task!.id : result.data!.id;
-      setTaskProjectId(savedId, projectId || null);
 
       toast.success(isEdit ? dict.tasks.updatedTask : dict.tasks.createdTask);
       onOpenChange(false);

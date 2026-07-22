@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { getDateFnsLocale, getIntlLocale } from "@/lib/i18n/locale-utils";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import type { ReportsData, ReportsPeriod } from "@/lib/actions/reports";
+import type { ProjectRecord } from "@/lib/projects/types";
 import { PipelineBreakdownChart } from "@/components/dashboard/charts";
 import { ProjectReportsSection } from "@/components/reports/project-reports-section";
 import { StatLine, FlProgress } from "@/components/fusion/primitives";
@@ -22,7 +23,13 @@ function formatCurrency(value: number, locale: string) {
   }).format(value);
 }
 
-export function ReportsPageClient({ data }: { data: ReportsData }) {
+export function ReportsPageClient({
+  data,
+  projects = [],
+}: {
+  data: ReportsData;
+  projects?: ProjectRecord[];
+}) {
   const dict = useDict();
   const r = dict.fusion.reports;
   const l = dict.fusion.labels;
@@ -302,7 +309,7 @@ export function ReportsPageClient({ data }: { data: ReportsData }) {
         </div>
       ) : null}
 
-      <ProjectReportsSection />
+      <ProjectReportsSection projects={projects} />
     </div>
   );
 }

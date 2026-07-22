@@ -8,10 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
-import {
-  loadTaskProjectLinks,
-  taskMatchesProjectFilter,
-} from "@/lib/tasks/project-links";
+import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
 import { useDict } from "@/components/shared/i18n-provider";
 import {
   TaskPriorityBadge,
@@ -141,12 +138,10 @@ export function TaskList({
   const dict = useDict();
   const [tasks, setTasks] = useState(initialTasks);
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [projectLinks, setProjectLinks] = useState(loadTaskProjectLinks);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
     setTasks(initialTasks);
-    setProjectLinks(loadTaskProjectLinks());
   }, [initialTasks]);
 
   useEffect(() => {
@@ -216,9 +211,8 @@ export function TaskList({
   );
 
   const filteredTasks = useMemo(
-    () =>
-      tasks.filter((t) => taskMatchesProjectFilter(t.id, projectFilter, projectLinks)),
-    [tasks, projectFilter, projectLinks]
+    () => tasks.filter((t) => taskMatchesProjectFilter(t, projectFilter)),
+    [tasks, projectFilter]
   );
   const orderedTasks = useMemo(() => {
     const sectionRank = (task: Task) => {
@@ -349,9 +343,10 @@ export function TaskList({
                             {task.lead.title}
                           </Link>
                         )}
-                        {projectsById.get(projectLinks[task.id] ?? "") && (
+                        {task.project_id &&
+                          projectsById.get(task.project_id) && (
                           <span className="text-[var(--iris)]">
-                            {projectsById.get(projectLinks[task.id]!)!.title}
+                            {projectsById.get(task.project_id)!.title}
                           </span>
                         )}
                       </div>

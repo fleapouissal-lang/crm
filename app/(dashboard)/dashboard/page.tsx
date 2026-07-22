@@ -5,6 +5,7 @@ import { FusionDashboardView } from "@/components/dashboard/fusion-dashboard-vie
 import { PlatformAdminDashboard } from "@/components/dashboard/platform-admin-dashboard";
 import { getDashboardStats } from "@/lib/actions/dashboard";
 import { getPlatformAdminStats } from "@/lib/actions/platform-admin";
+import { getProjects } from "@/lib/actions/projects";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,11 +43,18 @@ async function DashboardContent() {
     );
   }
 
-  const stats = await getDashboardStats();
+  const [stats, projects] = await Promise.all([
+    getDashboardStats(),
+    getProjects(),
+  ]);
 
   return (
     <PageTransition>
-      <FusionDashboardView stats={stats} profile={profile} />
+      <FusionDashboardView
+        stats={stats}
+        profile={profile}
+        projects={projects}
+      />
     </PageTransition>
   );
 }

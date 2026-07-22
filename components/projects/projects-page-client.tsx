@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, Search, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -20,7 +20,7 @@ import {
   type ProjectStatusKey,
   type ProjectTab,
 } from "@/lib/projects/types";
-import { loadProjects, saveProjects } from "@/lib/projects/storage";
+import { deleteProject, upsertProject } from "@/lib/actions/projects";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import {
   buildTeamOptions,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/team/members";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -121,8 +122,15 @@ function ProjectRowActions({
   );
 }
 
-export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
+export function ProjectsPageClient({
+  profiles,
+  initialProjects = [],
+}: {
+  profiles: Profile[];
+  initialProjects?: ProjectRecord[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const f = dict.fusion;
   const p = f.projects;
   const l = f.labels;
@@ -130,8 +138,7 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
 
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
 
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [projects, setProjects] = useState<ProjectRecord[]>(initialProjects);
   const [phaseTab, setPhaseTab] = useState<ProjectTab>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatusKey | "all">("all");
@@ -142,14 +149,8 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
   const [activeProject, setActiveProject] = useState<ProjectRecord | null>(null);
 
   useEffect(() => {
-    setProjects(loadProjects(teamOptions));
-    setHydrated(true);
-  }, [teamOptions]);
-
-  const persist = useCallback((next: ProjectRecord[]) => {
-    setProjects(next);
-    saveProjects(next);
-  }, []);
+    setProjects(initialProjects);
+  }, [initialProjects]);
 
   const counts = useMemo(
     () => ({
@@ -230,56 +231,72 @@ export function ProjectsPageClient({ profiles }: { profiles: Profile[] }) {
     setDetailOpen(true);
   }
 
-  function handleSave(record: ProjectRecord) {
+  async function handleSave(record: ProjectRecord) {
     const exists = projects.some((x) => x.id === record.id);
-    const next = exists
-      ? projects.map((x) => (x.id === record.id ? record : x))
-      : [record, ...projects];
-    persist(next);
-    setActiveProject(record);
+    const result = await upsertProject(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setProjects((prev) => {
+      const idx = prev.findIndex((x) => x.id === result.data.id || x.id === record.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
+    setActiveProject(result.data);
     toast.success(exists ? p.updatedProject : p.createdProject);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(projects.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteProject(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setProjects((prev) => prev.filter((x) => x.id !== id));
     if (activeProject?.id === id) {
       setActiveProject(null);
       setDetailOpen(false);
       setFormOpen(false);
     }
     toast.success(p.deletedProject);
+    router.refresh();
   }
 
-  function handleStatusChange(project: ProjectRecord, statusKey: ProjectStatusKey) {
+  async function handleStatusChange(
+    project: ProjectRecord,
+    statusKey: ProjectStatusKey
+  ) {
     if (project.statusKey === statusKey) return;
-    const next = projects.map((row) =>
-      row.id === project.id
-        ? {
-            ...row,
-            statusKey,
-            badgeClass: badgeClassForStatus(statusKey),
-          }
-        : row
+    const updated: ProjectRecord = {
+      ...project,
+      statusKey,
+      badgeClass: badgeClassForStatus(statusKey),
+    };
+    const result = await upsertProject(updated);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setProjects((prev) =>
+      prev.map((row) => (row.id === project.id ? result.data : row))
     );
-    persist(next);
     if (activeProject?.id === project.id) {
-      setActiveProject({
-        ...activeProject,
-        statusKey,
-        badgeClass: badgeClassForStatus(statusKey),
-      });
+      setActiveProject(result.data);
     }
     toast.success(p.updatedProject);
+    router.refresh();
   }
 
   function clearFilters() {
     setSearch("");
     setStatusFilter("all");
     setMemberFilter("all");
-  }
-
-  if (!hydrated) {
-    return <div className="h-40 animate-pulse rounded-xl bg-[var(--glass-hi)]" />;
   }
 
   return (

@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Plus, Receipt, Search, X } from "lucide-react";
@@ -25,16 +26,12 @@ import {
 import {
   INVOICE_STATUS_BADGE,
   formatMoney,
+  type DocumentTemplate,
   type InvoiceRecord,
   type InvoiceStatus,
   type QuoteRecord,
 } from "@/lib/finance/types";
-import {
-  loadInvoices,
-  loadQuotes,
-  loadTemplates,
-  saveInvoices,
-} from "@/lib/finance/storage";
+import { deleteInvoice, upsertInvoice } from "@/lib/actions/finance-docs";
 
 const STATUS_FILTERS: Array<InvoiceStatus | "all"> = [
   "all",
@@ -44,13 +41,22 @@ const STATUS_FILTERS: Array<InvoiceStatus | "all"> = [
   "overdue",
 ];
 
-export function InvoicesPageClient() {
+export function InvoicesPageClient({
+  initialInvoices = [],
+  initialQuotes = [],
+  initialTemplates = [],
+}: {
+  initialInvoices?: InvoiceRecord[];
+  initialQuotes?: QuoteRecord[];
+  initialTemplates?: DocumentTemplate[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
-  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
-  const [templates, setTemplates] = useState(loadTemplates());
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>(initialQuotes);
+  const [templates, setTemplates] = useState(initialTemplates);
   const [formOpen, setFormOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [active, setActive] = useState<InvoiceRecord | null>(null);
@@ -60,10 +66,10 @@ export function InvoicesPageClient() {
   );
 
   useEffect(() => {
-    setInvoices(loadInvoices());
-    setQuotes(loadQuotes());
-    setTemplates(loadTemplates());
-  }, []);
+    setInvoices(initialInvoices);
+    setQuotes(initialQuotes);
+    setTemplates(initialTemplates);
+  }, [initialInvoices, initialQuotes, initialTemplates]);
 
   const templatesById = useMemo(
     () => new Map(templates.map((t) => [t.id, t])),
@@ -74,11 +80,6 @@ export function InvoicesPageClient() {
     () => new Map(quotes.map((q) => [q.id, q])),
     [quotes]
   );
-
-  const persist = useCallback((next: InvoiceRecord[]) => {
-    setInvoices(next);
-    saveInvoices(next);
-  }, []);
 
   const hasInvoices = invoices.length > 0;
   const issuedMonth = invoices.length;
@@ -133,18 +134,37 @@ export function InvoicesPageClient() {
     return inv[key] as string;
   }
 
-  function handleSave(record: InvoiceRecord) {
+  async function handleSave(record: InvoiceRecord) {
     const exists = invoices.some((x) => x.id === record.id);
-    const next = exists
-      ? invoices.map((x) => (x.id === record.id ? record : x))
-      : [record, ...invoices];
-    persist(next);
+    const result = await upsertInvoice(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setInvoices((prev) => {
+      const idx = prev.findIndex(
+        (x) => x.id === result.data.id || x.id === record.id
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
     toast.success(exists ? f.invoiceUpdated : f.invoiceCreated);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(invoices.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteInvoice(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setInvoices((prev) => prev.filter((x) => x.id !== id));
     toast.success(f.invoiceDeleted);
+    router.refresh();
   }
 
   function viewInvoicePdf(row: InvoiceRecord) {

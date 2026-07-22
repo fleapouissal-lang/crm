@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -11,8 +11,6 @@ import { taskSchema, type TaskFormValues } from "@/lib/validations/task";
 import { createTask } from "@/lib/actions/tasks";
 import type { Lead, Profile } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
-import { setTaskProjectId } from "@/lib/tasks/project-links";
-import { loadProjects } from "@/lib/projects/storage";
 import { buildTeamOptions } from "@/lib/team/members";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -54,11 +52,13 @@ function FormField({
 export function CreateTaskPageClient({
   profiles,
   leads,
+  projects = [],
   defaultLeadId,
   defaultDueDate,
 }: {
   profiles: Profile[];
   leads: Lead[];
+  projects?: ProjectRecord[];
   defaultLeadId?: string;
   defaultDueDate?: string;
 }) {
@@ -67,11 +67,6 @@ export function CreateTaskPageClient({
   const [pending, startTransition] = useTransition();
   const [projectId, setProjectId] = useState("");
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
-
-  useEffect(() => {
-    setProjects(loadProjects(teamOptions));
-  }, [teamOptions]);
 
   const {
     register,
@@ -89,6 +84,7 @@ export function CreateTaskPageClient({
       due_date: defaultDueDate ?? "",
       assigned_to: "",
       lead_id: defaultLeadId ?? "",
+      project_id: "",
     },
   });
 
@@ -112,12 +108,14 @@ export function CreateTaskPageClient({
 
   function onSubmit(values: TaskFormValues) {
     startTransition(async () => {
-      const result = await createTask(values);
+      const result = await createTask({
+        ...values,
+        project_id: projectId || null,
+      });
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      setTaskProjectId(result.data!.id, projectId || null);
       toast.success(dict.tasks.createdTask);
       router.push("/tasks");
       router.refresh();

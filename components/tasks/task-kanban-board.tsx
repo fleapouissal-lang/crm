@@ -26,11 +26,7 @@ import { createClient } from "@/lib/supabase/client";
 import { updateTaskStatus } from "@/lib/actions/tasks";
 import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
-import {
-  loadTaskProjectLinks,
-  taskMatchesProjectFilter,
-  type TaskProjectLinks,
-} from "@/lib/tasks/project-links";
+import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
 import { FlAva, FlChip, AvatarStack } from "@/components/fusion/primitives";
 import { useDict } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -180,12 +176,10 @@ function KanbanColumn({
   status,
   tasks,
   projectsById,
-  projectLinks,
 }: {
   status: TaskStatus;
   tasks: Task[];
   projectsById: Map<string, ProjectRecord>;
-  projectLinks: TaskProjectLinks;
 }) {
   const dict = useDict();
   const k = dict.fusion.kanban;
@@ -211,7 +205,11 @@ function KanbanColumn({
             <SortableTaskCard
               key={task.id}
               task={task}
-              project={projectsById.get(projectLinks[task.id] ?? "") ?? null}
+              project={
+                task.project_id
+                  ? projectsById.get(task.project_id) ?? null
+                  : null
+              }
             />
           ))}
         </div>
@@ -243,15 +241,10 @@ export function TaskKanbanBoard({
   const k = dict.fusion.kanban;
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [projectLinks, setProjectLinks] = useState<TaskProjectLinks>({});
   const [, startTransition] = useTransition();
 
   useEffect(() => {
     setTasks(initialTasks);
-  }, [initialTasks]);
-
-  useEffect(() => {
-    setProjectLinks(loadTaskProjectLinks());
   }, [initialTasks]);
 
   useEffect(() => {
@@ -304,9 +297,9 @@ export function TaskKanbanBoard({
       tasks.filter(
         (t) =>
           t.status !== "cancelled" &&
-          taskMatchesProjectFilter(t.id, projectFilter, projectLinks)
+          taskMatchesProjectFilter(t, projectFilter)
       ),
-    [tasks, projectFilter, projectLinks]
+    [tasks, projectFilter]
   );
 
   const byStatus = useMemo(() => {
@@ -373,9 +366,10 @@ export function TaskKanbanBoard({
     });
   }
 
-  const activeProject = activeTask
-    ? projectsById.get(projectLinks[activeTask.id] ?? "") ?? null
-    : null;
+  const activeProject =
+    activeTask?.project_id
+      ? projectsById.get(activeTask.project_id) ?? null
+      : null;
 
   return (
     <div className="fl-card fl-kanban-shell">
@@ -436,7 +430,6 @@ export function TaskKanbanBoard({
                 status={col.id}
                 tasks={byStatus[col.id]}
                 projectsById={projectsById}
-                projectLinks={projectLinks}
               />
             ))}
           </div>

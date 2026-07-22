@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/actions/auth";
+import { getProjects } from "@/lib/actions/projects";
 import {
   getReportsData,
   type ReportsPeriod,
@@ -23,7 +24,10 @@ export default async function ReportsRoutePage({
       : "monthly"
   ) as ReportsPeriod;
 
-  const data = await getReportsData(period);
+  const [data, projects] = await Promise.all([
+    getReportsData(period),
+    getProjects(),
+  ]);
 
   return (
     <Suspense
@@ -40,7 +44,7 @@ export default async function ReportsRoutePage({
         </div>
       }
     >
-      <ReportsPageClient data={data} />
+      <ReportsPageClient data={data} projects={projects} />
     </Suspense>
   );
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getTasks } from "@/lib/actions/tasks";
 import { getLeads } from "@/lib/actions/leads";
+import { getProjects } from "@/lib/actions/projects";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { canAccessTasks } from "@/lib/permissions";
 import { TasksPageClient } from "@/components/tasks/tasks-page-client";
@@ -26,10 +27,11 @@ async function TasksContent({
   if (!canAccessTasks(profile)) redirect("/dashboard");
 
   const params = await searchParams;
-  const [tasks, profiles, leads] = await Promise.all([
+  const [tasks, profiles, leads, projects] = await Promise.all([
     getTasks({ status: params.status }),
     getOrgProfiles(),
     getLeads(),
+    getProjects(),
   ]);
 
   return (
@@ -37,6 +39,7 @@ async function TasksContent({
       tasks={tasks}
       profiles={profiles}
       leads={leads}
+      projects={projects}
       organizationId={profile.organization_id}
       profile={profile}
     />

@@ -4,10 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useDict } from "@/components/shared/i18n-provider";
 import { StatLine } from "@/components/fusion/primitives";
-import {
-  loadExpenses,
-  loadInvoices,
-} from "@/lib/finance/storage";
 import type { ExpenseRecord, InvoiceRecord } from "@/lib/finance/types";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -31,18 +27,24 @@ function monthKey(iso: string): string {
   return `${d.getFullYear()}-${d.getMonth()}`;
 }
 
-export function FinanceOverviewPage() {
+export function FinanceOverviewPage({
+  initialInvoices = [],
+  initialExpenses = [],
+}: {
+  initialInvoices?: InvoiceRecord[];
+  initialExpenses?: ExpenseRecord[];
+}) {
   const dict = useDict();
   const fin = dict.fusion.finance;
   const l = dict.fusion.labels;
   const empty = dict.fusion.reports.noData;
-  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
 
   useEffect(() => {
-    setInvoices(loadInvoices());
-    setExpenses(loadExpenses());
-  }, []);
+    setInvoices(initialInvoices);
+    setExpenses(initialExpenses);
+  }, [initialInvoices, initialExpenses]);
 
   const hasData = invoices.length > 0 || expenses.length > 0;
 

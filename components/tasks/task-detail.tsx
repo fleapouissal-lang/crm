@@ -20,11 +20,6 @@ import {
 } from "@/lib/permissions";
 import { deleteTask, updateTask } from "@/lib/actions/tasks";
 import type { TaskFormValues } from "@/lib/validations/task";
-import {
-  getTaskProjectId,
-  setTaskProjectId,
-} from "@/lib/tasks/project-links";
-import { loadProjects } from "@/lib/projects/storage";
 import { buildTeamOptions } from "@/lib/team/members";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -65,11 +60,13 @@ export function TaskDetailClient({
   task: initialTask,
   profiles,
   leads,
+  projects = [],
   profile,
 }: {
   task: Task;
   profiles: Profile[];
   leads: Lead[];
+  projects?: ProjectRecord[];
   profile: Profile;
 }) {
   const dict = useDict();
@@ -85,8 +82,7 @@ export function TaskDetailClient({
   const [priority, setPriority] = useState<TaskPriority>(initialTask.priority);
   const [assignedTo, setAssignedTo] = useState(initialTask.assigned_to ?? "");
   const [leadId, setLeadId] = useState(initialTask.lead_id ?? "");
-  const [projectId, setProjectId] = useState("");
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [projectId, setProjectId] = useState(initialTask.project_id ?? "");
 
   const canEdit = canModifyTask(profile, task);
   const canAssignAnyone = canViewAllTasks(profile);
@@ -101,12 +97,8 @@ export function TaskDetailClient({
     setPriority(initialTask.priority);
     setAssignedTo(initialTask.assigned_to ?? "");
     setLeadId(initialTask.lead_id ?? "");
-    setProjectId(getTaskProjectId(initialTask.id) ?? "");
+    setProjectId(initialTask.project_id ?? "");
   }, [initialTask]);
-
-  useEffect(() => {
-    setProjects(loadProjects(teamOptions));
-  }, [teamOptions]);
 
   const today = new Date().toISOString().slice(0, 10);
   const overdue =
@@ -136,21 +128,24 @@ export function TaskDetailClient({
       due_date: dueDate,
       assigned_to: assignedTo,
       lead_id: leadId,
+      project_id: projectId || null,
       ...patch,
     };
   }
 
   function save(patch: Partial<TaskFormValues> = {}, nextProjectId?: string) {
     if (!canEdit) return;
-    const values = buildPayload(patch);
+    const pid = nextProjectId !== undefined ? nextProjectId : projectId;
+    const values = buildPayload({
+      ...patch,
+      project_id: pid || null,
+    });
     startTransition(async () => {
       const result = await updateTask(task.id, values);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      const pid = nextProjectId !== undefined ? nextProjectId : projectId;
-      setTaskProjectId(task.id, pid || null);
       if (result.data) {
         setTask({
           ...task,
@@ -164,6 +159,7 @@ export function TaskDetailClient({
             ? leads.find((l) => l.id === values.lead_id) ?? task.lead
             : null,
         });
+        setProjectId(result.data.project_id ?? "");
       }
       toast.success(td.updatedTask);
       router.refresh();

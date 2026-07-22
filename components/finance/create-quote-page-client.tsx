@@ -25,10 +25,12 @@ import {
   nextQuoteNumber,
   summarizeService,
   type ClientType,
+  type DocumentTemplate,
   type FinanceLineItem,
+  type QuoteRecord,
   type QuoteStatus,
 } from "@/lib/finance/types";
-import { loadQuotes, loadTemplates, saveQuotes } from "@/lib/finance/storage";
+import { upsertQuote } from "@/lib/actions/finance-docs";
 import { cn } from "@/lib/utils";
 
 const STATUSES: QuoteStatus[] = ["draft", "sent", "accepted", "expired", "refused"];
@@ -76,14 +78,20 @@ function Field({
   );
 }
 
-export function CreateQuotePageClient() {
+export function CreateQuotePageClient({
+  initialQuotes = [],
+  initialTemplates = [],
+}: {
+  initialQuotes?: QuoteRecord[];
+  initialTemplates?: DocumentTemplate[];
+}) {
   const dict = useDict();
   const router = useRouter();
   const q = dict.fusion.quotes;
   const f = dict.fusion.financeDocs;
   const templates = useMemo(
-    () => loadTemplates().filter((t) => t.kind === "quote"),
-    []
+    () => initialTemplates.filter((t) => t.kind === "quote"),
+    [initialTemplates]
   );
   const [items, setItems] = useState<FinanceLineItem[]>([
     createEmptyLineItem(),
@@ -115,7 +123,7 @@ export function CreateQuotePageClient() {
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     const validItems = items.filter(
       (row) => row.description.trim() && lineItemHasAmount(row)
     );
@@ -126,7 +134,6 @@ export function CreateQuotePageClient() {
     setLinesError(null);
     setSaving(true);
 
-    const existing = loadQuotes();
     const now = new Date().toISOString();
     const cleaned = validItems.map((row) => ({
       ...row,
@@ -135,9 +142,9 @@ export function CreateQuotePageClient() {
       unitPriceTtc: Number(row.unitPriceTtc) || 0,
     }));
 
-    const record = {
+    const record: QuoteRecord = {
       id: `q-${crypto.randomUUID().slice(0, 8)}`,
-      number: nextQuoteNumber(existing),
+      number: nextQuoteNumber(initialQuotes),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
       service: summarizeService(cleaned),
@@ -152,9 +159,15 @@ export function CreateQuotePageClient() {
       updatedAt: now,
     };
 
-    saveQuotes([record, ...existing]);
+    const result = await upsertQuote(record);
+    if (!result.success) {
+      toast.error(result.error);
+      setSaving(false);
+      return;
+    }
     toast.success(f.quoteCreated);
     router.push("/finance/quotes");
+    router.refresh();
   }
 
   return (

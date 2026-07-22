@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { TemplatesPageClient } from "@/components/finance/templates-page-client";
 import { getCurrentProfile } from "@/lib/actions/auth";
+import { getTemplates } from "@/lib/actions/finance-docs";
 import { canViewFinanceDocumentsForRole } from "@/lib/permissions";
 
 export default async function FinanceTemplatesPage() {
@@ -8,5 +9,6 @@ export default async function FinanceTemplatesPage() {
   if (!profile) redirect("/login");
   if (!canViewFinanceDocumentsForRole(profile.role)) redirect("/dashboard");
 
-  return <TemplatesPageClient />;
+  const templates = await getTemplates();
+  return <TemplatesPageClient initialTemplates={templates} />;
 }

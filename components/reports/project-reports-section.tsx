@@ -21,17 +21,19 @@ import {
   uploadProjectReportAction,
   type ProjectReportFile,
 } from "@/lib/actions/project-reports";
-import { loadProjects } from "@/lib/projects/storage";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 
-export function ProjectReportsSection() {
+export function ProjectReportsSection({
+  projects = [],
+}: {
+  projects?: ProjectRecord[];
+}) {
   const dict = useDict();
   const r = dict.fusion.reports;
   const { locale } = useI18n();
   const dateLocale = getDateFnsLocale(locale);
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [reports, setReports] = useState<ProjectReportFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -39,10 +41,6 @@ export function ProjectReportsSection() {
     null
   );
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
-  useEffect(() => {
-    setProjects(loadProjects([]));
-  }, []);
 
   function refreshReports() {
     startTransition(async () => {

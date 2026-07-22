@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -36,7 +37,7 @@ import {
   type ExpenseRecord,
   type ExpenseStatus,
 } from "@/lib/finance/types";
-import { loadExpenses, saveExpenses } from "@/lib/finance/storage";
+import { deleteExpense, upsertExpense } from "@/lib/actions/finance-docs";
 
 const STATUS_FILTERS: Array<ExpenseStatus | "all"> = [
   "all",
@@ -94,10 +95,15 @@ function ExpenseRowActions({
   );
 }
 
-export function ExpensesPageClient() {
+export function ExpensesPageClient({
+  initialExpenses = [],
+}: {
+  initialExpenses?: ExpenseRecord[];
+}) {
   const dict = useDict();
+  const router = useRouter();
   const e = dict.fusion.expenses;
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
   const [formOpen, setFormOpen] = useState(false);
   const [active, setActive] = useState<ExpenseRecord | null>(null);
   const [search, setSearch] = useState("");
@@ -109,13 +115,8 @@ export function ExpensesPageClient() {
   >("all");
 
   useEffect(() => {
-    setExpenses(loadExpenses());
-  }, []);
-
-  const persist = useCallback((next: ExpenseRecord[]) => {
-    setExpenses(next);
-    saveExpenses(next);
-  }, []);
+    setExpenses(initialExpenses);
+  }, [initialExpenses]);
 
   const totalCount = expenses.length;
   const totalAmount = expenses.reduce((s, x) => s + x.amount, 0);
@@ -154,18 +155,37 @@ export function ExpensesPageClient() {
     statusFilter !== "all" ||
     categoryFilter !== "all";
 
-  function handleSave(record: ExpenseRecord) {
+  async function handleSave(record: ExpenseRecord) {
     const exists = expenses.some((x) => x.id === record.id);
-    const next = exists
-      ? expenses.map((x) => (x.id === record.id ? record : x))
-      : [record, ...expenses];
-    persist(next);
+    const result = await upsertExpense(record);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setExpenses((prev) => {
+      const idx = prev.findIndex(
+        (x) => x.id === result.data.id || x.id === record.id
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = result.data;
+        return next;
+      }
+      return [result.data, ...prev];
+    });
     toast.success(exists ? e.expenseUpdated : e.expenseCreated);
+    router.refresh();
   }
 
-  function handleDelete(id: string) {
-    persist(expenses.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    const result = await deleteExpense(id);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setExpenses((prev) => prev.filter((x) => x.id !== id));
     toast.success(e.expenseDeleted);
+    router.refresh();
   }
 
   function openCreate() {

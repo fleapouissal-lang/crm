@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { Lead, Profile, Task } from "@/types/database";
 import { TASK_STATUSES } from "@/types/database";
+import type { ProjectRecord } from "@/lib/projects/types";
 import { useDict } from "@/components/shared/i18n-provider";
 import {
   Select,
@@ -16,20 +16,20 @@ import {
 } from "@/components/ui/select";
 import { TaskList } from "@/components/tasks/task-list";
 import { TaskKanbanBoard } from "@/components/tasks/task-kanban-board";
-import { loadProjects } from "@/lib/projects/storage";
-import { buildTeamOptions } from "@/lib/team/members";
 import { cn } from "@/lib/utils";
 
 export function TasksPageClient({
   tasks,
   profiles,
   leads,
+  projects = [],
   organizationId,
   profile,
 }: {
   tasks: Task[];
   profiles: Profile[];
   leads: Lead[];
+  projects?: ProjectRecord[];
   organizationId: string;
   profile: Profile;
 }) {
@@ -39,14 +39,7 @@ export function TasksPageClient({
   const projectFilter = searchParams.get("project_id") ?? "all";
   const viewParam = searchParams.get("view");
   const view: "board" | "list" = viewParam === "list" ? "list" : "board";
-  const [projects, setProjects] = useState<ReturnType<typeof loadProjects>>([]);
   const router = useRouter();
-
-  const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
-
-  useEffect(() => {
-    setProjects(loadProjects(teamOptions));
-  }, [teamOptions]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());

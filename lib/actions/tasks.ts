@@ -153,6 +153,7 @@ export async function createTask(
       due_date: values.due_date || null,
       assigned_to: assignedTo,
       lead_id: values.lead_id || null,
+      project_id: values.project_id || null,
       created_by: profile.id,
     })
     .select()
@@ -213,6 +214,7 @@ export async function updateTask(
         ? values.assigned_to || null
         : profile.id,
       lead_id: values.lead_id || null,
+      project_id: values.project_id || null,
     })
     .eq("id", id)
     .select()
