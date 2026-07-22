@@ -7,6 +7,7 @@ import { canManageCompanies } from "@/lib/permissions";
 import { PLAN_PRICES_EUR, type PlanKey } from "@/lib/billing/plans";
 import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { buildCompanyEmail } from "@/lib/organizations/domain";
+import { seedOrgJobRoles } from "@/lib/actions/organizations";
 import type {
   ActionResult,
   OrgJobRole,
@@ -202,7 +203,17 @@ export async function getOrgJobRolesAsPlatformAdmin(
     .select("*")
     .eq("organization_id", organizationId);
 
-  return sortJobRolesByCatalog((data as OrgJobRole[]) ?? []);
+  let roles = (data as OrgJobRole[]) ?? [];
+  if (roles.length === 0) {
+    try {
+      roles = await seedOrgJobRoles(organizationId, admin);
+    } catch (err) {
+      console.error("[org_job_roles] platform seed failed", err);
+      return [];
+    }
+  }
+
+  return sortJobRolesByCatalog(roles);
 }
 
 export async function createPlatformManagedUser(input: {

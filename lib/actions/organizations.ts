@@ -55,7 +55,23 @@ export async function getOrgJobRoles(organizationId?: string): Promise<OrgJobRol
     .select("*")
     .eq("organization_id", orgId);
 
-  return sortJobRolesByCatalog((data as OrgJobRole[]) ?? []);
+  let roles = (data as OrgJobRole[]) ?? [];
+
+  // Existing orgs may have an empty catalog (e.g. after cleanup). Seed defaults once.
+  if (roles.length === 0) {
+    try {
+      roles = await seedOrgJobRoles(orgId);
+    } catch (err) {
+      console.error("[org_job_roles] seed failed", err);
+      const { data: retry } = await supabase
+        .from("org_job_roles")
+        .select("*")
+        .eq("organization_id", orgId);
+      roles = (retry as OrgJobRole[]) ?? [];
+    }
+  }
+
+  return sortJobRolesByCatalog(roles);
 }
 
 export async function getCreatedOrganizations(): Promise<Organization[]> {
