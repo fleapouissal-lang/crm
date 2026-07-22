@@ -3,6 +3,7 @@ import type { Profile, Role, Task } from "@/types/database";
 export type NavCapability =
   | "always"
   | "leadership"
+  | "leads"
   | "clients"
   | "tasks"
   | "calendar"
@@ -46,7 +47,8 @@ export function canAccessCalendar(profile: Profile): boolean {
 }
 
 export function canAccessLeads(profile: Profile): boolean {
-  return isLeadership(profile);
+  if (isLeadership(profile)) return true;
+  return getJobSlug(profile) === "commercial";
 }
 
 export function canAccessFullCrm(profile: Profile): boolean {
@@ -93,6 +95,7 @@ export function hasNavCapability(
 ): boolean {
   if (!capability || capability === "always") return true;
   if (capability === "leadership") return isLeadership(profile);
+  if (capability === "leads") return canAccessLeads(profile);
   if (capability === "clients") return canAccessClients(profile);
   if (capability === "tasks") return canAccessTasks(profile);
   if (capability === "calendar") return canAccessCalendar(profile);
@@ -108,6 +111,8 @@ export function canAccessNavItem(profile: Profile, itemId: string): boolean {
     case "settings":
     case "notifications":
       return true;
+    case "leads":
+      return canAccessLeads(profile);
     case "clients":
       return canAccessClients(profile);
     case "tasks":

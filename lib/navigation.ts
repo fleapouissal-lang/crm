@@ -77,7 +77,7 @@ export const platformAdminNav: NavItem[] = [
 
 export const workspaceNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard", capability: "always" },
-  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leadership" },
+  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leads" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
