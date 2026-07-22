@@ -48,7 +48,7 @@ export function LeadsPageClient({
 
   return (
     <div className="space-y-4">
-      <CrmKpiRow />
+      <CrmKpiRow leads={leads} />
 
       <div className="fl-filter-bar">
         <div className="fl-seg shrink-0">
@@ -123,7 +123,7 @@ export function LeadsPageClient({
         <LeadTable leads={leads} profiles={profiles} role={role} />
       )}
 
-      <CrmPipelineExtras />
+      <CrmPipelineExtras leads={leads} />
 
       <LeadFormDialog
         open={formOpen}
