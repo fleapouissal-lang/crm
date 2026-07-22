@@ -83,10 +83,7 @@ export function profileToTeamOption(profile: Profile): TeamMemberOption {
 }
 
 export function buildTeamOptions(profiles: Profile[]): TeamMemberOption[] {
-  if (profiles.length > 0) {
-    return profiles.map(profileToTeamOption);
-  }
-  return DEMO_TEAM_MEMBERS;
+  return profiles.map(profileToTeamOption);
 }
 
 export function getTeamMembers(

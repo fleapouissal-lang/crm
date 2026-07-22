@@ -150,7 +150,6 @@ export function CrmPipelineExtras({ leads = [] }: { leads?: Lead[] }) {
                       counts.proposal,
                       counts.negotiation,
                       counts.won,
-                      0,
                     ],
                   },
                 ]}
@@ -166,7 +165,6 @@ export function CrmPipelineExtras({ leads = [] }: { leads?: Lead[] }) {
                       f.crm.proposal,
                       f.crm.negotiation,
                       f.crm.won,
-                      "—",
                     ],
                     labels: { style: { colors: "#646b81", fontSize: "10px" } },
                   },

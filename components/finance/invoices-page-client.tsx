@@ -7,7 +7,7 @@ import { fr } from "date-fns/locale";
 import { Plus, Receipt, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
-import { StatLine, FlDelta } from "@/components/fusion/primitives";
+import { StatLine } from "@/components/fusion/primitives";
 import { EmptyState } from "@/components/shared/page-header";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
@@ -48,7 +48,6 @@ export function InvoicesPageClient() {
   const dict = useDict();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
-  const b = dict.fusion.badges;
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [templates, setTemplates] = useState(loadTemplates());
@@ -81,17 +80,25 @@ export function InvoicesPageClient() {
     saveInvoices(next);
   }, []);
 
+  const hasInvoices = invoices.length > 0;
   const issuedMonth = invoices.length;
   const issuedTotal = invoices.reduce((s, x) => s + x.amount, 0);
   const paidTotal = invoices
     .filter((x) => x.status === "paid")
     .reduce((s, x) => s + x.amount, 0);
-  const overdueTotal = invoices
-    .filter((x) => x.status === "overdue")
-    .reduce((s, x) => s + x.amount, 0);
+  const overdueInvoices = invoices.filter((x) => x.status === "overdue");
+  const overdueTotal = overdueInvoices.reduce((s, x) => s + x.amount, 0);
+  const overdueCount = overdueInvoices.length;
   const outstanding = invoices
     .filter((x) => x.status === "pending" || x.status === "overdue")
     .reduce((s, x) => s + x.amount, 0);
+
+  function formatKpiAmount(amount: number): string {
+    if (!hasInvoices) return "—";
+    if (amount <= 0) return "0";
+    if (amount >= 1000) return `${Math.round(amount / 1000)}K`;
+    return String(Math.round(amount));
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -155,28 +162,46 @@ export function InvoicesPageClient() {
       <div className="grid g-4">
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.issuedMonth}</div>
-          <StatLine value={String(issuedMonth)} />
+          <StatLine value={hasInvoices ? String(issuedMonth) : "—"} />
           <div className="k-foot fl-faint mt-2">
-            {formatMoney(issuedTotal, "MAD")}
+            {hasInvoices ? formatMoney(issuedTotal, "MAD") : dict.fusion.reports.noData}
           </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.paidMonth}</div>
-          <StatLine value={Math.round(paidTotal / 1000) + "K"} unit="MAD" />
-          <div className="k-foot mt-2">
-            <FlDelta up>18%</FlDelta>
+          <StatLine
+            value={formatKpiAmount(paidTotal)}
+            unit={hasInvoices && paidTotal > 0 ? "MAD" : undefined}
+          />
+          <div className="k-foot fl-faint mt-2">
+            {hasInvoices ? formatMoney(paidTotal, "MAD") : dict.fusion.reports.noData}
           </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.overdue}</div>
-          <StatLine value={Math.round(overdueTotal / 1000) + "K"} unit="MAD" />
+          <StatLine
+            value={formatKpiAmount(overdueTotal)}
+            unit={hasInvoices && overdueTotal > 0 ? "MAD" : undefined}
+          />
           <div className="k-foot mt-2">
-            <span className="fl-badge b-amber">{b.overdueCount}</span>
+            {hasInvoices ? (
+              <span className="fl-badge b-amber">
+                {overdueCount} {inv.overdueStatus.toLowerCase()}
+              </span>
+            ) : (
+              <span className="fl-faint text-[12px]">{dict.fusion.reports.noData}</span>
+            )}
           </div>
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{inv.outstanding}</div>
-          <StatLine value={Math.round(outstanding / 1000) + "K"} unit="MAD" />
+          <StatLine
+            value={formatKpiAmount(outstanding)}
+            unit={hasInvoices && outstanding > 0 ? "MAD" : undefined}
+          />
+          <div className="k-foot fl-faint mt-2">
+            {hasInvoices ? formatMoney(outstanding, "MAD") : dict.fusion.reports.noData}
+          </div>
         </div>
       </div>
 

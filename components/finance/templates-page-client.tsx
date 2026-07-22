@@ -43,6 +43,17 @@ export function TemplatesPageClient() {
 
   const quoteCount = templates.filter((t) => t.kind === "quote").length;
   const invoiceCount = templates.filter((t) => t.kind === "invoice").length;
+  const variableCount = useMemo(() => {
+    const vars = new Set<string>();
+    for (const t of templates) {
+      const body = `${t.content}\n${t.footerNote}`;
+      for (const match of body.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)) {
+        if (match[1]) vars.add(match[1]);
+      }
+    }
+    return vars.size;
+  }, [templates]);
+  const hasTemplates = templates.length > 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,20 +100,30 @@ export function TemplatesPageClient() {
       <div className="grid g-4">
         <div className="fl-card fl-pad">
           <div className="k-label">{f.totalTemplates}</div>
-          <StatLine value={String(templates.length)} />
+          <StatLine value={hasTemplates ? String(templates.length) : "—"} />
+          {!hasTemplates ? (
+            <div className="k-foot fl-faint mt-2">{dict.fusion.reports.noData}</div>
+          ) : null}
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{f.kindQuote}</div>
-          <StatLine value={String(quoteCount)} />
+          <StatLine value={hasTemplates ? String(quoteCount) : "—"} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{f.kindInvoice}</div>
-          <StatLine value={String(invoiceCount)} />
+          <StatLine value={hasTemplates ? String(invoiceCount) : "—"} />
         </div>
         <div className="fl-card fl-pad">
           <div className="k-label">{f.variablesHint.split("·")[0]}</div>
-          <StatLine value="8" unit="vars" />
-          <div className="k-foot fl-faint mt-2">{"{{client}}, {{montant}}…"}</div>
+          <StatLine
+            value={hasTemplates ? String(variableCount) : "—"}
+            unit={hasTemplates ? "vars" : undefined}
+          />
+          <div className="k-foot fl-faint mt-2">
+            {hasTemplates
+              ? f.variablesHint
+              : dict.fusion.reports.noData}
+          </div>
         </div>
       </div>
 
