@@ -168,9 +168,10 @@ export function ClientsPageClient() {
 
   const kpis = useMemo(() => {
     const hasClients = clients.length > 0;
-    const activeRetainers = clients.filter((x) => x.statusKey === "active").length;
-    const partners = clients.filter((x) => x.statusKey === "partner").length;
-    const withValue = clients.filter((x) => x.valueAmount != null);
+    const activeRetainers = clients.filter((x) =>
+      x.statusKey === "active" || x.statusKey === "partner" || x.statusKey === "live"
+    ).length;
+    const withValue = clients.filter((x) => x.valueAmount != null && x.valueAmount > 0);
     const avg =
       withValue.length > 0
         ? Math.round(
@@ -180,15 +181,16 @@ export function ClientsPageClient() {
           )
         : 0;
     const retentionPct = hasClients
-      ? Math.round(((activeRetainers + partners) / clients.length) * 100)
+      ? Math.round((activeRetainers / clients.length) * 100)
       : 0;
     return {
       hasClients,
       total: String(clients.length),
-      retainers: String(activeRetainers),
-      avgK: hasClients && avg > 0 ? String(avg) : "-",
+      retainers: String(hasClients ? activeRetainers : 0),
+      // ASCII only — never use em dash (causes "â€"" mojibake in some builds)
+      avgK: hasClients && avg > 0 ? String(avg) : "0",
       showAvgUnit: hasClients && avg > 0,
-      retention: hasClients ? `${retentionPct}%` : "-",
+      retention: hasClients ? `${retentionPct}%` : "0%",
     };
   }, [clients]);
 
@@ -246,7 +248,7 @@ export function ClientsPageClient() {
             label: c.avgAccountValue,
             value: kpis.avgK,
             unit: kpis.showAvgUnit ? "K" : undefined,
-            foot: kpis.hasClients ? l.annualized : empty,
+            foot: kpis.hasClients && kpis.showAvgUnit ? l.annualized : empty,
           },
           {
             label: c.retention,
