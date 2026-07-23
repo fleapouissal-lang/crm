@@ -14,6 +14,7 @@ import type { FinanceOrgInput } from "@/lib/finance/company-info";
 import { cn } from "@/lib/utils";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { migrateLocalCrmToDb } from "@/lib/crm/migrate-local-to-db";
+import { useOrgRealtimeRefresh } from "@/hooks/use-org-realtime-refresh";
 
 const SIDEBAR_COLLAPSED_KEY = "fusion-sidebar-collapsed";
 
@@ -82,6 +83,9 @@ export function FusionShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const platformAdmin = isPlatformAdmin(profile.role);
+
+  useOrgRealtimeRefresh(platformAdmin ? null : profile.organization_id);
 
   useEffect(() => {
     setMounted(true);
@@ -109,12 +113,11 @@ export function FusionShell({
     });
   }, []);
 
-  const platformAdmin = isPlatformAdmin(profile.role);
-
   return (
     <OrgIssuerProvider organization={organization}>
       <NotificationsProvider
         userId={profile.id}
+        organizationId={platformAdmin ? null : profile.organization_id}
         enabled={loadNotifications && !platformAdmin}
       >
         <CursorGlow />

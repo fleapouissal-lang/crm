@@ -906,6 +906,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               jobRoles={data.jobRoles}
               emailDomain={data.organization?.email_domain ?? null}
               actorRole={data.profile.role}
+              onCreated={() => router.refresh()}
             />
           </div>
         </div>

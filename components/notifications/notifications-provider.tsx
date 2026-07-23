@@ -23,6 +23,7 @@ import {
   saveReadIds,
 } from "@/lib/notifications/read-state";
 import { activityHref, activityKind, type NotifKind } from "@/lib/notifications/map";
+import { createClient } from "@/lib/supabase/client";
 
 export type AppNotification = {
   id: string;
@@ -86,10 +87,12 @@ function toItem(
 
 export function NotificationsProvider({
   userId,
+  organizationId = null,
   enabled = true,
   children,
 }: {
   userId: string;
+  organizationId?: string | null;
   enabled?: boolean;
   children: ReactNode;
 }) {
@@ -131,6 +134,34 @@ export function NotificationsProvider({
   useEffect(() => {
     loadActivities();
   }, [loadActivities]);
+
+  useEffect(() => {
+    if (!enabled || !organizationId) return;
+
+    const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel(`notif-activities:${organizationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "activities",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => loadActivities(), 350);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [enabled, organizationId, loadActivities]);
 
   const setPrefs = useCallback((next: WorkspacePreferences) => {
     setPrefsState(next);
