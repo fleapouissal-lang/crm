@@ -35,6 +35,18 @@ export function canManageUsers(role: Role): boolean {
   return role === "admin" || role === "manager";
 }
 
+/** Director/manager may remove org teammates (not self; managers cannot remove directors). */
+export function canRemoveTeamMember(
+  actor: { id: string; role: Role },
+  target: { id: string; role: Role }
+): boolean {
+  if (!canManageUsers(actor.role)) return false;
+  if (actor.id === target.id) return false;
+  if (target.role === "platform_admin") return false;
+  if (actor.role === "manager" && target.role === "admin") return false;
+  return true;
+}
+
 export function canDeleteLead(role: Role): boolean {
   if (role === "platform_admin") return false;
   return role === "admin" || role === "manager";

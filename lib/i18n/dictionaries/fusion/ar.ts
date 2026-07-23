@@ -813,6 +813,14 @@ export const fusionAr: FusionDictionary = {
     noCompanies: "لا توجد شركات بعد",
     addMember: "إضافة عضو",
     memberCreated: "تمت إضافة العضو بنجاح",
+    removeMember: "حذف العضو",
+    removeMemberTitle: "حذف هذا العضو؟",
+    removeMemberConfirm:
+      "سيؤدي هذا إلى حذف حساب « {name} » وإمكانية وصوله إلى نظام CRM نهائياً.",
+    memberRemoved: "تم حذف العضو",
+    cannotRemoveSelf: "لا يمكنك حذف حسابك الخاص",
+    cannotRemoveLastDirector: "لا يمكن حذف آخر مدير للشركة",
+    cannotRemoveDirectorAsManager: "لا يمكن للمسير حذف المدير",
     jobRole: "الوظيفة",
     selectJobRole: "اختر وظيفة",
     accessLevel: "مستوى الوصول",
@@ -824,7 +832,7 @@ export const fusionAr: FusionDictionary = {
     functionsLogicBody:
       "الوظيفة = المسمى (مبيعات، مطور…). الوصول = الصلاحية (مدير، مشرف، عضو). للعضو تفتح الوظيفة الوحدات؛ المدير والمشرف يريان الـ CRM كاملاً دائماً.",
     accessAdminHint: "CRM كامل · إدارة الشركة والمستخدمين",
-    accessManagerHint: "CRM كامل · إضافة مستخدمين (بدون مدير)",
+    accessManagerHint: "CRM كامل · إضافة/حذف مستخدمين (بدون مدير)",
     accessMemberHint: "محدود حسب الوظيفة (انظر القائمة)",
     jobAccess: {
       director: "الوصول المقترح: مدير · CRM كامل",

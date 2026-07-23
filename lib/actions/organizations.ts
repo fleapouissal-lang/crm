@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
-import { canManageCompanies, canManageUsers } from "@/lib/permissions";
+import {
+  canManageCompanies,
+  canManageUsers,
+  canRemoveTeamMember,
+} from "@/lib/permissions";
 import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
 import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
@@ -477,6 +481,67 @@ export async function createTeamMember(input: {
 
   revalidatePath("/settings");
   revalidatePath("/hr");
+  return { success: true, data: undefined };
+}
+
+export async function deleteTeamMember(memberId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "No organization" };
+  }
+  if (!canManageUsers(profile.role)) {
+    return { success: false, error: "Director or manager access required" };
+  }
+
+  const admin = createAdminClient();
+  const { data: target, error: targetError } = await admin
+    .from("profiles")
+    .select("id, role, organization_id, full_name, email")
+    .eq("id", memberId)
+    .maybeSingle();
+
+  if (targetError) return { success: false, error: targetError.message };
+  if (!target || target.organization_id !== profile.organization_id) {
+    return { success: false, error: "Member not found" };
+  }
+
+  if (
+    !canRemoveTeamMember(profile, {
+      id: target.id,
+      role: target.role as Role,
+    })
+  ) {
+    if (profile.id === target.id) {
+      return { success: false, error: "You cannot remove your own account" };
+    }
+    if (profile.role === "manager" && target.role === "admin") {
+      return { success: false, error: "Managers cannot remove directors" };
+    }
+    return { success: false, error: "You don't have permission to remove this member" };
+  }
+
+  if (target.role === "admin") {
+    const { count, error: countError } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", profile.organization_id)
+      .eq("role", "admin");
+
+    if (countError) return { success: false, error: countError.message };
+    if ((count ?? 0) <= 1) {
+      return {
+        success: false,
+        error: "Cannot remove the last director of the company",
+      };
+    }
+  }
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(target.id);
+  if (deleteError) return { success: false, error: deleteError.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/hr");
+  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }
 

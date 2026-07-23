@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -16,6 +17,7 @@ import {
   Palmtree,
   StickyNote,
   Wallet,
+  Trash2,
 } from "lucide-react";
 import type { OrgJobRole, Profile, Role } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -23,11 +25,14 @@ import { DataPagination } from "@/components/shared/data-pagination";
 import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
 import {
   EmployeeProfileFormDialog,
   HrEntryFormDialog,
 } from "@/components/hr/hr-form-dialogs";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
+import { deleteTeamMember } from "@/lib/actions/organizations";
+import { canRemoveTeamMember } from "@/lib/permissions";
 import type {
   EmployeeProfile,
   HrDepartment,
@@ -59,15 +64,18 @@ function MemberRowActions({
   onEdit,
   onAddEntry,
   onQuickAdd,
+  onRemove,
 }: {
   onView: () => void;
   onSalary: () => void;
   onEdit: () => void;
   onAddEntry: () => void;
   onQuickAdd: (type: HrEntryType) => void;
+  onRemove?: () => void;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
+  const s = dict.fusion.settings;
 
   const actions: RowActionItem[] = [
     {
@@ -122,6 +130,17 @@ function MemberRowActions({
       icon: <Pencil className="size-4" />,
       onClick: onEdit,
     },
+    ...(onRemove
+      ? ([
+          { separator: true },
+          {
+            label: s.removeMember,
+            icon: <Trash2 className="size-4" />,
+            destructive: true,
+            onClick: onRemove,
+          },
+        ] satisfies RowActionItem[])
+      : []),
   ];
 
   return <RowActionsMenu actions={actions} />;
@@ -131,6 +150,7 @@ export function HrPageClient({
   profiles,
   initialHrProfiles,
   canManageUsers = false,
+  actorId = "",
   actorRole = "member",
   jobRoles = [],
   emailDomain = null,
@@ -138,6 +158,7 @@ export function HrPageClient({
   profiles: Profile[];
   initialHrProfiles: EmployeeProfile[];
   canManageUsers?: boolean;
+  actorId?: string;
   actorRole?: Role;
   jobRoles?: OrgJobRole[];
   emailDomain?: string | null;
@@ -158,9 +179,15 @@ export function HrPageClient({
     saveProfile,
   } = useHrStore(profiles, initialHrProfiles);
 
+  const crmProfileById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p])),
+    [profiles]
+  );
+
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<HrDepartment | "all">("all");
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<Profile | null>(null);
 
   const [entryOpen, setEntryOpen] = useState(false);
   const [profileFormOpen, setProfileFormOpen] = useState(false);
@@ -362,9 +389,17 @@ export function HrPageClient({
               ) : (
                 pagination.pageItems.map((member) => {
                   const profile = profileByMember.get(member.id)!;
+                  const crmProfile = crmProfileById.get(member.id);
                   const entries = profile.entries;
                   const phone = profile.phone?.trim() || member.phone || "";
                   const email = profile.email?.trim() || member.email || "";
+                  const canRemove =
+                    canManageUsers &&
+                    !!crmProfile &&
+                    canRemoveTeamMember(
+                      { id: actorId, role: actorRole },
+                      crmProfile
+                    );
                   return (
                     <tr
                       key={member.id}
@@ -439,6 +474,11 @@ export function HrPageClient({
                           onEdit={() => openMember(member.id, "profile")}
                           onAddEntry={() => openMember(member.id, "entry")}
                           onQuickAdd={(type) => openMember(member.id, "quick", type)}
+                          onRemove={
+                            canRemove && crmProfile
+                              ? () => setRemoveTarget(crmProfile)
+                              : undefined
+                          }
                         />
                       </td>
                     </tr>
@@ -483,6 +523,32 @@ export function HrPageClient({
           onCreated={() => router.refresh()}
         />
       ) : null}
+
+      <DeleteConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+        title={s.removeMemberTitle}
+        description={s.removeMemberConfirm.replace(
+          "{name}",
+          removeTarget?.full_name ??
+            removeTarget?.email ??
+            dict.common.user
+        )}
+        confirmLabel={dict.common.delete}
+        onConfirm={async () => {
+          if (!removeTarget) return;
+          const result = await deleteTeamMember(removeTarget.id);
+          if (!result.success) {
+            toast.error(result.error);
+            return;
+          }
+          toast.success(s.memberRemoved);
+          setRemoveTarget(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -811,6 +811,16 @@ export const fusionEn = {
     noCompanies: "No companies created yet",
     addMember: "Add member",
     memberCreated: "Member added successfully",
+    removeMember: "Remove member",
+    removeMemberTitle: "Remove this member?",
+    removeMemberConfirm:
+      "This will permanently delete « {name} »'s account and CRM access.",
+    memberRemoved: "Member removed",
+    cannotRemoveSelf: "You cannot remove your own account",
+    cannotRemoveLastDirector:
+      "Cannot remove the last director of the company",
+    cannotRemoveDirectorAsManager:
+      "Managers cannot remove a director",
     jobRole: "Function",
     selectJobRole: "Choose a function",
     accessLevel: "Access level",
@@ -822,7 +832,7 @@ export const fusionEn = {
     functionsLogicBody:
       "Function = job title (Sales, Developer…). Access = permission (Director, Manager, Member). For Members, the function unlocks modules; Director & Manager always see the full CRM.",
     accessAdminHint: "Full CRM · manage company & users",
-    accessManagerHint: "Full CRM · add users (not directors)",
+    accessManagerHint: "Full CRM · add/remove users (not directors)",
     accessMemberHint: "Limited by function (see list)",
     jobAccess: {
       director: "Suggested access: Director · full CRM",

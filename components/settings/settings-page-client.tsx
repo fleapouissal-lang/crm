@@ -25,6 +25,10 @@ import { updateProfile, signOut, updatePassword } from "@/lib/actions/auth";
 import { clearHrLocalCache } from "@/lib/hr/storage";
 import { updateOrganization } from "@/lib/actions/settings";
 import type { SettingsData } from "@/lib/actions/settings";
+import { deleteTeamMember } from "@/lib/actions/organizations";
+import { canRemoveTeamMember } from "@/lib/permissions";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { useRouter } from "next/navigation";
 import {
   clearDemoLocalData,
   loadPreferences,
@@ -139,6 +143,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const l = dict.fusion.labels;
   const { locale } = useI18n();
   const dateLocale = getDateFnsLocale(locale);
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>(
@@ -788,12 +793,16 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                     <th>{s.jobFunction}</th>
                     <th>{s.roleColumn}</th>
                     <th>{s.joined}</th>
+                    {data.canManageUsers ? <th className="col-actions" /> : null}
                   </tr>
                 </thead>
                 <tbody>
                   {data.team.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-sm fl-faint">
+                      <td
+                        colSpan={data.canManageUsers ? 6 : 5}
+                        className="py-10 text-center text-sm fl-faint"
+                      >
                         {s.noTeam}
                       </td>
                     </tr>
@@ -803,6 +812,9 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                         member.full_name ?? member.email ?? dict.common.user;
                       const jobRoleName =
                         member.job_role?.name ?? member.job_title ?? "—";
+                      const canRemove =
+                        data.canManageUsers &&
+                        canRemoveTeamMember(data.profile, member);
                       return (
                         <tr key={member.id}>
                           <td>
@@ -838,6 +850,42 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                               locale: dateLocale,
                             })}
                           </td>
+                          {data.canManageUsers ? (
+                            <td className="col-actions">
+                              {canRemove ? (
+                                <ConfirmDialog
+                                  trigger={
+                                    <button
+                                      type="button"
+                                      className="fl-btn sm ghost text-[var(--rose)]"
+                                      disabled={pending}
+                                      aria-label={s.removeMember}
+                                      title={s.removeMember}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  }
+                                  title={s.removeMemberTitle}
+                                  description={s.removeMemberConfirm.replace(
+                                    "{name}",
+                                    name
+                                  )}
+                                  confirmLabel={dict.common.delete}
+                                  onConfirm={async () => {
+                                    const result = await deleteTeamMember(
+                                      member.id
+                                    );
+                                    if (!result.success) {
+                                      toast.error(result.error);
+                                      return;
+                                    }
+                                    toast.success(s.memberRemoved);
+                                    router.refresh();
+                                  }}
+                                />
+                              ) : null}
+                            </td>
+                          ) : null}
                         </tr>
                       );
                     })

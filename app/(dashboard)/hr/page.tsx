@@ -21,6 +21,7 @@ export default async function HrRoutePage() {
         profiles={data.teamProfiles}
         initialHrProfiles={data.hrProfiles}
         canManageUsers={data.canManageUsers}
+        actorId={data.actorId}
         actorRole={data.actorRole}
         jobRoles={data.jobRoles}
         emailDomain={data.emailDomain}

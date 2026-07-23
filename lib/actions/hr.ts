@@ -137,6 +137,7 @@ export async function getHrWorkspace(): Promise<{
   teamProfiles: Profile[];
   hrProfiles: EmployeeProfile[];
   canManageUsers: boolean;
+  actorId: string;
   actorRole: Role;
   jobRoles: OrgJobRole[];
   emailDomain: string | null;
@@ -174,6 +175,7 @@ export async function getHrWorkspace(): Promise<{
 
   const meta = {
     canManageUsers: manageUsers,
+    actorId: gate.profile.id,
     actorRole: gate.profile.role,
     jobRoles,
     emailDomain: orgRes.data?.email_domain ?? null,

@@ -813,6 +813,16 @@ export const fusionFr: FusionDictionary = {
     noCompanies: "Aucune entreprise créée",
     addMember: "Ajouter un membre",
     memberCreated: "Membre ajouté avec succès",
+    removeMember: "Supprimer le membre",
+    removeMemberTitle: "Supprimer ce membre ?",
+    removeMemberConfirm:
+      "Cela supprimera définitivement le compte de « {name} » et son accès au CRM.",
+    memberRemoved: "Membre supprimé",
+    cannotRemoveSelf: "Vous ne pouvez pas supprimer votre propre compte",
+    cannotRemoveLastDirector:
+      "Impossible de supprimer le dernier directeur de l'entreprise",
+    cannotRemoveDirectorAsManager:
+      "Les gérants ne peuvent pas supprimer un directeur",
     jobRole: "Fonction",
     selectJobRole: "Choisir une fonction",
     accessLevel: "Niveau d'accès",
@@ -824,7 +834,8 @@ export const fusionFr: FusionDictionary = {
     functionsLogicBody:
       "Fonction = métier (Commercial, Développeur…). Accès = permission (Directeur, Gérant, Membre). Pour un Membre, la fonction débloque des modules ; Directeur et Gérant voient toujours tout le CRM.",
     accessAdminHint: "CRM complet · gérer l'entreprise et les users",
-    accessManagerHint: "CRM complet · ajouter des users (pas de directeur)",
+    accessManagerHint:
+      "CRM complet · ajouter/supprimer des users (pas de directeur)",
     accessMemberHint: "Limité selon la fonction (voir liste)",
     jobAccess: {
       director: "Accès suggéré : Directeur · CRM complet",
