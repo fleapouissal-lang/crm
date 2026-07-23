@@ -220,6 +220,13 @@ export const fr = {
     welcome: "Bon retour",
     subtitle: "Voici l'état de votre pipeline aujourd'hui.",
     memberSubtitle: "Vos projets assignés et vos tâches prioritaires.",
+    commercialSubtitle:
+      "Vos leads, clients, tâches et calendrier pour suivre l'activité commerciale.",
+    restrictedSubtitle:
+      "Votre accès est limité aux paramètres de votre compte.",
+    restrictedTitle: "Accès limité",
+    restrictedHint:
+      "Contactez votre directeur si vous avez besoin d'accéder aux modules CRM.",
     myProjects: "Mes projets",
     myProjectsHint: "Derniers projets auxquels vous êtes affecté",
     noAssignedProjects: "Aucun projet assigné pour le moment.",
@@ -230,6 +237,8 @@ export const fr = {
     totalLeads: "Total des leads",
     totalLeadsHint: "Contacts actifs dans le pipeline",
     openLeads: "Leads ouverts",
+    totalClients: "Clients",
+    totalClientsHint: "Comptes dans l'annuaire",
     wonValue: "Valeur gagnée",
     openTasks: "Tâches ouvertes",
     overdueTasks: "Tâches en retard",

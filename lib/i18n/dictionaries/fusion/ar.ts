@@ -818,6 +818,11 @@ export const fusionAr: FusionDictionary = {
     removeMemberConfirm:
       "سيؤدي هذا إلى حذف حساب « {name} » وإمكانية وصوله إلى نظام CRM نهائياً.",
     memberRemoved: "تم حذف العضو",
+    resetMemberPassword: "تغيير كلمة المرور",
+    resetMemberPasswordTitle: "تعيين كلمة مرور جديدة",
+    resetMemberPasswordHint:
+      "عيّن كلمة مرور جديدة لـ « {name} ». سيستخدمها عند تسجيل الدخول التالي.",
+    memberPasswordUpdated: "تم تحديث كلمة المرور",
     cannotRemoveSelf: "لا يمكنك حذف حسابك الخاص",
     cannotRemoveLastDirector: "لا يمكن حذف آخر مدير للشركة",
     cannotRemoveDirectorAsManager: "لا يمكن للمسير حذف المدير",
@@ -837,10 +842,10 @@ export const fusionAr: FusionDictionary = {
     jobAccess: {
       director: "الوصول المقترح: مدير · CRM كامل",
       manager: "الوصول المقترح: مشرف · CRM كامل",
-      dev: "كعضو: المهام (مهامه + الحذف)",
-      design: "كعضو: المهام",
-      sales: "كعضو: العملاء + المهام",
-      intern: "كعضو: المهام",
+      dev: "كعضو: المهام + التقويم (حذف مهامه)",
+      design: "كعضو: المهام + التقويم",
+      sales: "كعضو: العملاء المحتملون + العملاء + المهام + التقويم",
+      intern: "كعضو: المهام + التقويم",
       finance: "كعضو: لوحة التحكم والإعدادات فقط",
       hr: "كعضو: لوحة التحكم والإعدادات فقط",
       support: "كعضو: لوحة التحكم والإعدادات فقط",

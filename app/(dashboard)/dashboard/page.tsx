@@ -6,8 +6,13 @@ import { PlatformAdminDashboard } from "@/components/dashboard/platform-admin-da
 import { getDashboardStats } from "@/lib/actions/dashboard";
 import { getPlatformAdminStats } from "@/lib/actions/platform-admin";
 import { getProjects } from "@/lib/actions/projects";
+import { getTasks } from "@/lib/actions/tasks";
 import { getCurrentProfile } from "@/lib/auth/profile";
-import { isPlatformAdmin } from "@/lib/permissions";
+import {
+  canAccessCalendar,
+  isLeadership,
+  isPlatformAdmin,
+} from "@/lib/permissions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function DashboardFallback() {
@@ -43,9 +48,13 @@ async function DashboardContent() {
     );
   }
 
-  const [stats, projects] = await Promise.all([
+  const loadCalendarTasks =
+    !isLeadership(profile) && canAccessCalendar(profile);
+
+  const [stats, projects, tasks] = await Promise.all([
     getDashboardStats(),
     getProjects(),
+    loadCalendarTasks ? getTasks() : Promise.resolve([]),
   ]);
 
   return (
@@ -54,6 +63,7 @@ async function DashboardContent() {
         stats={stats}
         profile={profile}
         projects={projects}
+        tasks={tasks}
       />
     </PageTransition>
   );

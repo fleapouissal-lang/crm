@@ -6,6 +6,7 @@ import {
   getReportsData,
   type ReportsPeriod,
 } from "@/lib/actions/reports";
+import { isLeadership } from "@/lib/permissions";
 import { ReportsPageClient } from "@/components/reports/reports-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -16,6 +17,7 @@ export default async function ReportsRoutePage({
 }) {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
+  if (!isLeadership(profile)) redirect("/dashboard");
 
   const params = await searchParams;
   const period = (

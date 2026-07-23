@@ -7,6 +7,7 @@ import {
   Bell,
   Building2,
   Loader2,
+  KeyRound,
   LogOut,
   Lock,
   Moon,
@@ -26,7 +27,10 @@ import { clearHrLocalCache } from "@/lib/hr/storage";
 import { updateOrganization } from "@/lib/actions/settings";
 import type { SettingsData } from "@/lib/actions/settings";
 import { deleteTeamMember } from "@/lib/actions/organizations";
-import { canRemoveTeamMember } from "@/lib/permissions";
+import {
+  canRemoveTeamMember,
+  canResetTeamMemberPassword,
+} from "@/lib/permissions";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useRouter } from "next/navigation";
 import {
@@ -47,6 +51,7 @@ import { CellMain, FlChip, StatLine } from "@/components/fusion/primitives";
 import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor";
 import { MemberAccountPanel } from "@/components/settings/member-account-panel";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
+import { TeamMemberPasswordDialog } from "@/components/settings/team-member-password-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
@@ -156,6 +161,10 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [orgName, setOrgName] = useState(data.organization?.name ?? "");
   const [emailDomain, setEmailDomain] = useState(data.organization?.email_domain ?? "");
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const platformAdmin = data.profile.role === "platform_admin";
   const isTeamMember = data.isTeamMember;
   const [currentPassword, setCurrentPassword] = useState("");
@@ -815,6 +824,9 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                       const canRemove =
                         data.canManageUsers &&
                         canRemoveTeamMember(data.profile, member);
+                      const canResetPassword =
+                        data.canManageUsers &&
+                        canResetTeamMemberPassword(data.profile, member);
                       return (
                         <tr key={member.id}>
                           <td>
@@ -852,38 +864,57 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                           </td>
                           {data.canManageUsers ? (
                             <td className="col-actions">
-                              {canRemove ? (
-                                <ConfirmDialog
-                                  trigger={
-                                    <button
-                                      type="button"
-                                      className="fl-btn sm ghost text-[var(--rose)]"
-                                      disabled={pending}
-                                      aria-label={s.removeMember}
-                                      title={s.removeMember}
-                                    >
-                                      <Trash2 className="size-3.5" />
-                                    </button>
-                                  }
-                                  title={s.removeMemberTitle}
-                                  description={s.removeMemberConfirm.replace(
-                                    "{name}",
-                                    name
-                                  )}
-                                  confirmLabel={dict.common.delete}
-                                  onConfirm={async () => {
-                                    const result = await deleteTeamMember(
-                                      member.id
-                                    );
-                                    if (!result.success) {
-                                      toast.error(result.error);
-                                      return;
+                              <div className="flex items-center justify-end gap-1">
+                                {canResetPassword ? (
+                                  <button
+                                    type="button"
+                                    className="fl-btn sm ghost"
+                                    disabled={pending}
+                                    aria-label={s.resetMemberPassword}
+                                    title={s.resetMemberPassword}
+                                    onClick={() =>
+                                      setPasswordTarget({
+                                        id: member.id,
+                                        name,
+                                      })
                                     }
-                                    toast.success(s.memberRemoved);
-                                    router.refresh();
-                                  }}
-                                />
-                              ) : null}
+                                  >
+                                    <KeyRound className="size-3.5" />
+                                  </button>
+                                ) : null}
+                                {canRemove ? (
+                                  <ConfirmDialog
+                                    trigger={
+                                      <button
+                                        type="button"
+                                        className="fl-btn sm ghost text-[var(--rose)]"
+                                        disabled={pending}
+                                        aria-label={s.removeMember}
+                                        title={s.removeMember}
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </button>
+                                    }
+                                    title={s.removeMemberTitle}
+                                    description={s.removeMemberConfirm.replace(
+                                      "{name}",
+                                      name
+                                    )}
+                                    confirmLabel={dict.common.delete}
+                                    onConfirm={async () => {
+                                      const result = await deleteTeamMember(
+                                        member.id
+                                      );
+                                      if (!result.success) {
+                                        toast.error(result.error);
+                                        return;
+                                      }
+                                      toast.success(s.memberRemoved);
+                                      router.refresh();
+                                    }}
+                                  />
+                                ) : null}
+                              </div>
                             </td>
                           ) : null}
                         </tr>
@@ -907,6 +938,14 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               emailDomain={data.organization?.email_domain ?? null}
               actorRole={data.profile.role}
               onCreated={() => router.refresh()}
+            />
+            <TeamMemberPasswordDialog
+              open={!!passwordTarget}
+              onOpenChange={(open) => {
+                if (!open) setPasswordTarget(null);
+              }}
+              memberId={passwordTarget?.id ?? null}
+              memberName={passwordTarget?.name ?? ""}
             />
           </div>
         </div>

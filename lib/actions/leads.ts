@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
-import { canDeleteLead } from "@/lib/permissions";
+import { canAccessLeads, canDeleteLead } from "@/lib/permissions";
 import { leadSchema } from "@/lib/validations/lead";
 import type {
   ActionResult,
@@ -38,6 +38,7 @@ export async function getLeads(filters?: {
   const supabase = await createClient();
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) return [];
+  if (!canAccessLeads(profile)) return [];
 
   let query = supabase
     .from("leads")

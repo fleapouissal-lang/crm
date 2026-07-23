@@ -47,6 +47,14 @@ export function canRemoveTeamMember(
   return true;
 }
 
+/** Same scope as remove: director/manager may reset another teammate's password. */
+export function canResetTeamMemberPassword(
+  actor: { id: string; role: Role },
+  target: { id: string; role: Role }
+): boolean {
+  return canRemoveTeamMember(actor, target);
+}
+
 export function canDeleteLead(role: Role): boolean {
   if (role === "platform_admin") return false;
   return role === "admin" || role === "manager";

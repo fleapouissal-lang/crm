@@ -8,6 +8,7 @@ import {
   canManageCompanies,
   canManageUsers,
   canRemoveTeamMember,
+  canResetTeamMemberPassword,
 } from "@/lib/permissions";
 import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
@@ -542,6 +543,67 @@ export async function deleteTeamMember(memberId: string): Promise<ActionResult> 
   revalidatePath("/settings");
   revalidatePath("/hr");
   revalidatePath("/dashboard");
+  return { success: true, data: undefined };
+}
+
+export async function updateTeamMemberPassword(input: {
+  memberId: string;
+  password: string;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "No organization" };
+  }
+  if (!canManageUsers(profile.role)) {
+    return { success: false, error: "Director or manager access required" };
+  }
+
+  const password = input.password.trim();
+  if (password.length < 6) {
+    return { success: false, error: "Password must be at least 6 characters" };
+  }
+
+  const admin = createAdminClient();
+  const { data: target, error: targetError } = await admin
+    .from("profiles")
+    .select("id, role, organization_id")
+    .eq("id", input.memberId)
+    .maybeSingle();
+
+  if (targetError) return { success: false, error: targetError.message };
+  if (!target || target.organization_id !== profile.organization_id) {
+    return { success: false, error: "Member not found" };
+  }
+
+  if (
+    !canResetTeamMemberPassword(profile, {
+      id: target.id,
+      role: target.role as Role,
+    })
+  ) {
+    if (profile.id === target.id) {
+      return {
+        success: false,
+        error: "Use your profile settings to change your own password",
+      };
+    }
+    if (profile.role === "manager" && target.role === "admin") {
+      return {
+        success: false,
+        error: "Managers cannot change a director's password",
+      };
+    }
+    return {
+      success: false,
+      error: "You don't have permission to change this password",
+    };
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(target.id, {
+    password,
+  });
+  if (error) return { success: false, error: error.message };
+
   return { success: true, data: undefined };
 }
 

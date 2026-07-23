@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import {
+  canAccessClients,
+  canAccessLeads,
   canViewAllTasks,
   isLeadership,
 } from "@/lib/permissions/capabilities";
@@ -16,6 +18,7 @@ import type {
 export interface DashboardStats {
   totalLeads: number;
   openLeads: number;
+  totalClients: number;
   pipelineValue: number;
   wonValue: number;
   tasksDueToday: number;
@@ -38,6 +41,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const empty: DashboardStats = {
     totalLeads: 0,
     openLeads: 0,
+    totalClients: 0,
     pipelineValue: 0,
     wonValue: 0,
     tasksDueToday: 0,
@@ -115,9 +119,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }
 
   const leadership = isLeadership(profile);
+  const showLeads = leadership || canAccessLeads(profile);
+  const showClients = leadership || canAccessClients(profile);
 
   const [
     leadsRes,
+    clientsCountRes,
     tasksTodayRes,
     openTasksRes,
     overdueTasksRes,
@@ -127,17 +134,30 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     urgentListRes,
     activitiesRes,
   ] = await Promise.all([
-    leadership
+    showLeads
       ? supabase
           .from("leads")
           .select("id, value, stage, created_at")
           .eq("organization_id", orgId)
-      : Promise.resolve({ data: [] as { id: string; value: number | null; stage: string; created_at: string }[] }),
+      : Promise.resolve({
+          data: [] as {
+            id: string;
+            value: number | null;
+            stage: string;
+            created_at: string;
+          }[],
+        }),
+    showClients
+      ? supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", orgId)
+      : Promise.resolve({ count: 0 }),
     tasksTodayQ,
     openTasksQ,
     overdueTasksQ,
     urgentCountQ,
-    leadership
+    showLeads
       ? supabase
           .from("leads")
           .select("*, assigned_profile:profiles!leads_assigned_to_fkey(*)")
@@ -209,6 +229,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return {
     totalLeads,
     openLeads,
+    totalClients: clientsCountRes.count ?? 0,
     pipelineValue,
     wonValue,
     tasksDueToday: tasksTodayRes.count ?? 0,

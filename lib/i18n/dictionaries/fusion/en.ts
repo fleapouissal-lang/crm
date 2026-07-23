@@ -816,6 +816,11 @@ export const fusionEn = {
     removeMemberConfirm:
       "This will permanently delete « {name} »'s account and CRM access.",
     memberRemoved: "Member removed",
+    resetMemberPassword: "Change password",
+    resetMemberPasswordTitle: "Set new password",
+    resetMemberPasswordHint:
+      "Set a new password for « {name} ». They will use it on their next sign-in.",
+    memberPasswordUpdated: "Password updated",
     cannotRemoveSelf: "You cannot remove your own account",
     cannotRemoveLastDirector:
       "Cannot remove the last director of the company",
@@ -837,10 +842,10 @@ export const fusionEn = {
     jobAccess: {
       director: "Suggested access: Director · full CRM",
       manager: "Suggested access: Manager · full CRM",
-      dev: "With Member: Tasks (own + can delete own)",
-      design: "With Member: Tasks",
-      sales: "With Member: Clients + Tasks",
-      intern: "With Member: Tasks",
+      dev: "With Member: Tasks + Calendar (can delete own tasks)",
+      design: "With Member: Tasks + Calendar",
+      sales: "With Member: Leads + Clients + Tasks + Calendar",
+      intern: "With Member: Tasks + Calendar",
       finance: "With Member: Dashboard & Settings only",
       hr: "With Member: Dashboard & Settings only",
       support: "With Member: Dashboard & Settings only",

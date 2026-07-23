@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  CalendarDays,
   CheckSquare,
   FolderKanban,
   Plus,
@@ -23,12 +24,19 @@ import {
   RecentLeads,
   UpcomingTasks,
 } from "@/components/dashboard/activity-feed";
+import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
 import { FlProgress } from "@/components/fusion/primitives";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
-import { isLeadership } from "@/lib/permissions/capabilities";
+import {
+  canAccessCalendar,
+  canAccessClients,
+  canAccessLeads,
+  canAccessTasks,
+  isLeadership,
+} from "@/lib/permissions/capabilities";
 import { projectMatchesMember, type ProjectRecord } from "@/lib/projects/types";
-import type { Profile } from "@/types/database";
+import type { Profile, Task } from "@/types/database";
 import { EmptyState } from "@/components/shared/page-header";
 
 function formatCompact(value: number, locale: string) {
@@ -45,10 +53,12 @@ export function FusionDashboardView({
   stats,
   profile,
   projects: allProjects = [],
+  tasks = [],
 }: {
   stats: DashboardStats;
   profile: Profile;
   projects?: ProjectRecord[];
+  tasks?: Task[];
 }) {
   const dict = useDict();
   const { locale } = useI18n();
@@ -61,6 +71,7 @@ export function FusionDashboardView({
         stats={stats}
         profile={profile}
         projects={allProjects}
+        tasks={tasks}
       />
     );
   }
@@ -191,14 +202,20 @@ function MemberDashboardView({
   stats,
   profile,
   projects: allProjects = [],
+  tasks = [],
 }: {
   stats: DashboardStats;
   profile: Profile;
   projects?: ProjectRecord[];
+  tasks?: Task[];
 }) {
   const dict = useDict();
   const { locale } = useI18n();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const isCommercial =
+    canAccessLeads(profile) || canAccessClients(profile);
+  const showTasks = canAccessTasks(profile);
+  const showCalendar = canAccessCalendar(profile);
 
   useEffect(() => {
     setProjects(
@@ -207,6 +224,148 @@ function MemberDashboardView({
         .slice(0, 6)
     );
   }, [allProjects, profile.id]);
+
+  if (!isCommercial && !showTasks) {
+    return (
+      <div className="space-y-[18px]">
+        <div className="fl-card fl-pad flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {dict.dashboard.welcome}
+              {profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
+            </h2>
+            <p className="mt-1 text-sm fl-faint">
+              {dict.dashboard.restrictedSubtitle ??
+                dict.dashboard.memberSubtitle}
+            </p>
+          </div>
+          <div className="fl-filter-bar__actions !ms-0">
+            <Link href="/settings" className="fl-btn sm primary shrink-0">
+              {dict.nav.settings}
+            </Link>
+            <Link href="/notifications" className="fl-btn sm ghost shrink-0">
+              {dict.nav.notifications}
+            </Link>
+          </div>
+        </div>
+        <EmptyState
+          icon={FolderKanban}
+          title={dict.dashboard.restrictedTitle ?? dict.dashboard.welcome}
+          description={
+            dict.dashboard.restrictedHint ??
+            dict.dashboard.restrictedSubtitle ??
+            ""
+          }
+          className="border border-[var(--border)] bg-[var(--glass-hi)] py-14"
+        />
+      </div>
+    );
+  }
+
+  if (isCommercial) {
+    return (
+      <div className="space-y-[18px] dash-home">
+        <div className="fl-card fl-pad flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {dict.dashboard.welcome}
+              {profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
+            </h2>
+            <p className="mt-1 text-sm fl-faint">
+              {dict.dashboard.commercialSubtitle ?? dict.dashboard.subtitle}
+            </p>
+          </div>
+          <div className="fl-filter-bar__actions !ms-0">
+            {canAccessLeads(profile) ? (
+              <Link href="/leads" className="fl-btn sm primary shrink-0">
+                <UserPlus strokeWidth={2} className="size-3.5" />
+                <span className="hidden sm:inline">{dict.leads.newLead}</span>
+              </Link>
+            ) : null}
+            {canAccessClients(profile) ? (
+              <Link href="/clients/new" className="fl-btn sm ghost shrink-0">
+                <Target strokeWidth={2} className="size-3.5" />
+                <span className="hidden sm:inline">{dict.clients.newClient}</span>
+              </Link>
+            ) : null}
+            {showTasks ? (
+              <Link href="/tasks/new" className="fl-btn sm ghost shrink-0">
+                <Plus strokeWidth={2} className="size-3.5" />
+                <span className="hidden sm:inline">{dict.tasks.newTask}</span>
+              </Link>
+            ) : null}
+            {showCalendar ? (
+              <Link href="/calendar" className="fl-btn sm ghost shrink-0">
+                <CalendarDays strokeWidth={2} className="size-3.5" />
+                <span className="hidden sm:inline">{dict.nav.calendar}</span>
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="dash-kpi-grid">
+          <MiniStat
+            label={dict.dashboard.openLeads}
+            value={String(stats.openLeads)}
+            hint={dict.dashboard.totalLeadsHint}
+            icon={<UserPlus className="size-3.5" strokeWidth={2} />}
+          />
+          <MiniStat
+            label={dict.dashboard.totalClients ?? dict.nav.clients}
+            value={String(stats.totalClients)}
+            hint={dict.dashboard.totalClientsHint ?? dict.nav.clientsSub}
+            icon={<Target className="size-3.5" strokeWidth={2} />}
+          />
+          <MiniStat
+            label={dict.dashboard.openTasks}
+            value={String(stats.openTasks)}
+            hint={dict.dashboard.latestTasks ?? dict.tasks.subtitle}
+            icon={<CheckSquare className="size-3.5" strokeWidth={2} />}
+          />
+          <MiniStat
+            label={dict.dashboard.tasksDueToday}
+            value={String(stats.tasksDueToday)}
+            hint={dict.dashboard.tasksDueTodayHint}
+            danger={stats.overdueTasks > 0}
+            icon={<CalendarDays className="size-3.5" strokeWidth={2} />}
+          />
+        </div>
+
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <RecentLeads
+            leads={stats.recentLeads}
+            dict={dict}
+            locale={locale}
+          />
+          {showTasks ? (
+            <UpcomingTasks
+              tasks={stats.upcomingTasks}
+              dict={dict}
+              locale={locale}
+              title={dict.dashboard.latestTasks}
+            />
+          ) : null}
+        </div>
+
+        {showCalendar ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+              <div>
+                <h3 className="text-sm font-semibold tracking-tight">
+                  {dict.nav.calendar}
+                </h3>
+                <p className="text-xs fl-faint">{dict.nav.calendarSub}</p>
+              </div>
+              <Link href="/calendar" className="fl-btn sm ghost">
+                {dict.common.viewDetails}
+              </Link>
+            </div>
+            <CalendarPageClient tasks={tasks} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-[18px]">

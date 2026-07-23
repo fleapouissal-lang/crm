@@ -818,6 +818,11 @@ export const fusionFr: FusionDictionary = {
     removeMemberConfirm:
       "Cela supprimera définitivement le compte de « {name} » et son accès au CRM.",
     memberRemoved: "Membre supprimé",
+    resetMemberPassword: "Changer le mot de passe",
+    resetMemberPasswordTitle: "Nouveau mot de passe",
+    resetMemberPasswordHint:
+      "Définir un nouveau mot de passe pour « {name} ». Il devra l'utiliser à la prochaine connexion.",
+    memberPasswordUpdated: "Mot de passe mis à jour",
     cannotRemoveSelf: "Vous ne pouvez pas supprimer votre propre compte",
     cannotRemoveLastDirector:
       "Impossible de supprimer le dernier directeur de l'entreprise",
@@ -840,10 +845,10 @@ export const fusionFr: FusionDictionary = {
     jobAccess: {
       director: "Accès suggéré : Directeur · CRM complet",
       manager: "Accès suggéré : Gérant · CRM complet",
-      dev: "En Membre : Tâches (ses tâches + suppression)",
-      design: "En Membre : Tâches",
-      sales: "En Membre : Clients + Tâches",
-      intern: "En Membre : Tâches",
+      dev: "En Membre : Tâches + Calendrier (suppression de ses tâches)",
+      design: "En Membre : Tâches + Calendrier",
+      sales: "En Membre : Leads + Clients + Tâches + Calendrier",
+      intern: "En Membre : Tâches + Calendrier",
       finance: "En Membre : Dashboard et Paramètres seulement",
       hr: "En Membre : Dashboard et Paramètres seulement",
       support: "En Membre : Dashboard et Paramètres seulement",

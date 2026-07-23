@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/actions/auth";
+import { canAccessClients } from "@/lib/permissions";
 import { clientToRow, rowToClient, type ClientRow } from "@/lib/clients/db";
 import type { ClientRecord } from "@/lib/clients/types";
 import type { ActionResult } from "@/types/database";
@@ -17,6 +18,7 @@ export async function getClients(): Promise<ClientRecord[]> {
   const supabase = await createClient();
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) return [];
+  if (!canAccessClients(profile)) return [];
 
   const { data, error } = await supabase
     .from("clients")

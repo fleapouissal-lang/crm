@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import {
+  canAccessTasks,
   canCreateTask,
   canDeleteTaskForProfile,
   canModifyTask,
@@ -54,6 +55,7 @@ export async function getTasks(filters?: {
   const supabase = await createClient();
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) return [];
+  if (!canAccessTasks(profile)) return [];
 
   let query = supabase
     .from("tasks")
