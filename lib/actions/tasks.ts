@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import {
   canCreateTask,
@@ -297,9 +298,20 @@ export async function deleteTask(id: string): Promise<ActionResult> {
     return { success: false, error: "You don't have permission to delete tasks" };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("tasks").delete().eq("id", id);
+  // App-layer authz already enforced above. Use service role so delete is not
+  // silently blocked by older RLS (managers-only) that lagged developpeur rules.
+  const admin = createAdminClient();
+  const { data: deleted, error } = await admin
+    .from("tasks")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", profile.organization_id)
+    .select("id");
+
   if (error) return { success: false, error: error.message };
+  if (!deleted?.length) {
+    return { success: false, error: "Task not found" };
+  }
 
   await logActivity(
     profile.organization_id,
@@ -310,6 +322,7 @@ export async function deleteTask(id: string): Promise<ActionResult> {
   );
 
   revalidatePath("/tasks");
+  revalidatePath(`/tasks/${id}`);
   revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }

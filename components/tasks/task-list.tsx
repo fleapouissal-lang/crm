@@ -9,7 +9,8 @@ import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
-import { useDict } from "@/components/shared/i18n-provider";
+import { useDict, useI18n } from "@/components/shared/i18n-provider";
+import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
   TaskPriorityBadge,
   TaskStatusBadge,
@@ -39,11 +40,13 @@ function TaskRowActions({
   profile,
   onEdit,
   onToggleDone,
+  onDeleted,
 }: {
   task: Task;
   profile: Profile;
   onEdit: () => void;
   onToggleDone: () => void;
+  onDeleted: () => void;
 }) {
   const dict = useDict();
   const router = useRouter();
@@ -103,6 +106,7 @@ function TaskRowActions({
                     toast.error(result.error);
                     return;
                   }
+                  onDeleted();
                   toast.success(dict.tasks.deletedTask);
                   setDeleteOpen(false);
                   router.refresh();
@@ -136,6 +140,8 @@ export function TaskList({
   projectFilter?: string;
 }) {
   const dict = useDict();
+  const { locale } = useI18n();
+  const dateLocale = getIntlLocale(locale);
   const [tasks, setTasks] = useState(initialTasks);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [, startTransition] = useTransition();
@@ -332,7 +338,7 @@ export function TaskList({
                           >
                             {new Date(
                               task.due_date + "T00:00:00"
-                            ).toLocaleDateString()}
+                            ).toLocaleDateString(dateLocale)}
                           </span>
                         )}
                         {task.lead && (
@@ -360,6 +366,9 @@ export function TaskList({
                       profile={profile}
                       onEdit={() => setEditTask(task)}
                       onToggleDone={() => toggleDone(task)}
+                      onDeleted={() =>
+                        setTasks((prev) => prev.filter((t) => t.id !== task.id))
+                      }
                     />
                   </li>
                 ))}
