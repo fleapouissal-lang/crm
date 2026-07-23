@@ -50,78 +50,86 @@ export function LeadsPageClient({
     <div className="space-y-4">
       <CrmKpiRow leads={leads} />
 
-      <div className="fl-filter-bar">
-        <div className="fl-seg shrink-0">
-          <button
-            type="button"
-            className={cn(view === "kanban" && "on")}
-            onClick={() => setView("kanban")}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <LayoutGrid className="size-3.5" />
-              {dict.leads.kanban}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={cn(view === "table" && "on")}
-            onClick={() => setView("table")}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <List className="size-3.5" />
-              {dict.leads.table}
-            </span>
-          </button>
-        </div>
-
-        <div className="fl-filter-bar__actions">
-          <div className="fl-clients-search-wrap">
-            <Search strokeWidth={2} />
-            <Input
-              placeholder={dict.leads.searchPlaceholder}
-              className="fl-clients-search"
-              defaultValue={q}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  updateFilter("q", (e.target as HTMLInputElement).value);
-                }
-              }}
-            />
-          </div>
-          <div className="fl-filter-field">
-            <Select
-              value={stage}
-              onValueChange={(v) => v && updateFilter("stage", v)}
+      <div className="fl-card overflow-hidden">
+        <div className="fl-filter-bar fl-filter-bar--card">
+          <div className="fl-filter-bar__head">
+            <div className="fl-seg shrink-0">
+              <button
+                type="button"
+                className={cn(view === "kanban" && "on")}
+                onClick={() => setView("kanban")}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <LayoutGrid className="size-3.5" />
+                  {dict.leads.kanban}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={cn(view === "table" && "on")}
+                onClick={() => setView("table")}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <List className="size-3.5" />
+                  {dict.leads.table}
+                </span>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="fl-btn primary sm fl-toolbar-create"
+              onClick={() => setFormOpen(true)}
             >
-              <SelectTrigger className="fl-select-trigger">
-                <SelectValue placeholder={dict.common.allStages} />
-              </SelectTrigger>
-              <SelectContent className="fl-select-panel" align="end">
-                <SelectItem value="all">{dict.common.allStages}</SelectItem>
-                {LEAD_STAGES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {dict.stages[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Plus strokeWidth={2} />
+              <span className="fl-toolbar-create__label hidden sm:inline">
+                {dict.leads.newLead}
+              </span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="fl-btn primary sm shrink-0"
-            onClick={() => setFormOpen(true)}
-          >
-            <Plus strokeWidth={2} />
-            <span className="hidden sm:inline">{dict.leads.newLead}</span>
-          </button>
-        </div>
-      </div>
 
-      {view === "kanban" ? (
-        <KanbanBoard initialLeads={leads} organizationId={organizationId} />
-      ) : (
-        <LeadTable leads={leads} profiles={profiles} role={role} />
-      )}
+          <div className="fl-filter-bar__actions">
+            <div className="fl-clients-search-wrap">
+              <Search strokeWidth={2} />
+              <Input
+                placeholder={dict.leads.searchPlaceholder}
+                className="fl-clients-search"
+                defaultValue={q}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    updateFilter("q", (e.target as HTMLInputElement).value);
+                  }
+                }}
+              />
+            </div>
+            <div className="fl-filter-field">
+              <Select
+                value={stage}
+                onValueChange={(v) => v && updateFilter("stage", v)}
+              >
+                <SelectTrigger className="fl-select-trigger">
+                  <SelectValue placeholder={dict.common.allStages} />
+                </SelectTrigger>
+                <SelectContent className="fl-select-panel" align="end">
+                  <SelectItem value="all">{dict.common.allStages}</SelectItem>
+                  {LEAD_STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {dict.stages[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {view === "kanban" ? (
+          <div className="fl-kanban-body">
+            <KanbanBoard initialLeads={leads} organizationId={organizationId} />
+          </div>
+        ) : (
+          <LeadTable leads={leads} profiles={profiles} role={role} />
+        )}
+      </div>
 
       <CrmPipelineExtras leads={leads} />
 

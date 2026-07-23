@@ -129,8 +129,8 @@ const AVATAR_GRADIENTS = [
 
 const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
-  fr: "FranÃ§ais",
-  ar: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©",
+  fr: "Français",
+  ar: "العربية",
 };
 
 export function SettingsPageClient({ data }: { data: SettingsData }) {
@@ -426,7 +426,10 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               </div>
               <div className="flex justify-between gap-3">
                 <span className="fl-faint">{l.organizationName}</span>
-                <span>{data.organization?.name ?? "â€”"}</span>
+                <span>
+                  {data.organization?.name ??
+                    (platformAdmin ? dict.auth.globalPortal : "—")}
+                </span>
               </div>
               {phone ? (
                 <div className="flex justify-between gap-3">
@@ -761,14 +764,14 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
 
           <div className="fl-card">
             <div className="fl-card-head">
-              <div>
+              <div className="fl-card-head__title">
                 <h3>{s.teamTitle}</h3>
                 <div className="ch-sub">{s.teamSub}</div>
               </div>
               {data.canManageUsers ? (
                 <button
                   type="button"
-                  className="fl-btn primary sm"
+                  className="fl-btn primary sm fl-toolbar-create"
                   onClick={() => setMemberDialogOpen(true)}
                 >
                   <Plus strokeWidth={2} />
@@ -799,7 +802,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                       const name =
                         member.full_name ?? member.email ?? dict.common.user;
                       const jobRoleName =
-                        member.job_role?.name ?? member.job_title ?? "â€”";
+                        member.job_role?.name ?? member.job_title ?? "—";
                       return (
                         <tr key={member.id}>
                           <td>
@@ -814,7 +817,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                               }
                             />
                           </td>
-                          <td className="fl-muted">{member.email ?? "â€”"}</td>
+                          <td className="fl-muted">{member.email ?? "—"}</td>
                           <td>
                             <FlChip>{jobRoleName}</FlChip>
                           </td>

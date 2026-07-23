@@ -186,7 +186,7 @@ export function ClientsPageClient({
       hasClients,
       total: String(clients.length),
       retainers: String(hasClients ? activeRetainers : 0),
-      // ASCII only — never use em dash (causes "â€"" mojibake in some builds)
+      // ASCII only — never use em dash (causes "—"" mojibake in some builds)
       avgK: hasClients && avg > 0 ? String(avg) : "0",
       showAvgUnit: hasClients && avg > 0,
       retention: hasClients ? `${retentionPct}%` : "0%",
@@ -278,7 +278,18 @@ export function ClientsPageClient({
 
       <div className="fl-card fl-clients-card">
         <div className="fl-clients-toolbar">
-          <h2 className="fl-clients-toolbar__title">{c.directory}</h2>
+          <div className="fl-clients-toolbar__head">
+            <h2 className="fl-clients-toolbar__title">{c.directory}</h2>
+            <Link
+              href="/clients/new"
+              className="fl-btn primary sm fl-toolbar-create"
+            >
+              <Plus strokeWidth={2} />
+              <span className="fl-toolbar-create__label hidden sm:inline">
+                {l.addClient}
+              </span>
+            </Link>
+          </div>
           <div className="fl-clients-toolbar__row">
             <div className="fl-seg shrink-0">
               {(
@@ -341,11 +352,6 @@ export function ClientsPageClient({
                 <span className="hidden sm:inline">{cl.clearFilters}</span>
               </button>
             ) : null}
-
-            <Link href="/clients/new" className="fl-btn primary sm shrink-0">
-              <Plus strokeWidth={2} />
-              <span className="hidden sm:inline">{l.addClient}</span>
-            </Link>
           </div>
         </div>
 

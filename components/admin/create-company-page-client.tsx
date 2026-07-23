@@ -129,9 +129,8 @@ export function CreateCompanyPageClient() {
 
   const canSubmit =
     organizationName.trim() &&
-    emailDomain.trim() &&
     directorName.trim() &&
-    directorEmail.trim() &&
+    directorEmail.trim().includes("@") &&
     directorPassword.length >= 6 &&
     logoFile;
 
@@ -287,10 +286,11 @@ export function CreateCompanyPageClient() {
                   value={directorEmail}
                   onChange={(e) => setDirectorEmail(e.target.value)}
                   className="fl-input fl-input--with-icon"
-                  placeholder="directeur@fusionleap.com"
+                  placeholder="directeur@gmail.com"
                   autoComplete="email"
                 />
               </div>
+              <small className="fl-field-hint">{s.memberPersonalEmailHint}</small>
             </div>
             <div className="fl-field">
               <label className="fl-field-label" htmlFor="create-dir-password">

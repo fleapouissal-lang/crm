@@ -16,7 +16,6 @@ import {
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { EmailLocalInput } from "@/components/ui/email-local-input";
 import {
   Select,
   SelectContent,
@@ -53,7 +52,6 @@ export function CreatePlatformUserDialog({
   const [mode, setMode] = useState<CreateMode>("company");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [emailLocal, setEmailLocal] = useState("");
   const [password, setPassword] = useState("");
   const [organizationId, setOrganizationId] = useState(
     organizations[0]?.id ?? ""
@@ -77,7 +75,6 @@ export function CreatePlatformUserDialog({
     setMode("company");
     setFullName("");
     setEmail("");
-    setEmailLocal("");
     setPassword("");
     setOrganizationId(organizations[0]?.id ?? "");
     setJobRoles([]);
@@ -127,7 +124,7 @@ export function CreatePlatformUserDialog({
           : await createPlatformManagedUser({
               mode: "company",
               fullName,
-              emailLocal,
+              email,
               password,
               organizationId,
               role,
@@ -148,9 +145,8 @@ export function CreatePlatformUserDialog({
   const canSubmit =
     fullName.trim().length > 0 &&
     password.length >= 6 &&
-    (mode === "platform"
-      ? email.trim().includes("@")
-      : Boolean(organizationId && emailLocal.trim() && jobRoleId));
+    email.trim().includes("@") &&
+    (mode === "platform" ? true : Boolean(organizationId && jobRoleId));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -195,61 +191,55 @@ export function CreatePlatformUserDialog({
             />
           </div>
 
-          {mode === "platform" ? (
-            <div className="fl-field">
-              <label className="fl-field-label">{dict.common.email}</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="fl-input"
-                placeholder="admin@fusionleap.com"
-                autoComplete="off"
-              />
-            </div>
-          ) : (
-            <>
-              <div className="fl-field">
-                <label className="fl-field-label">{d.selectCompany}</label>
-                <Select
-                  value={organizationId || null}
-                  onValueChange={(v) => v && setOrganizationId(v)}
-                >
-                  <SelectTrigger className="fl-select-trigger fl-input w-full">
-                    <SelectValue placeholder={d.selectCompany}>
-                      {selectedOrg?.name ?? d.selectCompany}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="fl-select-panel">
-                    {organizations.length === 0 ? (
-                      <SelectItem value="__none" disabled>
-                        {d.noCompanies}
-                      </SelectItem>
-                    ) : (
-                      organizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="fl-field">
+            <label className="fl-field-label">{dict.common.email}</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="fl-input"
+              placeholder={
+                mode === "platform"
+                  ? "admin@fusionleap.com"
+                  : "ouissal@gmail.com"
+              }
+              autoComplete="off"
+            />
+            {mode === "company" ? (
+              <small className="mt-1 block text-xs fl-faint">
+                {s.memberPersonalEmailHint}
+              </small>
+            ) : null}
+          </div>
 
-              <div className="fl-field">
-                <label className="fl-field-label" htmlFor="admin-user-email-local">
-                  {dict.common.email}
-                </label>
-                <EmailLocalInput
-                  id="admin-user-email-local"
-                  value={emailLocal}
-                  onChange={setEmailLocal}
-                  domain={selectedOrg?.email_domain ?? null}
-                  placeholder="ouissal"
-                />
-              </div>
-            </>
-          )}
+          {mode === "company" ? (
+            <div className="fl-field">
+              <label className="fl-field-label">{d.selectCompany}</label>
+              <Select
+                value={organizationId || null}
+                onValueChange={(v) => v && setOrganizationId(v)}
+              >
+                <SelectTrigger className="fl-select-trigger fl-input w-full">
+                  <SelectValue placeholder={d.selectCompany}>
+                    {selectedOrg?.name ?? d.selectCompany}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="fl-select-panel">
+                  {organizations.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      {d.noCompanies}
+                    </SelectItem>
+                  ) : (
+                    organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="fl-field">
             <label className="fl-field-label">{dict.common.password}</label>

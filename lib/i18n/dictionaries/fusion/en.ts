@@ -797,8 +797,15 @@ export const fusionEn = {
       toronto: "Toronto",
       quebec: "Quebec City",
     },
-    emailDomain: "Email domain",
-    emailDomainHint: "Accounts will use this domain (e.g. ouissal@fusionleap.com)",
+    emailDomain: "Email domain (optional)",
+    emailDomainHint:
+      "Company info only — does not force member emails. Each member uses their own email (Gmail, etc.).",
+    emailDomainLockedHint:
+      "Company info only — does not force member emails",
+    emailDomainRequiredForMembers:
+      "Email domain is not required to add members",
+    memberPersonalEmailHint:
+      "Member's personal email (e.g. ouissal@gmail.com) — not tied to the company domain",
     emailFullPreview: "Full address",
     directorAccount: "Director account",
     noCompanies: "No companies created yet",

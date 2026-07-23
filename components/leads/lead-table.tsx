@@ -139,8 +139,7 @@ export function LeadTable({
 
   return (
     <>
-      <div className="fl-card overflow-hidden">
-        <div className="fl-tbl-wrap">
+      <div className="fl-tbl-wrap">
         <div className="hidden md:block">
           <table className="fl-tbl">
             <thead>
@@ -165,7 +164,7 @@ export function LeadTable({
                     )}
                   </td>
                   <td>
-                    <div className="text-sm">{lead.contact_name ?? "â€”"}</div>
+                    <div className="text-sm">{lead.contact_name ?? "—"}</div>
                     {lead.email && (
                       <div className="fl-faint text-xs">{lead.email}</div>
                     )}
@@ -187,7 +186,7 @@ export function LeadTable({
                         <span className="text-sm">{lead.assigned_profile.full_name}</span>
                       </div>
                     ) : (
-                      <span className="text-sm fl-faint">â€”</span>
+                      <span className="text-sm fl-faint">—</span>
                     )}
                   </td>
                   <td className="fl-mono">
@@ -235,15 +234,14 @@ export function LeadTable({
             </li>
           ))}
         </ul>
-        </div>
-        <DataPagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          totalItems={pagination.totalItems}
-          totalPages={pagination.totalPages}
-          onPageChange={pagination.setPage}
-        />
       </div>
+      <DataPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        totalPages={pagination.totalPages}
+        onPageChange={pagination.setPage}
+      />
 
       <LeadFormDialog
         open={!!editLead}

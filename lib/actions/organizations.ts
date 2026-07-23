@@ -9,9 +9,9 @@ import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
 import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
 import {
-  buildCompanyEmail,
   extractEmailDomain,
   normalizeEmailDomain,
+  normalizePersonEmail,
   slugifyRoleName,
 } from "@/lib/organizations/domain";
 import {
@@ -137,8 +137,8 @@ export async function updateOrganizationAsAdmin(
   const logo = formData.get("logo");
   const logoFile = logo instanceof File && logo.size > 0 ? logo : null;
 
-  if (!organizationId || !name || !domain) {
-    return { success: false, error: "Company name and email domain are required" };
+  if (!organizationId || !name) {
+    return { success: false, error: "Company name is required" };
   }
 
   const admin = createAdminClient();
@@ -165,7 +165,7 @@ export async function updateOrganizationAsAdmin(
 
   const patch: Record<string, unknown> = {
     name,
-    email_domain: domain,
+    email_domain: domain || null,
     rc,
     activity_domain: activityDomain,
     country,
@@ -278,8 +278,14 @@ export async function createOrganizationWithDirector(
   const organizationName = String(formData.get("organizationName") ?? "");
   const emailDomain = String(formData.get("emailDomain") ?? "");
   const directorName = String(formData.get("directorName") ?? "");
-  const directorEmail = String(formData.get("directorEmail") ?? "");
+  const directorEmailRaw = String(formData.get("directorEmail") ?? "");
   const directorPassword = String(formData.get("directorPassword") ?? "");
+
+  const emailCheck = normalizePersonEmail(directorEmailRaw);
+  if (!emailCheck.ok) {
+    return { success: false, error: emailCheck.error };
+  }
+  const directorEmail = emailCheck.email;
   const rc = String(formData.get("rc") ?? "").trim() || null;
   const activityDomain = String(formData.get("activityDomain") ?? "").trim() || null;
   const country = String(formData.get("country") ?? "").trim() || null;
@@ -380,7 +386,8 @@ export async function createOrganizationWithDirector(
 
 export async function createTeamMember(input: {
   fullName: string;
-  emailLocal: string;
+  /** Full personal email — not tied to the company domain */
+  email: string;
   password: string;
   role: Role;
   jobRoleId: string;
@@ -400,20 +407,14 @@ export async function createTeamMember(input: {
   }
 
   const supabase = await createClient();
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("email_domain")
-    .eq("id", profile.organization_id)
-    .single();
-
-  if (!org?.email_domain) {
-    return { success: false, error: "Organization email domain is not configured" };
-  }
-
   const fullName = input.fullName.trim();
-  const email = buildCompanyEmail(input.emailLocal, org.email_domain);
+  const emailCheck = normalizePersonEmail(input.email);
+  if (!emailCheck.ok) {
+    return { success: false, error: emailCheck.error };
+  }
+  const email = emailCheck.email;
 
-  if (!fullName || !input.emailLocal.trim() || !input.password || !input.jobRoleId) {
+  if (!fullName || !input.password || !input.jobRoleId) {
     return { success: false, error: "All fields are required" };
   }
 
@@ -429,6 +430,20 @@ export async function createTeamMember(input: {
 
   if (!jobRole || jobRole.organization_id !== profile.organization_id) {
     return { success: false, error: "Invalid job role" };
+  }
+
+  const { data: existingMember } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("organization_id", profile.organization_id)
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingMember) {
+    return {
+      success: false,
+      error: `This email is already used by a team member (${email})`,
+    };
   }
 
   const admin = createAdminClient();

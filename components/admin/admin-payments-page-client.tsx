@@ -162,13 +162,13 @@ export function AdminPaymentsPageClient({
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{p.paymentsTitle}</h3>
             <div className="ch-sub">{p.paymentsSub}</div>
           </div>
           <button
             type="button"
-            className="fl-btn primary sm"
+            className="fl-btn primary sm fl-toolbar-create"
             onClick={() => setFormOpen(true)}
           >
             <Plus strokeWidth={2} />
@@ -201,7 +201,7 @@ export function AdminPaymentsPageClient({
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "â€”"}</b>
+                      <b>{row.organization?.name ?? "—"}</b>
                       {row.invoice?.number ? (
                         <div className="fl-faint fl-tny">{row.invoice.number}</div>
                       ) : null}
@@ -217,13 +217,13 @@ export function AdminPaymentsPageClient({
                       {row.method === "card" ? (
                         <span className="inline-flex items-center gap-1.5 text-xs">
                           <CreditCard className="size-3.5 fl-faint" />
-                          {row.card_brand ? p.cardBrands[row.card_brand] : "â€”"}
+                          {row.card_brand ? p.cardBrands[row.card_brand] : "—"}
                           {row.card_last4 ? (
-                            <span className="fl-mono fl-faint">â€¢â€¢â€¢â€¢ {row.card_last4}</span>
+                            <span className="fl-mono fl-faint">•••• {row.card_last4}</span>
                           ) : null}
                         </span>
                       ) : (
-                        "â€”"
+                        "—"
                       )}
                     </td>
                     <td>
@@ -241,7 +241,7 @@ export function AdminPaymentsPageClient({
                         ? format(new Date(row.paid_at), "dd MMM yyyy", {
                             locale: dateLocale,
                           })
-                        : "â€”"}
+                        : "—"}
                     </td>
                     <td>
                       <div className="flex items-center gap-1">

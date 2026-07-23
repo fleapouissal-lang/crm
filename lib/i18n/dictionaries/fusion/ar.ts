@@ -799,8 +799,15 @@ export const fusionAr: FusionDictionary = {
       toronto: "تورونتو",
       quebec: "كيبيك",
     },
-    emailDomain: "نطاق البريد",
-    emailDomainHint: "ستستخدم الحسابات هذا النطاق (مثل ouissal@fusionleap.com)",
+    emailDomain: "نطاق البريد (اختياري)",
+    emailDomainHint:
+      "معلومة للشركة فقط — لا تفرض بريد الأعضاء. لكل عضو بريده الخاص (Gmail وغيرها).",
+    emailDomainLockedHint:
+      "معلومة للشركة فقط — لا تفرض بريد الأعضاء",
+    emailDomainRequiredForMembers:
+      "نطاق البريد غير مطلوب لإضافة الأعضاء",
+    memberPersonalEmailHint:
+      "البريد الشخصي للعضو (مثل ouissal@gmail.com) — غير مرتبط بنطاق الشركة",
     emailFullPreview: "العنوان الكامل",
     directorAccount: "حساب المدير",
     noCompanies: "لا توجد شركات بعد",

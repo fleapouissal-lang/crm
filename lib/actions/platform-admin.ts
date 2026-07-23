@@ -6,7 +6,7 @@ import { getCurrentProfile } from "@/lib/actions/auth";
 import { canManageCompanies } from "@/lib/permissions";
 import { PLAN_PRICES_EUR, type PlanKey } from "@/lib/billing/plans";
 import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
-import { buildCompanyEmail } from "@/lib/organizations/domain";
+import { normalizePersonEmail } from "@/lib/organizations/domain";
 import { seedOrgJobRoles } from "@/lib/actions/organizations";
 import type {
   ActionResult,
@@ -220,10 +220,8 @@ export async function createPlatformManagedUser(input: {
   mode: "platform" | "company";
   fullName: string;
   password: string;
-  /** Full email when mode === "platform" */
+  /** Full personal email (any provider) */
   email?: string;
-  /** Local part when mode === "company" */
-  emailLocal?: string;
   organizationId?: string;
   role?: Role;
   jobRoleId?: string;
@@ -246,10 +244,11 @@ export async function createPlatformManagedUser(input: {
   const admin = createAdminClient();
 
   if (input.mode === "platform") {
-    const email = (input.email ?? "").trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      return { success: false, error: "A valid email is required" };
+    const emailCheck = normalizePersonEmail(input.email ?? "");
+    if (!emailCheck.ok) {
+      return { success: false, error: emailCheck.error };
     }
+    const email = emailCheck.email;
 
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email,
@@ -300,20 +299,19 @@ export async function createPlatformManagedUser(input: {
 
   const { data: org } = await admin
     .from("organizations")
-    .select("id, email_domain, name")
+    .select("id, name")
     .eq("id", organizationId)
     .single();
 
-  if (!org?.email_domain) {
-    return { success: false, error: "Organization email domain is not configured" };
+  if (!org) {
+    return { success: false, error: "Company not found" };
   }
 
-  const emailLocal = (input.emailLocal ?? "").trim();
-  if (!emailLocal) {
-    return { success: false, error: "All fields are required" };
+  const emailCheck = normalizePersonEmail(input.email ?? "");
+  if (!emailCheck.ok) {
+    return { success: false, error: emailCheck.error };
   }
-
-  const email = buildCompanyEmail(emailLocal, org.email_domain);
+  const email = emailCheck.email;
 
   const { data: jobRole } = await admin
     .from("org_job_roles")
@@ -323,6 +321,20 @@ export async function createPlatformManagedUser(input: {
 
   if (!jobRole || jobRole.organization_id !== organizationId) {
     return { success: false, error: "Invalid job role" };
+  }
+
+  const { data: existingMember } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingMember) {
+    return {
+      success: false,
+      error: `This email is already used by a team member (${email})`,
+    };
   }
 
   const { data: authData, error: authError } = await admin.auth.admin.createUser({

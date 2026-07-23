@@ -799,8 +799,15 @@ export const fusionFr: FusionDictionary = {
       toronto: "Toronto",
       quebec: "Québec",
     },
-    emailDomain: "Domaine e-mail",
-    emailDomainHint: "Les comptes utiliseront ce domaine (ex. ouissal@fusionleap.com)",
+    emailDomain: "Domaine e-mail (optionnel)",
+    emailDomainHint:
+      "Info entreprise uniquement — n'impose pas l'e-mail des membres. Chaque membre a son propre e-mail (Gmail, etc.).",
+    emailDomainLockedHint:
+      "Info entreprise uniquement — n'impose pas l'e-mail des membres",
+    emailDomainRequiredForMembers:
+      "Le domaine e-mail n'est pas requis pour ajouter des membres",
+    memberPersonalEmailHint:
+      "E-mail personnel du membre (ex. ouissal@gmail.com) — pas lié au domaine de l'entreprise",
     emailFullPreview: "Adresse complète",
     directorAccount: "Compte directeur",
     noCompanies: "Aucune entreprise créée",

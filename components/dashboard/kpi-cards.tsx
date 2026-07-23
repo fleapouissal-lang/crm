@@ -68,11 +68,11 @@ export function KpiCards({
   ];
 
   return (
-    <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+    <div className="dash-kpi-grid">
       {items.map((item) => (
         <div key={item.label} className="fl-card fl-kpi">
           <div className="k-top">
-            <div>
+            <div className="min-w-0">
               <div className="k-label">{item.label}</div>
               <div className="k-val">
                 {item.value}

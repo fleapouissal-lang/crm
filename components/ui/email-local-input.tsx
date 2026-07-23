@@ -22,7 +22,8 @@ export function EmailLocalInput({
   className?: string;
   disabled?: boolean;
 }) {
-  const cleanDomain = (domain ?? "entreprise.com").replace(/^@+/, "");
+  const cleanDomain = (domain ?? "").replace(/^@+/, "").trim();
+  const hasDomain = Boolean(cleanDomain);
 
   function handleChange(raw: string) {
     onChange(
@@ -51,17 +52,17 @@ export function EmailLocalInput({
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
-        disabled={disabled}
+        disabled={disabled || !hasDomain}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
         className="h-full min-w-0 flex-1 border-0 bg-transparent px-4 text-[0.9375rem] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
       />
       <span
-        className="pointer-events-none flex h-full shrink-0 select-none items-center border-s border-[var(--border)] bg-black/10 px-3 text-[0.875rem] text-[var(--text-faint)] dark:bg-white/5"
+        className="pointer-events-none flex h-full shrink-0 select-none items-center border-s border-[var(--border)] bg-black/10 px-3 text-[0.875rem] font-medium text-[var(--text-dim)] dark:bg-white/5"
         aria-hidden
       >
-        @{cleanDomain}
+        {hasDomain ? `@${cleanDomain}` : "@…"}
       </span>
     </div>
   );

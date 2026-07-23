@@ -429,7 +429,7 @@ export function EmployeeProfileFormDialog({
   }, [open, profile, member, reset]);
 
   function onSubmit(values: ProfileFormValues) {
-    if (!profile) return;
+    if (!profile || !member) return;
     const salaryRaw = values.baseSalary.trim();
     const salary = salaryRaw === "" ? undefined : Number(salaryRaw);
     if (salaryRaw !== "" && (!Number.isFinite(salary) || (salary ?? 0) < 0)) {
@@ -448,7 +448,7 @@ export function EmployeeProfileFormDialog({
       department: values.department,
       businessUnit: "",
       phone: values.phone.trim(),
-      email: values.email.trim(),
+      email: values.email.trim() || member.email || "",
       baseSalary: salary,
       salaryCurrency: values.salaryCurrency || "MAD",
       overtimeRate,
@@ -585,7 +585,7 @@ export function EmployeeProfileFormDialog({
                       id="hr-email"
                       type="email"
                       className="fl-input fl-input--with-icon"
-                      placeholder="nom@entreprise.com"
+                      placeholder="nom@gmail.com"
                       {...register("email")}
                     />
                   </div>

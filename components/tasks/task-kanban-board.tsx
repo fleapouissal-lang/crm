@@ -388,6 +388,15 @@ export function TaskKanbanBoard({
             {visibleTasks.length} {dict.tasks.list.toLowerCase()}
           </FlChip>
         </div>
+        <Link
+          href={onAddTaskHref}
+          className="fl-btn primary sm fl-toolbar-create"
+        >
+          <Plus strokeWidth={2} />
+          <span className="fl-toolbar-create__label hidden sm:inline">
+            {k.addTask}
+          </span>
+        </Link>
         <div className="fl-kanban-toolbar__right">
           <div className="fl-filter-field fl-filter-field--lg">
             <Select
@@ -409,10 +418,6 @@ export function TaskKanbanBoard({
             </Select>
           </div>
           {teamAvatars.length > 0 ? <AvatarStack items={teamAvatars} /> : null}
-          <Link href={onAddTaskHref} className="fl-btn primary sm shrink-0">
-            <Plus strokeWidth={2} />
-            <span className="hidden sm:inline">{k.addTask}</span>
-          </Link>
         </div>
       </div>
 

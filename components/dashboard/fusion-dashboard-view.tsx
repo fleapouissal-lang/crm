@@ -99,21 +99,22 @@ export function FusionDashboardView({
   ];
 
   return (
-    <div className="space-y-[18px]">
-      <div className="fl-card fl-pad flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <div className="space-y-[18px] dash-home">
+      <div className="fl-card fl-pad dash-home__welcome flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold tracking-tight">
             {dict.dashboard.welcome}
             {profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
           </h2>
           <p className="mt-1 text-sm fl-faint">{dict.dashboard.subtitle}</p>
         </div>
-        <div className="fl-filter-bar__actions !ms-0">
+        <div className="fl-filter-bar__actions dash-home__actions !ms-0">
           {quickActions.map((action) => (
             <Link
               key={action.href}
               href={action.href}
               className="fl-btn sm ghost shrink-0"
+              title={action.label}
             >
               <action.icon strokeWidth={2} className="size-3.5" />
               <span className="hidden sm:inline">{action.label}</span>
@@ -131,7 +132,7 @@ export function FusionDashboardView({
         conversionRate={stats.conversionRate}
       />
 
-      <div className="grid g-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="dash-kpi-grid">
         <MiniStat
           label={dict.dashboard.openLeads ?? "Open leads"}
           value={String(stats.openLeads)}
@@ -233,7 +234,7 @@ function MemberDashboardView({
         </div>
       </div>
 
-      <div className="grid g-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="dash-kpi-grid">
         <MiniStat
           label={dict.dashboard.openTasks}
           value={String(stats.openTasks)}

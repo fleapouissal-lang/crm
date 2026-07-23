@@ -276,7 +276,21 @@ export function HrPageClient({
 
       <div className="fl-card fl-clients-card">
         <div className="fl-clients-toolbar">
-          <h2 className="fl-clients-toolbar__title">{h.team}</h2>
+          <div className="fl-clients-toolbar__head">
+            <h2 className="fl-clients-toolbar__title">{h.team}</h2>
+            {canManageUsers ? (
+              <button
+                type="button"
+                className="fl-btn primary sm fl-toolbar-create"
+                onClick={() => setMemberDialogOpen(true)}
+              >
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {s.addMember}
+                </span>
+              </button>
+            ) : null}
+          </div>
           <div className="fl-clients-toolbar__row">
             <div className="fl-clients-search-wrap">
               <Search strokeWidth={2} />
@@ -321,17 +335,6 @@ export function HrPageClient({
                 <X className="size-3.5" strokeWidth={2} />
               </button>
             )}
-
-            {canManageUsers ? (
-              <button
-                type="button"
-                className="fl-btn primary sm shrink-0"
-                onClick={() => setMemberDialogOpen(true)}
-              >
-                <Plus strokeWidth={2} />
-                <span className="hidden sm:inline">{s.addMember}</span>
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -387,7 +390,7 @@ export function HrPageClient({
                       </td>
                       <td className="max-w-[180px]">
                         <div className="truncate text-[13px]">
-                          {phone || email || "â€”"}
+                          {phone || email || "—"}
                         </div>
                         {phone && email ? (
                           <div className="truncate text-[11px] fl-faint">{email}</div>

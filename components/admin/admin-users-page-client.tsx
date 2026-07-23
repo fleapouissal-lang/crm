@@ -103,34 +103,32 @@ export function AdminUsersPageClient({
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{d.platformUsers}</h3>
             <div className="ch-sub">{d.platformUsersSub}</div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="fl-clients-search-wrap max-w-xs">
-              <Search strokeWidth={2} />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="fl-toolbar-search"
-                placeholder={d.searchUsers}
-                aria-label={d.searchUsers}
-              />
-            </div>
-            <button
-              type="button"
-              className="fl-btn primary sm shrink-0"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus className="size-3.5" strokeWidth={2} />
-              {d.addUser}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="fl-btn primary sm fl-toolbar-create"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="size-3.5" strokeWidth={2} />
+            <span className="fl-toolbar-create__label">{d.addUser}</span>
+          </button>
         </div>
 
-        <div className="px-4 pb-3">
-          <div className="fl-seg">
+        <div className="fl-card-tools">
+          <div className="fl-clients-search-wrap">
+            <Search strokeWidth={2} />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="fl-toolbar-search"
+              placeholder={d.searchUsers}
+              aria-label={d.searchUsers}
+            />
+          </div>
+          <div className="fl-seg shrink-0">
             {filters.map((f) => (
               <button
                 key={f.key}
@@ -173,7 +171,7 @@ export function AdminUsersPageClient({
                         />
                         <div className="min-w-0">
                           <b className="block truncate">
-                            {user.full_name ?? "â€”"}
+                            {user.full_name ?? "—"}
                           </b>
                           {user.job_title ? (
                             <span className="fl-faint fl-tny block truncate">
@@ -183,7 +181,7 @@ export function AdminUsersPageClient({
                         </div>
                       </div>
                     </td>
-                    <td className="fl-muted">{user.email ?? "â€”"}</td>
+                    <td className="fl-muted">{user.email ?? "—"}</td>
                     <td>
                       <span
                         className={cn(

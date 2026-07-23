@@ -227,7 +227,18 @@ export function InvoicesPageClient({
 
       <div className="fl-card fl-clients-card">
         <div className="fl-clients-toolbar">
-          <h2 className="fl-clients-toolbar__title">{inv.recentInvoices}</h2>
+          <div className="fl-clients-toolbar__head">
+            <h2 className="fl-clients-toolbar__title">{inv.recentInvoices}</h2>
+            <Link
+              href="/finance/invoices/new"
+              className="fl-btn primary sm fl-toolbar-create"
+            >
+              <Plus strokeWidth={2} />
+              <span className="fl-toolbar-create__label hidden sm:inline">
+                {inv.newInvoice}
+              </span>
+            </Link>
+          </div>
           <div className="fl-clients-toolbar__row">
             <div className="fl-clients-search-wrap">
               <Search strokeWidth={2} />
@@ -268,13 +279,6 @@ export function InvoicesPageClient({
                 <span className="hidden sm:inline">{inv.clearFilters}</span>
               </button>
             ) : null}
-            <Link
-              href="/finance/invoices/new"
-              className="fl-btn primary sm shrink-0"
-            >
-              <Plus strokeWidth={2} />
-              <span className="hidden sm:inline">{inv.newInvoice}</span>
-            </Link>
           </div>
         </div>
 

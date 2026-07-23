@@ -190,7 +190,7 @@ export function EditCompanyDialog({
             type="button"
             className="fl-btn primary sm"
             onClick={handleSubmit}
-            disabled={pending || !name.trim() || !emailDomain.trim()}
+            disabled={pending || !name.trim()}
           >
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
             {dict.common.save}

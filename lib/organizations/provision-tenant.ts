@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
-import { emailMatchesDomain, normalizeEmailDomain } from "@/lib/organizations/domain";
+import { normalizeEmailDomain, normalizePersonEmail } from "@/lib/organizations/domain";
 
 function slugifyOrg(name: string): string {
   return (
@@ -51,16 +51,18 @@ export async function provisionTenantCompany(input: {
 }): Promise<{ organizationId: string; directorId: string }> {
   const client = input.client ?? createAdminClient();
   const orgName = input.organizationName.trim();
-  const domain = normalizeEmailDomain(input.emailDomain);
+  const domain = input.emailDomain.trim()
+    ? normalizeEmailDomain(input.emailDomain)
+    : "";
   const directorName = input.directorName.trim();
-  const directorEmail = input.directorEmail.trim().toLowerCase();
+  const emailCheck = normalizePersonEmail(input.directorEmail);
 
-  if (!orgName || !domain || !directorName || !directorEmail || !input.directorPassword) {
-    throw new Error("All fields are required");
+  if (!orgName || !directorName || !emailCheck.ok || !input.directorPassword) {
+    throw new Error(
+      !emailCheck.ok ? emailCheck.error : "All fields are required"
+    );
   }
-  if (!emailMatchesDomain(directorEmail, domain)) {
-    throw new Error(`Director email must use @${domain}`);
-  }
+  const directorEmail = emailCheck.email;
 
   const { data: authData, error: authError } = await client.auth.admin.createUser({
     email: directorEmail,
@@ -80,7 +82,7 @@ export async function provisionTenantCompany(input: {
     .insert({
       name: orgName,
       slug: input.slug ?? slugifyOrg(orgName),
-      email_domain: domain,
+      email_domain: domain || null,
       director_id: directorId,
       created_by: input.createdBy ?? null,
       logo_url: input.logoUrl ?? null,

@@ -39,52 +39,60 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
   }, []);
 
   return (
-    <div className="space-y-[18px]">
-      <div className="fl-card fl-pad">
+    <div className="space-y-[18px] dash-home">
+      <div className="fl-card fl-pad dash-home__welcome">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span
-              className="grid size-11 place-items-center rounded-xl text-white"
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-white"
               style={{ background: "var(--grad-brand)" }}
             >
               <Globe className="size-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold">{d.globalSiteTitle}</h2>
               <p className="mt-1 text-sm fl-faint">{d.globalSiteSub}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/admin/payments" className="fl-btn primary sm">
+          <div className="dash-home__actions flex flex-wrap gap-2">
+            <Link
+              href="/admin/payments"
+              className="fl-btn primary sm"
+              title={d.managePayments}
+            >
               <Wallet className="size-4" />
-              {d.managePayments}
+              <span className="hidden sm:inline">{d.managePayments}</span>
             </Link>
-            <Link href="/admin/companies/new" className="fl-btn sm ghost">
+            <Link
+              href="/admin/companies/new"
+              className="fl-btn sm ghost"
+              title={s.createCompany}
+            >
               <Plus strokeWidth={2} />
-              {s.createCompany}
+              <span className="hidden sm:inline">{s.createCompany}</span>
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-[18px] sm:grid-cols-2 xl:grid-cols-5">
-        <div className="fl-card fl-pad">
+      <div className="dash-kpi-grid dash-kpi-grid--admin">
+        <div className="fl-card fl-pad dash-stat-card">
           <div className="k-label">{s.companies}</div>
           <StatLine value={String(stats.companiesCount)} />
         </div>
-        <div className="fl-card fl-pad">
+        <div className="fl-card fl-pad dash-stat-card">
           <div className="k-label">{s.activeCompanies}</div>
           <StatLine value={String(activeCount)} />
         </div>
-        <div className="fl-card fl-pad">
+        <div className="fl-card fl-pad dash-stat-card">
           <div className="k-label">{d.totalUsers}</div>
           <StatLine value={String(stats.usersCount)} />
         </div>
-        <div className="fl-card fl-pad">
+        <div className="fl-card fl-pad dash-stat-card">
           <div className="k-label">{d.mrrLabel}</div>
           <StatLine value={formatPlatformMoney(stats.mrr, currency)} />
         </div>
-        <div className="fl-card fl-pad">
+        <div className="fl-card fl-pad dash-stat-card dash-stat-card--wide">
           <div className="k-label">{d.paidThisMonth}</div>
           <StatLine value={formatPlatformMoney(stats.paidThisMonth, currency)} />
         </div>
@@ -92,11 +100,11 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{d.billingOverview}</h3>
             <div className="ch-sub">{d.billingOverviewSub}</div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="fl-card-head__actions">
             <Link href="/admin/quotes" className="fl-btn sm ghost">
               <FileText className="size-4" />
               {d.manageQuotes}
@@ -144,11 +152,11 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{d.recentPayments}</h3>
             <div className="ch-sub">{d.recentPaymentsSub}</div>
           </div>
-          <Link href="/admin/payments" className="fl-btn sm ghost">
+          <Link href="/admin/payments" className="fl-btn sm ghost fl-toolbar-create">
             {d.managePayments}
           </Link>
         </div>
@@ -212,11 +220,11 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{d.platformUsers}</h3>
             <div className="ch-sub">{d.platformUsersSub}</div>
           </div>
-          <Link href="/admin/users" className="fl-btn sm ghost">
+          <Link href="/admin/users" className="fl-btn sm ghost fl-toolbar-create">
             <Users className="size-4" />
             {d.manageUsers}
           </Link>
@@ -287,11 +295,14 @@ export function PlatformAdminDashboard({ stats }: { stats: PlatformAdminStats })
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{d.tenantCrms}</h3>
             <div className="ch-sub">{d.tenantCrmsSub}</div>
           </div>
-          <Link href="/admin/companies/new" className="fl-btn primary sm">
+          <Link
+            href="/admin/companies/new"
+            className="fl-btn primary sm fl-toolbar-create"
+          >
             <Plus strokeWidth={2} />
             {s.createCompany}
           </Link>

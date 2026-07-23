@@ -82,7 +82,7 @@ export function AdminSubscriptionsPageClient({
   }
 
   function formatDate(value: string | null) {
-    if (!value) return "â€”";
+    if (!value) return "—";
     return format(new Date(value), "dd MMM yyyy", { locale: dateLocale });
   }
 
@@ -151,7 +151,7 @@ export function AdminSubscriptionsPageClient({
                             <div>
                               <b>{company.name}</b>
                               <div className="fl-faint fl-tny">
-                                @{company.email_domain ?? "â€”"}
+                                @{company.email_domain ?? "—"}
                               </div>
                             </div>
                           </div>

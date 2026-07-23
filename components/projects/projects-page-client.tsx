@@ -331,7 +331,19 @@ export function ProjectsPageClient({
 
       <div className="fl-card fl-clients-card">
         <div className="fl-clients-toolbar">
-          <h2 className="fl-clients-toolbar__title">{dict.nav.projects}</h2>
+          <div className="fl-clients-toolbar__head">
+            <h2 className="fl-clients-toolbar__title">{dict.nav.projects}</h2>
+            <button
+              type="button"
+              className="fl-btn primary sm fl-toolbar-create"
+              onClick={openCreate}
+            >
+              <Plus strokeWidth={2} />
+              <span className="fl-toolbar-create__label hidden sm:inline">
+                {p.addProject}
+              </span>
+            </button>
+          </div>
           <div className="fl-clients-toolbar__row">
             <div className="fl-seg shrink-0">
               {phaseTabs.map((tab) => (
@@ -414,15 +426,6 @@ export function ProjectsPageClient({
                 <span className="hidden sm:inline">{p.clearFilters}</span>
               </button>
             ) : null}
-
-            <button
-              type="button"
-              className="fl-btn primary sm shrink-0"
-              onClick={openCreate}
-            >
-              <Plus strokeWidth={2} />
-              <span className="hidden sm:inline">{p.addProject}</span>
-            </button>
           </div>
         </div>
 
@@ -522,7 +525,7 @@ export function ProjectsPageClient({
                             </span>
                           </div>
                         ) : (
-                          <span className="fl-faint">â€”</span>
+                          <span className="fl-faint">—</span>
                         )}
                       </td>
                       <td className="fl-muted">

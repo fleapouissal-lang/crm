@@ -12,7 +12,6 @@ import {
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { EmailLocalInput } from "@/components/ui/email-local-input";
 import {
   Select,
   SelectContent,
@@ -34,13 +33,14 @@ export function TeamMemberDialog({
   open,
   onOpenChange,
   jobRoles,
-  emailDomain,
+  emailDomain: _emailDomain,
   actorRole,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jobRoles: OrgJobRole[];
+  /** Kept for call-site compatibility; member emails are personal and not domain-bound */
   emailDomain: string | null;
   actorRole: Role;
   onCreated?: () => void;
@@ -54,7 +54,7 @@ export function TeamMemberDialog({
 
   const defaultJobId = jobRoles[0]?.id ?? "";
   const [fullName, setFullName] = useState("");
-  const [emailLocal, setEmailLocal] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [jobRoleId, setJobRoleId] = useState(defaultJobId);
   const [role, setRole] = useState<Role>(() =>
@@ -78,7 +78,7 @@ export function TeamMemberDialog({
 
   function reset() {
     setFullName("");
-    setEmailLocal("");
+    setEmail("");
     setPassword("");
     const first = jobRoles[0];
     setJobRoleId(first?.id ?? "");
@@ -105,7 +105,7 @@ export function TeamMemberDialog({
     startTransition(async () => {
       const result = await createTeamMember({
         fullName,
-        emailLocal,
+        email,
         password,
         role,
         jobRoleId,
@@ -138,16 +138,21 @@ export function TeamMemberDialog({
             />
           </div>
           <div className="fl-field">
-            <label className="fl-field-label" htmlFor="member-email-local">
+            <label className="fl-field-label" htmlFor="member-email">
               {dict.common.email}
             </label>
-            <EmailLocalInput
-              id="member-email-local"
-              value={emailLocal}
-              onChange={setEmailLocal}
-              domain={emailDomain}
-              placeholder="ouissal"
+            <Input
+              id="member-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="fl-input"
+              placeholder="ouissal@gmail.com"
+              autoComplete="email"
             />
+            <small className="mt-1 block text-xs fl-faint">
+              {s.memberPersonalEmailHint}
+            </small>
           </div>
           <div className="fl-field">
             <label className="fl-field-label">{dict.common.password}</label>
@@ -235,7 +240,7 @@ export function TeamMemberDialog({
             disabled={
               pending ||
               !fullName.trim() ||
-              !emailLocal.trim() ||
+              !email.trim() ||
               !password ||
               !jobRoleId
             }

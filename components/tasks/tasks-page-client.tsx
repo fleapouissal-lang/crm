@@ -69,62 +69,6 @@ export function TasksPageClient({
 
   return (
     <div className="space-y-4">
-      {view === "list" && (
-        <div className="fl-filter-bar">
-          <div className="fl-seg shrink-0">
-            <button type="button" onClick={() => setView("board")}>
-              {dict.fusion.kanban.board}
-            </button>
-            <button type="button" className={cn("on")}>
-              {dict.tasks.list}
-            </button>
-          </div>
-          <div className="fl-filter-bar__actions">
-            <div className="fl-filter-field fl-filter-field--lg">
-              <Select
-                value={projectFilter}
-                onValueChange={(v) => v && updateFilter("project_id", v)}
-              >
-                <SelectTrigger className="fl-select-trigger">
-                  <SelectValue>{projectFilterLabel}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{dict.fusion.kanban.allProjects}</SelectItem>
-                  <SelectItem value="none">{dict.fusion.kanban.noProject}</SelectItem>
-                  {projects.map((proj) => (
-                    <SelectItem key={proj.id} value={proj.id}>
-                      {proj.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="fl-filter-field">
-              <Select
-                value={status}
-                onValueChange={(v) => v && updateFilter("status", v)}
-              >
-                <SelectTrigger className="fl-select-trigger">
-                  <SelectValue>{statusFilterLabel}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{dict.common.allStatuses}</SelectItem>
-                  {TASK_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {dict.taskStatus[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Link href="/tasks/new" className="fl-btn primary sm shrink-0">
-              <Plus strokeWidth={2} />
-              <span className="hidden sm:inline">{dict.tasks.newTask}</span>
-            </Link>
-          </div>
-        </div>
-      )}
-
       {view === "board" ? (
         <TaskKanbanBoard
           initialTasks={tasks}
@@ -137,15 +81,83 @@ export function TasksPageClient({
           onShowList={() => setView("list")}
         />
       ) : (
-        <TaskList
-          initialTasks={tasks}
-          organizationId={organizationId}
-          profiles={profiles}
-          leads={leads}
-          profile={profile}
-          projects={projects}
-          projectFilter={projectFilter}
-        />
+        <div className="fl-card overflow-hidden">
+          <div className="fl-filter-bar fl-filter-bar--card">
+            <div className="fl-filter-bar__head">
+              <div className="fl-seg shrink-0">
+                <button type="button" onClick={() => setView("board")}>
+                  {dict.fusion.kanban.board}
+                </button>
+                <button type="button" className={cn("on")}>
+                  {dict.tasks.list}
+                </button>
+              </div>
+              <Link
+                href="/tasks/new"
+                className="fl-btn primary sm fl-toolbar-create"
+              >
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {dict.tasks.newTask}
+                </span>
+              </Link>
+            </div>
+            <div className="fl-filter-bar__actions">
+              <div className="fl-filter-field fl-filter-field--lg">
+                <Select
+                  value={projectFilter}
+                  onValueChange={(v) => v && updateFilter("project_id", v)}
+                >
+                  <SelectTrigger className="fl-select-trigger">
+                    <SelectValue>{projectFilterLabel}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">
+                      {dict.fusion.kanban.allProjects}
+                    </SelectItem>
+                    <SelectItem value="none">
+                      {dict.fusion.kanban.noProject}
+                    </SelectItem>
+                    {projects.map((proj) => (
+                      <SelectItem key={proj.id} value={proj.id}>
+                        {proj.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="fl-filter-field">
+                <Select
+                  value={status}
+                  onValueChange={(v) => v && updateFilter("status", v)}
+                >
+                  <SelectTrigger className="fl-select-trigger">
+                    <SelectValue>{statusFilterLabel}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{dict.common.allStatuses}</SelectItem>
+                    {TASK_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {dict.taskStatus[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <div className="fl-pad">
+            <TaskList
+              initialTasks={tasks}
+              organizationId={organizationId}
+              profiles={profiles}
+              leads={leads}
+              profile={profile}
+              projects={projects}
+              projectFilter={projectFilter}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -29,9 +29,62 @@ export function emailMatchesDomain(email: string, domain: string): boolean {
   return emailDomain === normalizeEmailDomain(domain);
 }
 
+/** Local part only (before @). Strips any pasted domain/spaces. */
+export function sanitizeEmailLocalPart(localPart: string): string {
+  return localPart
+    .trim()
+    .toLowerCase()
+    .replace(/@.*$/, "")
+    .replace(/\s+/g, "");
+}
+
+/**
+ * Valid company mailbox local part: letters, digits, . _ -
+ * Must start/end with alphanumeric; no consecutive dots.
+ */
+export function validateEmailLocalPart(
+  localPart: string
+): { ok: true; local: string } | { ok: false; error: string } {
+  const local = sanitizeEmailLocalPart(localPart);
+  if (!local) {
+    return { ok: false, error: "Email local part is required" };
+  }
+  if (local.length > 64) {
+    return { ok: false, error: "Email local part is too long" };
+  }
+  if (!/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/.test(local)) {
+    return {
+      ok: false,
+      error: "Use only letters, numbers, dots, hyphens or underscores",
+    };
+  }
+  if (local.includes("..")) {
+    return { ok: false, error: "Email local part cannot contain consecutive dots" };
+  }
+  return { ok: true, local };
+}
+
 export function buildCompanyEmail(localPart: string, domain: string): string {
-  const local = localPart.trim().toLowerCase().replace(/@.+$/, "");
+  const local = sanitizeEmailLocalPart(localPart);
   return `${local}@${normalizeEmailDomain(domain)}`;
+}
+
+/** Any personal mailbox — not tied to the company domain. */
+export function normalizePersonEmail(
+  email: string
+): { ok: true; email: string } | { ok: false; error: string } {
+  const value = email.trim().toLowerCase();
+  if (!value) {
+    return { ok: false, error: "Email is required" };
+  }
+  // Practical check: local@domain with a dot in the domain
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return { ok: false, error: "Enter a valid email address" };
+  }
+  if (value.length > 254) {
+    return { ok: false, error: "Email is too long" };
+  }
+  return { ok: true, email: value };
 }
 
 export function slugifyRoleName(name: string): string {

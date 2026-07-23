@@ -251,7 +251,19 @@ export function ExpensesPageClient({
 
       <div className="fl-card fl-clients-card">
         <div className="fl-clients-toolbar">
-          <h2 className="fl-clients-toolbar__title">{e.listTitle}</h2>
+          <div className="fl-clients-toolbar__head">
+            <h2 className="fl-clients-toolbar__title">{e.listTitle}</h2>
+            <button
+              type="button"
+              className="fl-btn primary sm fl-toolbar-create"
+              onClick={openCreate}
+            >
+              <Plus strokeWidth={2} />
+              <span className="fl-toolbar-create__label hidden sm:inline">
+                {e.newExpense}
+              </span>
+            </button>
+          </div>
           <div className="fl-clients-toolbar__row">
             <div className="fl-clients-search-wrap">
               <Search strokeWidth={2} />
@@ -320,14 +332,6 @@ export function ExpensesPageClient({
                 <span className="hidden sm:inline">{e.clearFilters}</span>
               </button>
             ) : null}
-            <button
-              type="button"
-              className="fl-btn primary sm shrink-0"
-              onClick={openCreate}
-            >
-              <Plus strokeWidth={2} />
-              <span className="hidden sm:inline">{e.newExpense}</span>
-            </button>
           </div>
         </div>
 

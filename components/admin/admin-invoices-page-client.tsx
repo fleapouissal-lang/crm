@@ -124,13 +124,13 @@ export function AdminInvoicesPageClient({
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{b.invoicesTitle}</h3>
             <div className="ch-sub">{b.invoicesSub}</div>
           </div>
           <button
             type="button"
-            className="fl-btn primary sm"
+            className="fl-btn primary sm fl-toolbar-create"
             onClick={() => {
               setActive(null);
               setFormOpen(true);
@@ -166,7 +166,7 @@ export function AdminInvoicesPageClient({
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "â€”"}</b>
+                      <b>{row.organization?.name ?? "—"}</b>
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">
@@ -175,7 +175,7 @@ export function AdminInvoicesPageClient({
                         resolvePlatformCurrency(row.currency, currency)
                       )}
                     </td>
-                    <td className="fl-faint fl-tny">{row.due_date ?? "â€”"}</td>
+                    <td className="fl-faint fl-tny">{row.due_date ?? "—"}</td>
                     <td className="fl-faint fl-tny">
                       {b.billingReasons[row.billing_reason]}
                     </td>

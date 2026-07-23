@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AuroraBackground } from "@/components/layout/aurora-background";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { CursorGlow } from "@/components/layout/cursor-glow";
 import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
 import { NotificationsProvider, useNotificationsOptional } from "@/components/notifications/notifications-provider";
@@ -160,6 +161,13 @@ export function FusionShell({
             <div className="fusion-scroll">
               <div className="fusion-page">{children}</div>
             </div>
+            <MobileBottomNav
+              profile={profile}
+              activityDomain={platformAdmin ? null : activityDomain}
+              leadCount={leadCount}
+              menuOpen={sidebarOpen}
+              onOpenMenu={() => setSidebarOpen(true)}
+            />
           </div>
         </div>
       </NotificationsProvider>

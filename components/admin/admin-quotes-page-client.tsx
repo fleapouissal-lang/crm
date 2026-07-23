@@ -114,13 +114,13 @@ export function AdminQuotesPageClient({
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{b.quotesTitle}</h3>
             <div className="ch-sub">{b.quotesSub}</div>
           </div>
           <button
             type="button"
-            className="fl-btn primary sm"
+            className="fl-btn primary sm fl-toolbar-create"
             onClick={() => {
               setActive(null);
               setFormOpen(true);
@@ -155,7 +155,7 @@ export function AdminQuotesPageClient({
                   <tr key={row.id}>
                     <td className="fl-mono">{row.number}</td>
                     <td>
-                      <b>{row.organization?.name ?? "â€”"}</b>
+                      <b>{row.organization?.name ?? "—"}</b>
                     </td>
                     <td className="fl-muted">{s.plans[row.plan]}</td>
                     <td className="fl-mono">

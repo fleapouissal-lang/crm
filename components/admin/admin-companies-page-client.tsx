@@ -137,11 +137,14 @@ export function AdminCompaniesPageClient({
 
       <div className="fl-card">
         <div className="fl-card-head">
-          <div>
+          <div className="fl-card-head__title">
             <h3>{s.companiesTitle}</h3>
             <div className="ch-sub">{s.companiesSub}</div>
           </div>
-          <Link href="/admin/companies/new" className="fl-btn primary sm">
+          <Link
+            href="/admin/companies/new"
+            className="fl-btn primary sm fl-toolbar-create"
+          >
             <Plus strokeWidth={2} />
             {s.createCompany}
           </Link>
@@ -213,8 +216,8 @@ export function AdminCompaniesPageClient({
                             </div>
                           </div>
                         </td>
-                        <td className="fl-muted">@{company.email_domain ?? "â€”"}</td>
-                        <td className="fl-muted">{company.directorEmail ?? "â€”"}</td>
+                        <td className="fl-muted">@{company.email_domain ?? "—"}</td>
+                        <td className="fl-muted">{company.directorEmail ?? "—"}</td>
                         <td>
                           <span className="inline-flex items-center gap-1 fl-muted">
                             <Users className="size-3.5" />

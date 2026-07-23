@@ -202,7 +202,7 @@ export function EmployeeProfileContent({
   const kpis = [
     {
       label: h.baseSalary,
-      value: formatBaseSalary(profile, "â€”"),
+      value: formatBaseSalary(profile, "—"),
     },
     {
       label: h.totalBonus,
@@ -259,13 +259,13 @@ export function EmployeeProfileContent({
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted shrink-0">{dict.fusion.settings.phone}</dt>
             <dd className="font-medium text-end truncate">
-              {profile.phone?.trim() || member.phone || "â€”"}
+              {profile.phone?.trim() || member.phone || "—"}
             </dd>
           </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
             <dt className="fl-muted shrink-0">{h.email}</dt>
             <dd className="font-medium text-end truncate">
-              {profile.email?.trim() || member.email || "â€”"}
+              {profile.email?.trim() || member.email || "—"}
             </dd>
           </div>
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">

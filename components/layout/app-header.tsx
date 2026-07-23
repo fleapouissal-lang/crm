@@ -121,7 +121,9 @@ export function AppHeader({
       ) : null}
 
       <div className="fusion-top-actions">
-        <LocaleSwitcher />
+        <span className="fusion-top-actions__desktop">
+          <LocaleSwitcher />
+        </span>
         <ThemeToggle />
         {!platformAdmin ? <NotificationsBell /> : null}
         <button
