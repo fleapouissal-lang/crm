@@ -607,6 +607,96 @@ export async function updateTeamMemberPassword(input: {
   return { success: true, data: undefined };
 }
 
+export async function updateTeamMemberAccess(input: {
+  memberId: string;
+  role: Role;
+  jobRoleId: string;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "No organization" };
+  }
+  if (!canManageUsers(profile.role)) {
+    return { success: false, error: "Director or manager access required" };
+  }
+  if (input.role === "platform_admin") {
+    return { success: false, error: "Invalid role" };
+  }
+  if (profile.role === "manager" && input.role === "admin") {
+    return { success: false, error: "Managers cannot assign director access" };
+  }
+
+  const admin = createAdminClient();
+  const { data: target, error: targetError } = await admin
+    .from("profiles")
+    .select("id, role, organization_id")
+    .eq("id", input.memberId)
+    .maybeSingle();
+
+  if (targetError) return { success: false, error: targetError.message };
+  if (!target || target.organization_id !== profile.organization_id) {
+    return { success: false, error: "Member not found" };
+  }
+
+  if (
+    !canResetTeamMemberPassword(profile, {
+      id: target.id,
+      role: target.role as Role,
+    })
+  ) {
+    if (profile.id === target.id) {
+      return { success: false, error: "You cannot change your own access here" };
+    }
+    if (profile.role === "manager" && target.role === "admin") {
+      return { success: false, error: "Managers cannot edit directors" };
+    }
+    return { success: false, error: "You don't have permission to edit this member" };
+  }
+
+  if (target.role === "admin" && input.role !== "admin") {
+    const { count, error: countError } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", profile.organization_id)
+      .eq("role", "admin");
+    if (countError) return { success: false, error: countError.message };
+    if ((count ?? 0) <= 1) {
+      return {
+        success: false,
+        error: "Cannot demote the last director of the company",
+      };
+    }
+  }
+
+  const { data: jobRole } = await admin
+    .from("org_job_roles")
+    .select("id, name, organization_id")
+    .eq("id", input.jobRoleId)
+    .maybeSingle();
+
+  if (!jobRole || jobRole.organization_id !== profile.organization_id) {
+    return { success: false, error: "Invalid job role" };
+  }
+
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      role: input.role,
+      job_role_id: input.jobRoleId,
+      job_title: jobRole.name,
+    })
+    .eq("id", target.id)
+    .eq("organization_id", profile.organization_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/hr");
+  revalidatePath("/dashboard");
+  revalidatePath("/", "layout");
+  return { success: true, data: undefined };
+}
+
 export async function createCustomJobRole(name: string): Promise<ActionResult<OrgJobRole>> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id || profile.role !== "admin") {

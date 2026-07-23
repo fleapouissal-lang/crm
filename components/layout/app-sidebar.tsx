@@ -277,7 +277,11 @@ export function AppSidebar({
             />
             <div className="fusion-user-meta">
               <b>{displayName}</b>
-              <small>{dict.roles[profile.role]}</small>
+              <small>
+                {profile.job_role?.name ??
+                  profile.job_title ??
+                  dict.roles[profile.role]}
+              </small>
             </div>
             {!collapsed ? (
               <span className="fusion-nav-icon-wrap fusion-user-settings">
@@ -295,7 +299,11 @@ export function AppSidebar({
             />
             <div className="fusion-user-meta">
               <b>{displayName}</b>
-              <small>{dict.roles[profile.role]}</small>
+              <small>
+                {profile.job_role?.name ??
+                  profile.job_title ??
+                  dict.roles[profile.role]}
+              </small>
             </div>
           </div>
         )}

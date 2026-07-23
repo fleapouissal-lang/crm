@@ -823,6 +823,10 @@ export const fusionAr: FusionDictionary = {
     resetMemberPasswordHint:
       "عيّن كلمة مرور جديدة لـ « {name} ». سيستخدمها عند تسجيل الدخول التالي.",
     memberPasswordUpdated: "تم تحديث كلمة المرور",
+    editMemberAccess: "تعديل الوصول",
+    editMemberAccessTitle: "الوظيفة والوصول",
+    editMemberAccessHint: "عدّل وظيفة ومستوى وصول « {name} ».",
+    memberAccessUpdated: "تم تحديث وصول العضو",
     cannotRemoveSelf: "لا يمكنك حذف حسابك الخاص",
     cannotRemoveLastDirector: "لا يمكن حذف آخر مدير للشركة",
     cannotRemoveDirectorAsManager: "لا يمكن للمسير حذف المدير",

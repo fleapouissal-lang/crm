@@ -12,6 +12,7 @@ import {
   Lock,
   Moon,
   Palette,
+  Pencil,
   Plus,
   Sun,
   Trash2,
@@ -52,6 +53,8 @@ import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor
 import { MemberAccountPanel } from "@/components/settings/member-account-panel";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
 import { TeamMemberPasswordDialog } from "@/components/settings/team-member-password-dialog";
+import { TeamMemberAccessDialog } from "@/components/settings/team-member-access-dialog";
+import type { Profile } from "@/types/database";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
@@ -165,6 +168,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
     id: string;
     name: string;
   } | null>(null);
+  const [accessTarget, setAccessTarget] = useState<Profile | null>(null);
   const platformAdmin = data.profile.role === "platform_admin";
   const isTeamMember = data.isTeamMember;
   const [currentPassword, setCurrentPassword] = useState("");
@@ -870,6 +874,18 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                                     type="button"
                                     className="fl-btn sm ghost"
                                     disabled={pending}
+                                    aria-label={s.editMemberAccess}
+                                    title={s.editMemberAccess}
+                                    onClick={() => setAccessTarget(member)}
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </button>
+                                ) : null}
+                                {canResetPassword ? (
+                                  <button
+                                    type="button"
+                                    className="fl-btn sm ghost"
+                                    disabled={pending}
                                     aria-label={s.resetMemberPassword}
                                     title={s.resetMemberPassword}
                                     onClick={() =>
@@ -946,6 +962,16 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
               }}
               memberId={passwordTarget?.id ?? null}
               memberName={passwordTarget?.name ?? ""}
+            />
+            <TeamMemberAccessDialog
+              open={!!accessTarget}
+              onOpenChange={(open) => {
+                if (!open) setAccessTarget(null);
+              }}
+              member={accessTarget}
+              jobRoles={data.jobRoles}
+              actorRole={data.profile.role}
+              onUpdated={() => router.refresh()}
             />
           </div>
         </div>

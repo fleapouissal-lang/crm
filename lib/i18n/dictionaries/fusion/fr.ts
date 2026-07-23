@@ -823,6 +823,11 @@ export const fusionFr: FusionDictionary = {
     resetMemberPasswordHint:
       "Définir un nouveau mot de passe pour « {name} ». Il devra l'utiliser à la prochaine connexion.",
     memberPasswordUpdated: "Mot de passe mis à jour",
+    editMemberAccess: "Modifier l'accès",
+    editMemberAccessTitle: "Fonction et accès",
+    editMemberAccessHint:
+      "Modifier la fonction et le niveau d'accès de « {name} ».",
+    memberAccessUpdated: "Accès membre mis à jour",
     cannotRemoveSelf: "Vous ne pouvez pas supprimer votre propre compte",
     cannotRemoveLastDirector:
       "Impossible de supprimer le dernier directeur de l'entreprise",

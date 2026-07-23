@@ -821,6 +821,10 @@ export const fusionEn = {
     resetMemberPasswordHint:
       "Set a new password for « {name} ». They will use it on their next sign-in.",
     memberPasswordUpdated: "Password updated",
+    editMemberAccess: "Edit access",
+    editMemberAccessTitle: "Function and access",
+    editMemberAccessHint: "Update the function and access level for « {name} ».",
+    memberAccessUpdated: "Member access updated",
     cannotRemoveSelf: "You cannot remove your own account",
     cannotRemoveLastDirector:
       "Cannot remove the last director of the company",
