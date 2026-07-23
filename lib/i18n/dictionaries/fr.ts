@@ -222,6 +222,8 @@ export const fr = {
     memberSubtitle: "Vos projets assignés et vos tâches prioritaires.",
     commercialSubtitle:
       "Vos leads, clients, tâches et calendrier pour suivre l'activité commerciale.",
+    modulesTitle: "Vos modules",
+    modulesHint: "Ouvrir leads, clients, tâches et calendrier",
     restrictedSubtitle:
       "Votre accès est limité aux paramètres de votre compte.",
     restrictedTitle: "Accès limité",

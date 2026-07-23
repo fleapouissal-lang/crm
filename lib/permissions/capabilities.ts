@@ -9,8 +9,44 @@ export type NavCapability =
   | "calendar"
   | "finance_docs";
 
-export function getJobSlug(profile: Pick<Profile, "job_role">): string | null {
-  return profile.job_role?.slug ?? null;
+export function getJobSlug(
+  profile: Pick<Profile, "job_role" | "job_title">
+): string | null {
+  const jr = profile.job_role as
+    | Profile["job_role"]
+    | Array<NonNullable<Profile["job_role"]>>
+    | null
+    | undefined;
+  if (Array.isArray(jr)) {
+    const slug = jr[0]?.slug ?? null;
+    if (slug) return slug;
+  } else if (jr?.slug) {
+    return jr.slug;
+  }
+
+  // Fallback when the job_role join is missing but job_title was set at invite time.
+  const title = (profile.job_title ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  if (title.includes("commercial")) return "commercial";
+  if (title.includes("developpeur") || title.includes("developer")) {
+    return "developpeur";
+  }
+  if (title.includes("designer")) return "designer";
+  if (title.includes("stagiaire") || title.includes("intern")) return "stagiaire";
+  if (title.includes("comptable") || title.includes("accountant")) {
+    return "comptable";
+  }
+  if (title.includes("ressource") || title === "rh" || title.includes("human")) {
+    return "rh";
+  }
+  if (title.includes("support")) return "support";
+  if (title.includes("directeur") || title.includes("director")) {
+    return "directeur";
+  }
+  if (title.includes("gerant") || title.includes("manager")) return "gerant";
+  return null;
 }
 
 export function isLeadership(profile: Pick<Profile, "role">): boolean {

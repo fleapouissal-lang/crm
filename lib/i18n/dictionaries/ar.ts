@@ -222,6 +222,8 @@ export const ar = {
     memberSubtitle: "مشاريعك المعيّنة ومهامك ذات الأولوية.",
     commercialSubtitle:
       "عملاؤك المحتملون والعملاء والمهام والتقويم لمتابعة النشاط التجاري.",
+    modulesTitle: "وحداتك",
+    modulesHint: "افتح العملاء المحتملين والعملاء والمهام والتقويم",
     restrictedSubtitle: "وصولك مقتصر على إعدادات حسابك.",
     restrictedTitle: "وصول محدود",
     restrictedHint: "تواصل مع المدير إذا كنت بحاجة للوصول إلى وحدات CRM.",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   CheckSquare,
+  Columns3,
   FolderKanban,
   Plus,
   Target,
@@ -12,6 +13,7 @@ import {
   FileText,
   Receipt,
   AlertTriangle,
+  type LucideIcon,
 } from "lucide-react";
 import type { DashboardStats } from "@/lib/actions/dashboard";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
@@ -305,30 +307,133 @@ function MemberDashboardView({
 
         <div className="dash-kpi-grid">
           <MiniStat
+            href="/leads"
             label={dict.dashboard.openLeads}
             value={String(stats.openLeads)}
             hint={dict.dashboard.totalLeadsHint}
             icon={<UserPlus className="size-3.5" strokeWidth={2} />}
           />
           <MiniStat
+            href="/clients"
             label={dict.dashboard.totalClients ?? dict.nav.clients}
             value={String(stats.totalClients)}
             hint={dict.dashboard.totalClientsHint ?? dict.nav.clientsSub}
             icon={<Target className="size-3.5" strokeWidth={2} />}
           />
           <MiniStat
+            href="/tasks?view=list"
             label={dict.dashboard.openTasks}
             value={String(stats.openTasks)}
             hint={dict.dashboard.latestTasks ?? dict.tasks.subtitle}
             icon={<CheckSquare className="size-3.5" strokeWidth={2} />}
           />
           <MiniStat
+            href="/calendar"
             label={dict.dashboard.tasksDueToday}
             value={String(stats.tasksDueToday)}
             hint={dict.dashboard.tasksDueTodayHint}
             danger={stats.overdueTasks > 0}
             icon={<CalendarDays className="size-3.5" strokeWidth={2} />}
           />
+        </div>
+
+        <div className="fl-card">
+          <div className="fl-card-head">
+            <div>
+              <h3>{dict.dashboard.modulesTitle ?? dict.nav.main}</h3>
+              <div className="ch-sub">
+                {dict.dashboard.modulesHint ?? dict.dashboard.commercialSubtitle}
+              </div>
+            </div>
+          </div>
+          <div className="fl-pad">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {(
+                [
+                  canAccessLeads(profile)
+                    ? {
+                        href: "/leads",
+                        label: dict.nav.leads,
+                        hint: dict.nav.leadsSub,
+                        icon: UserPlus,
+                        value: String(stats.openLeads),
+                      }
+                    : null,
+                  canAccessClients(profile)
+                    ? {
+                        href: "/clients",
+                        label: dict.nav.clients,
+                        hint: dict.nav.clientsSub,
+                        icon: Target,
+                        value: String(stats.totalClients),
+                      }
+                    : null,
+                  showTasks
+                    ? {
+                        href: "/tasks?view=list",
+                        label: dict.nav.tasks,
+                        hint: dict.nav.tasksSub,
+                        icon: CheckSquare,
+                        value: String(stats.openTasks),
+                      }
+                    : null,
+                  showTasks
+                    ? {
+                        href: "/tasks?view=board",
+                        label: dict.nav.kanbanTasks,
+                        hint: dict.tasks.subtitle,
+                        icon: Columns3,
+                        value: String(stats.openTasks),
+                      }
+                    : null,
+                  showCalendar
+                    ? {
+                        href: "/calendar",
+                        label: dict.nav.calendar,
+                        hint: dict.nav.calendarSub,
+                        icon: CalendarDays,
+                        value: String(stats.tasksDueToday),
+                      }
+                    : null,
+                ] as Array<{
+                  href: string;
+                  label: string;
+                  hint: string;
+                  icon: LucideIcon;
+                  value: string;
+                } | null>
+              )
+                .filter(Boolean)
+                .map((mod) => {
+                  const item = mod!;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] p-3 transition hover:border-[var(--iris)] hover:bg-[color-mix(in_oklch,var(--iris),transparent_94%)]"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--iris),transparent_88%)] text-[var(--iris)]">
+                          <Icon className="size-4" strokeWidth={2} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <b className="truncate text-sm">{item.label}</b>
+                            <span className="fl-mono text-sm tabular-nums">
+                              {item.value}
+                            </span>
+                          </div>
+                          <p className="fl-tny fl-faint line-clamp-2">
+                            {item.hint}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-[18px] lg:grid-cols-2">
@@ -503,6 +608,7 @@ function MiniStat({
   suffix,
   danger,
   icon,
+  href,
 }: {
   label: string;
   value: string;
@@ -510,9 +616,10 @@ function MiniStat({
   suffix?: string;
   danger?: boolean;
   icon?: React.ReactNode;
+  href?: string;
 }) {
-  return (
-    <div className="fl-card fl-pad">
+  const body = (
+    <>
       <div className="k-label flex items-center gap-1.5">
         {icon}
         {label}
@@ -522,6 +629,19 @@ function MiniStat({
         {suffix ? <span className="cur">{suffix}</span> : null}
       </div>
       <div className="k-foot fl-faint mt-2">{hint}</div>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="fl-card fl-pad block transition hover:border-[var(--iris)]"
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className="fl-card fl-pad">{body}</div>;
 }
