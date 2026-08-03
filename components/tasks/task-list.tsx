@@ -9,6 +9,7 @@ import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
+import { taskMatchesDueFilter, todayKey } from "@/lib/tasks/due-filter";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
@@ -130,6 +131,8 @@ export function TaskList({
   profile,
   projects = [],
   projectFilter = "all",
+  searchQuery = "",
+  dueFilter = todayKey(),
 }: {
   initialTasks: Task[];
   organizationId: string;
@@ -138,6 +141,8 @@ export function TaskList({
   profile: Profile;
   projects?: ProjectRecord[];
   projectFilter?: string;
+  searchQuery?: string;
+  dueFilter?: string;
 }) {
   const dict = useDict();
   const { locale } = useI18n();
@@ -217,8 +222,23 @@ export function TaskList({
   );
 
   const filteredTasks = useMemo(
-    () => tasks.filter((t) => taskMatchesProjectFilter(t, projectFilter)),
-    [tasks, projectFilter]
+    () =>
+      tasks.filter((t) => {
+        if (!taskMatchesProjectFilter(t, projectFilter)) return false;
+        if (!taskMatchesDueFilter(t, dueFilter, today)) return false;
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return true;
+        const creator =
+          t.created_profile ??
+          profiles.find((p) => p.id === t.created_by);
+        return (
+          t.title.toLowerCase().includes(query) ||
+          (t.description ?? "").toLowerCase().includes(query) ||
+          (creator?.full_name ?? "").toLowerCase().includes(query) ||
+          (t.assigned_profile?.full_name ?? "").toLowerCase().includes(query)
+        );
+      }),
+    [tasks, projectFilter, searchQuery, dueFilter, profiles, today]
   );
   const orderedTasks = useMemo(() => {
     const sectionRank = (task: Task) => {
@@ -231,7 +251,7 @@ export function TaskList({
   }, [filteredTasks, today]);
   const pagination = useAdaptivePagination(orderedTasks, {
     rowHeight: 61,
-    resetKey: projectFilter,
+    resetKey: `${projectFilter}|${searchQuery}|${dueFilter}`,
   });
 
   if (filteredTasks.length === 0) {
@@ -339,6 +359,24 @@ export function TaskList({
                             {new Date(
                               task.due_date + "T00:00:00"
                             ).toLocaleDateString(dateLocale)}
+                          </span>
+                        )}
+                        {(task.created_profile ||
+                          profiles.find((p) => p.id === task.created_by)) && (
+                          <span>
+                            {dict.common.createdBy}{" "}
+                            <span className="font-medium text-foreground/80">
+                              {(() => {
+                                const creator =
+                                  task.created_profile ??
+                                  profiles.find((p) => p.id === task.created_by);
+                                return (
+                                  creator?.full_name?.trim() ||
+                                  creator?.email ||
+                                  "—"
+                                );
+                              })()}
+                            </span>
                           </span>
                         )}
                         {task.lead && (

@@ -31,6 +31,7 @@ import {
 const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
 
 const schema = z.object({
+  number: z.string().min(1),
   clientName: z.string().min(1),
   clientType: z.enum(["pro", "particulier"]),
   currency: z.string().min(1),
@@ -78,6 +79,7 @@ export function InvoiceFormDialog({
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      number: "",
       clientName: "",
       clientType: "pro",
       currency: "MAD",
@@ -89,19 +91,18 @@ export function InvoiceFormDialog({
   });
 
   const status = watch("status") as InvoiceStatus;
-  const templateId = watch("templateId") || "";
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
   const clientName = watch("clientName") || "";
-  const dueDate = watch("dueDate") || "";
   const notes = watch("notes") || "";
-  const number = invoice?.number ?? nextInvoiceNumber(existingInvoices);
+  const number = watch("number") || "";
 
   useEffect(() => {
     if (!open) return;
     const defaultDue = new Date();
     defaultDue.setDate(defaultDue.getDate() + 30);
     reset({
+      number: invoice?.number ?? nextInvoiceNumber(existingInvoices),
       clientName: invoice?.clientName ?? "",
       clientType: invoice?.clientType ?? "pro",
       currency: invoice?.currency ?? "MAD",
@@ -122,7 +123,7 @@ export function InvoiceFormDialog({
           ]
     );
     setLinesError(null);
-  }, [open, invoice, reset, invoiceTemplates]);
+  }, [open, invoice, reset, invoiceTemplates, existingInvoices]);
 
   function statusLabel(key: string) {
     if (key === "overdue") return inv.overdueStatus;
@@ -153,7 +154,7 @@ export function InvoiceFormDialog({
 
     onSave({
       id,
-      number,
+      number: values.number.trim(),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
       amount: documentAmountTtc(cleaned),
@@ -181,6 +182,10 @@ export function InvoiceFormDialog({
             <FinanceDocumentEditor
               kind="invoice"
               number={number}
+              onNumberChange={(v) =>
+                setValue("number", v, { shouldValidate: true })
+              }
+              numberError={errors.number ? inv.number : undefined}
               statusFieldLabel={inv.status}
               statusBadge={INVOICE_STATUS_BADGE[status] ?? "b-gray"}
               status={status}
@@ -206,20 +211,7 @@ export function InvoiceFormDialog({
               onCurrencyChange={(v) =>
                 setValue("currency", v, { shouldValidate: true })
               }
-              templateId={templateId}
-              templates={invoiceTemplates}
-              onTemplateChange={(v) => setValue("templateId", v)}
-              metaFields={[
-                {
-                  key: "dueDate",
-                  label: inv.dueDate,
-                  kind: "date",
-                  value: dueDate,
-                  onChange: (v) =>
-                    setValue("dueDate", v, { shouldValidate: true }),
-                  error: errors.dueDate ? inv.dueDate : undefined,
-                },
-              ]}
+              metaFields={[]}
               items={items}
               onItemsChange={setItems}
               notes={notes}

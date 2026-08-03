@@ -323,6 +323,40 @@ export async function uploadReportFolderFileAction(
   return { success: true, data: mapFile(row, signed) };
 }
 
+export async function renameReportFolderFileAction(
+  fileId: string,
+  label: string
+): Promise<ActionResult<ReportFolderFile>> {
+  const gate = await requireLeadership();
+  if (!gate.ok) return { success: false, error: gate.error };
+
+  const nextLabel = label.trim();
+  if (!nextLabel) {
+    return { success: false, error: "File name is required" };
+  }
+  if (nextLabel.length > 160) {
+    return { success: false, error: "File name is too long" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("report_folder_files")
+    .update({ label: nextLabel })
+    .eq("id", fileId)
+    .eq("organization_id", gate.orgId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const row = data as FileRow;
+  const signed = await signPaths([row.storage_path]);
+  revalidateReports();
+  return { success: true, data: mapFile(row, signed) };
+}
+
 export async function deleteReportFolderFileAction(
   fileId: string
 ): Promise<ActionResult> {
@@ -357,7 +391,8 @@ export async function deleteReportFolderFileAction(
 }
 
 export async function getReportFolderFileSignedUrlAction(
-  fileId: string
+  fileId: string,
+  options?: { download?: boolean }
 ): Promise<ActionResult<string>> {
   const gate = await requireLeadership();
   if (!gate.ok) return { success: false, error: gate.error };
@@ -365,7 +400,7 @@ export async function getReportFolderFileSignedUrlAction(
   const supabase = await createClient();
   const { data: row, error } = await supabase
     .from("report_folder_files")
-    .select("storage_path")
+    .select("storage_path, file_name, label")
     .eq("id", fileId)
     .eq("organization_id", gate.orgId)
     .maybeSingle();
@@ -374,9 +409,21 @@ export async function getReportFolderFileSignedUrlAction(
     return { success: false, error: error?.message ?? "Not found" };
   }
 
+  const downloadName =
+    (row.label as string) || (row.file_name as string) || "report.pdf";
   const { data, error: signError } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(row.storage_path as string, SIGNED_URL_TTL);
+    .createSignedUrl(
+      row.storage_path as string,
+      SIGNED_URL_TTL,
+      options?.download
+        ? {
+            download: downloadName.toLowerCase().endsWith(".pdf")
+              ? downloadName
+              : `${downloadName}.pdf`,
+          }
+        : undefined
+    );
 
   if (signError || !data?.signedUrl) {
     return { success: false, error: signError?.message ?? "Signed URL failed" };

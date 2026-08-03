@@ -12,9 +12,7 @@ import {
   type VerticalNavId,
 } from "@/lib/navigation/vertical-presets";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
-import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { UserAvatar } from "@/components/shared/user-avatar";
 import { NotificationsBell } from "@/components/notifications/notifications-bell";
 import type { Profile } from "@/types/database";
 
@@ -121,25 +119,8 @@ export function AppHeader({
       ) : null}
 
       <div className="fusion-top-actions">
-        <span className="fusion-top-actions__desktop">
-          <LocaleSwitcher />
-        </span>
         <ThemeToggle />
         {!platformAdmin ? <NotificationsBell /> : null}
-        <button
-          type="button"
-          className="fusion-top-actions__profile"
-          aria-label={dict.auth.profile}
-          title={dict.nav.settings}
-          onClick={() => router.push("/settings")}
-        >
-          <UserAvatar
-            name={profile.full_name ?? dict.common.user}
-            avatarUrl={profile.avatar_url}
-            userId={profile.id}
-            variant="header"
-          />
-        </button>
       </div>
     </header>
   );

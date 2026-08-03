@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Plus, Clock, Check, Filter } from "lucide-react";
+import { Clock, Check, Trash2 } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -23,20 +23,16 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { updateTaskStatus } from "@/lib/actions/tasks";
+import { deleteTask, updateTaskStatus } from "@/lib/actions/tasks";
 import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
-import { FlAva, FlChip, AvatarStack } from "@/components/fusion/primitives";
+import { taskMatchesDueFilter, todayKey } from "@/lib/tasks/due-filter";
+import { canDeleteTaskForProfile } from "@/lib/permissions";
+import { FlAva } from "@/components/fusion/primitives";
 import { useDict } from "@/components/shared/i18n-provider";
+import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const BOARD_COLUMNS: {
   id: TaskStatus;
@@ -59,14 +55,23 @@ const AVATAR_COLORS = ["#52525b", "#3ecf8e", "#f5a623", "#71717a"];
 
 function assigneeMeta(profile?: Profile | null) {
   const name = profile?.full_name?.trim() ?? "";
-  if (!name) return { initials: "?", bg: "#52525b" };
+  if (!name) return { initials: "?", bg: "#52525b", name: "" };
   const parts = name.split(/\s+/);
   const initials =
     parts.length >= 2
       ? `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase()
       : name.slice(0, 2).toUpperCase();
   const bg = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length] ?? "#52525b";
-  return { initials, bg };
+  return { initials, bg, name };
+}
+
+function creatorLabel(task: Task, profiles: Profile[], fallback: string) {
+  const profile =
+    task.created_profile ??
+    profiles.find((p) => p.id === task.created_by) ??
+    null;
+  const name = profile?.full_name?.trim() || profile?.email || "";
+  return name || fallback;
 }
 
 function PriorityDot({ priority }: { priority: TaskPriority }) {
@@ -86,14 +91,21 @@ function PriorityDot({ priority }: { priority: TaskPriority }) {
 function TaskCard({
   task,
   project,
+  profiles = [],
+  canDelete,
+  onDelete,
   isDragging,
 }: {
   task: Task;
   project?: ProjectRecord | null;
+  profiles?: Profile[];
+  canDelete?: boolean;
+  onDelete?: (task: Task) => void;
   isDragging?: boolean;
 }) {
   const dict = useDict();
   const assignee = assigneeMeta(task.assigned_profile);
+  const creator = creatorLabel(task, profiles, "—");
   const isDone = task.status === "done";
 
   return (
@@ -104,11 +116,34 @@ function TaskCard({
         isDragging && "opacity-90 ring-2 ring-[var(--iris)]/40"
       )}
     >
-      {project ? (
-        <span className="ktag fl-badge b-iris text-[10.5px]">{project.title}</span>
-      ) : task.lead?.company ? (
-        <span className="ktag fl-badge b-blue text-[10.5px]">{task.lead.company}</span>
-      ) : null}
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          {project ? (
+            <span className="ktag fl-badge b-iris text-[10.5px]">
+              {project.title}
+            </span>
+          ) : task.lead?.company ? (
+            <span className="ktag fl-badge b-blue text-[10.5px]">
+              {task.lead.company}
+            </span>
+          ) : null}
+        </div>
+        {canDelete && onDelete ? (
+          <button
+            type="button"
+            className="rowbtn rowbtn--danger shrink-0"
+            aria-label={dict.common.delete}
+            title={dict.common.delete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="size-3.5" strokeWidth={2} />
+          </button>
+        ) : null}
+      </div>
       <h4>
         <Link
           href={`/tasks/${task.id}`}
@@ -119,6 +154,10 @@ function TaskCard({
           {task.title}
         </Link>
       </h4>
+      <p className="mt-1 truncate text-[11px] fl-faint">
+        {dict.common.createdBy}{" "}
+        <span className="font-medium text-[var(--text-dim)]">{creator}</span>
+      </p>
       <div className="kmeta">
         <div className="kl flex flex-wrap items-center gap-2">
           <PriorityDot priority={task.priority} />
@@ -146,9 +185,15 @@ function TaskCard({
 function SortableTaskCard({
   task,
   project,
+  profiles,
+  canDelete,
+  onDelete,
 }: {
   task: Task;
   project?: ProjectRecord | null;
+  profiles: Profile[];
+  canDelete?: boolean;
+  onDelete?: (task: Task) => void;
 }) {
   const {
     attributes,
@@ -167,7 +212,13 @@ function SortableTaskCard({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} project={project} />
+      <TaskCard
+        task={task}
+        project={project}
+        profiles={profiles}
+        canDelete={canDelete}
+        onDelete={onDelete}
+      />
     </div>
   );
 }
@@ -176,10 +227,16 @@ function KanbanColumn({
   status,
   tasks,
   projectsById,
+  profiles,
+  currentProfile,
+  onDelete,
 }: {
   status: TaskStatus;
   tasks: Task[];
   projectsById: Map<string, ProjectRecord>;
+  profiles: Profile[];
+  currentProfile: Profile;
+  onDelete: (task: Task) => void;
 }) {
   const dict = useDict();
   const k = dict.fusion.kanban;
@@ -205,6 +262,9 @@ function KanbanColumn({
             <SortableTaskCard
               key={task.id}
               task={task}
+              profiles={profiles}
+              canDelete={canDeleteTaskForProfile(currentProfile, task)}
+              onDelete={onDelete}
               project={
                 task.project_id
                   ? projectsById.get(task.project_id) ?? null
@@ -224,23 +284,23 @@ export function TaskKanbanBoard({
   profiles,
   projects,
   projectFilter,
-  onProjectFilterChange,
-  onAddTaskHref,
-  onShowList,
+  searchQuery = "",
+  dueFilter = todayKey(),
+  profile,
 }: {
   initialTasks: Task[];
   organizationId: string;
   profiles: Profile[];
   projects: ProjectRecord[];
   projectFilter: string;
-  onProjectFilterChange: (value: string) => void;
-  onAddTaskHref: string;
-  onShowList?: () => void;
+  searchQuery?: string;
+  dueFilter?: string;
+  profile: Profile;
 }) {
   const dict = useDict();
-  const k = dict.fusion.kanban;
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -292,14 +352,24 @@ export function TaskKanbanBoard({
     [projects]
   );
 
+  const query = searchQuery.trim().toLowerCase();
+  const today = todayKey();
+
   const visibleTasks = useMemo(
     () =>
-      tasks.filter(
-        (t) =>
-          t.status !== "cancelled" &&
-          taskMatchesProjectFilter(t, projectFilter)
-      ),
-    [tasks, projectFilter]
+      tasks.filter((t) => {
+        if (t.status === "cancelled") return false;
+        if (!taskMatchesProjectFilter(t, projectFilter)) return false;
+        if (!taskMatchesDueFilter(t, dueFilter, today)) return false;
+        if (!query) return true;
+        return (
+          t.title.toLowerCase().includes(query) ||
+          (t.description ?? "").toLowerCase().includes(query) ||
+          (t.created_profile?.full_name ?? "").toLowerCase().includes(query) ||
+          (t.assigned_profile?.full_name ?? "").toLowerCase().includes(query)
+        );
+      }),
+    [tasks, projectFilter, dueFilter, query, today]
   );
 
   const byStatus = useMemo(() => {
@@ -311,15 +381,6 @@ export function TaskKanbanBoard({
     }
     return map;
   }, [visibleTasks]);
-
-  const teamAvatars = useMemo(
-    () =>
-      profiles.slice(0, 4).map((p, idx) => {
-        const meta = assigneeMeta(p);
-        return { initials: meta.initials, bg: AVATAR_COLORS[idx] ?? meta.bg };
-      }),
-    [profiles]
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -372,62 +433,7 @@ export function TaskKanbanBoard({
       : null;
 
   return (
-    <div className="fl-card fl-kanban-shell">
-      <div className="fl-kanban-toolbar">
-        <div className="fl-kanban-toolbar__left">
-          <div className="fl-seg">
-            <button type="button" className="on">
-              {k.board}
-            </button>
-            <button type="button" onClick={onShowList}>
-              {dict.tasks.list}
-            </button>
-          </div>
-          <FlChip>
-            <Filter className="size-3.5" strokeWidth={2} />
-            {visibleTasks.length} {dict.tasks.list.toLowerCase()}
-          </FlChip>
-        </div>
-        <div className="fl-kanban-toolbar__right">
-          <div className="fl-filter-field fl-filter-field--lg">
-            <Select
-              value={projectFilter}
-              onValueChange={(v) => onProjectFilterChange(v ?? "all")}
-            >
-              <SelectTrigger className="fl-select-trigger">
-                <SelectValue placeholder={k.filterByProject}>
-                  {projectFilter === "all"
-                    ? k.allProjects
-                    : projectFilter === "none"
-                      ? k.noProject
-                      : projects.find((p) => p.id === projectFilter)?.title ??
-                        k.filterByProject}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="fl-select-panel" align="end">
-                <SelectItem value="all">{k.allProjects}</SelectItem>
-                <SelectItem value="none">{k.noProject}</SelectItem>
-                {projects.map((proj) => (
-                  <SelectItem key={proj.id} value={proj.id}>
-                    {proj.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {teamAvatars.length > 0 ? <AvatarStack items={teamAvatars} /> : null}
-          <Link
-            href={onAddTaskHref}
-            className="fl-btn primary sm fl-toolbar-create shrink-0"
-          >
-            <Plus strokeWidth={2} />
-            <span className="fl-toolbar-create__label hidden sm:inline">
-              {k.addTask}
-            </span>
-          </Link>
-        </div>
-      </div>
-
+    <>
       <div className="fl-kanban-body">
         <DndContext
           sensors={sensors}
@@ -442,16 +448,48 @@ export function TaskKanbanBoard({
                 status={col.id}
                 tasks={byStatus[col.id]}
                 projectsById={projectsById}
+                profiles={profiles}
+                currentProfile={profile}
+                onDelete={setDeleteTarget}
               />
             ))}
           </div>
           <DragOverlay>
             {activeTask ? (
-              <TaskCard task={activeTask} project={activeProject} isDragging />
+              <TaskCard
+                task={activeTask}
+                project={activeProject}
+                profiles={profiles}
+                isDragging
+              />
             ) : null}
           </DragOverlay>
         </DndContext>
       </div>
-    </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={dict.tasks.deleteTitle}
+        description={dict.tasks.deleteDescription.replace(
+          "{title}",
+          deleteTarget?.title ?? ""
+        )}
+        confirmLabel={dict.common.delete}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          const result = await deleteTask(deleteTarget.id);
+          if (!result.success) {
+            toast.error(result.error);
+            return;
+          }
+          setTasks((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+          setDeleteTarget(null);
+          toast.success(dict.tasks.deletedTask);
+        }}
+      />
+    </>
   );
 }

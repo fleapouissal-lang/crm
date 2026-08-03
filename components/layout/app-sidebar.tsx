@@ -31,6 +31,7 @@ import { CompanyBrand } from "@/components/brand/company-brand";
 import { CrmBrand } from "@/components/brand/crm-brand";
 import { SidebarLuxuryBg } from "@/components/layout/sidebar-luxury-bg";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { useDict } from "@/components/shared/i18n-provider";
 import type { Profile } from "@/types/database";
 import { cn } from "@/lib/utils";
@@ -54,15 +55,6 @@ function resolveNavTitle(
 
 function isNavItemActive(item: NavItem, pathname: string, search: string) {
   const [itemPath, itemQuery = ""] = item.href.split("?");
-  if (item.id === "tasks" || item.id === "kanban") {
-    if (pathname !== "/tasks" && !pathname.startsWith("/tasks/")) return false;
-    if (pathname.startsWith("/tasks/new")) return item.id === "tasks";
-    const view = new URLSearchParams(search).get("view");
-    if (item.id === "kanban") {
-      return !view || view === "board";
-    }
-    return view === "list";
-  }
   if (pathname === itemPath) {
     if (!itemQuery) return true;
     const want = new URLSearchParams(itemQuery);
@@ -307,6 +299,10 @@ export function AppSidebar({
             </div>
           </div>
         )}
+
+        <div className="fusion-sidebar-locale">
+          <LocaleSwitcher variant={collapsed ? "icon" : "select"} />
+        </div>
 
         <nav className="fusion-nav">
           {navSections.map((items, index) => (

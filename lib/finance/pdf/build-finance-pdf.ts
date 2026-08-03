@@ -927,15 +927,12 @@ export async function buildInvoicePdfBytes(
     {
       showBankDetails: true,
       footerNote,
-      dueLabel: labels.dueDate,
-      dueValue: formatDateFr(invoice.dueDate),
     },
     true
   );
 
   writer.drawMetaStrip([
     { label: labels.date, value: formatDateFr(invoice.createdAt) },
-    { label: labels.dueDate, value: formatDateFr(invoice.dueDate) },
   ]);
   writer.drawClientBlock(invoice.clientName, clientType);
   writer.drawItemsTable(items, invoice.currency);

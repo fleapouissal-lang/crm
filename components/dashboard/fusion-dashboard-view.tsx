@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   CalendarDays,
   CheckSquare,
-  Columns3,
   FolderKanban,
   Plus,
   Target,
@@ -370,19 +369,10 @@ function MemberDashboardView({
                     : null,
                   showTasks
                     ? {
-                        href: "/tasks?view=list",
+                        href: "/tasks",
                         label: dict.nav.tasks,
                         hint: dict.nav.tasksSub,
                         icon: CheckSquare,
-                        value: String(stats.openTasks),
-                      }
-                    : null,
-                  showTasks
-                    ? {
-                        href: "/tasks?view=board",
-                        label: dict.nav.kanbanTasks,
-                        hint: dict.tasks.subtitle,
-                        icon: Columns3,
                         value: String(stats.openTasks),
                       }
                     : null,
@@ -489,8 +479,8 @@ function MemberDashboardView({
             <Plus strokeWidth={2} className="size-3.5" />
             <span className="hidden sm:inline">{dict.tasks.newTask}</span>
           </Link>
-          <Link href="/tasks?view=board" className="fl-btn sm ghost shrink-0">
-            {dict.nav.kanbanTasks}
+          <Link href="/tasks" className="fl-btn sm ghost shrink-0">
+            {dict.nav.tasks}
           </Link>
           <Link href="/calendar" className="fl-btn sm ghost shrink-0">
             {dict.nav.calendar}

@@ -17,18 +17,13 @@ function TasksFallback() {
   );
 }
 
-async function TasksContent({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; lead_id?: string; project_id?: string }>;
-}) {
+async function TasksContent() {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
   if (!canAccessTasks(profile)) redirect("/dashboard");
 
-  const params = await searchParams;
   const [tasks, profiles, leads, projects] = await Promise.all([
-    getTasks({ status: params.status }),
+    getTasks(),
     getOrgProfiles(),
     getLeads(),
     getProjects(),
@@ -46,14 +41,10 @@ async function TasksContent({
   );
 }
 
-export default function TasksPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; lead_id?: string; project_id?: string }>;
-}) {
+export default function TasksPage() {
   return (
     <Suspense fallback={<TasksFallback />}>
-      <TasksContent searchParams={searchParams} />
+      <TasksContent />
     </Suspense>
   );
 }

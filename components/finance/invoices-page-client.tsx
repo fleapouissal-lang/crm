@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { Plus, Receipt, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -300,7 +298,6 @@ export function InvoicesPageClient({
                   <th>{inv.number}</th>
                   <th>{inv.client}</th>
                   <th>{inv.amount}</th>
-                  <th>{inv.dueDate}</th>
                   <th>{inv.status}</th>
                   <th className="w-12" />
                 </tr>
@@ -314,11 +311,6 @@ export function InvoicesPageClient({
                     </td>
                     <td className="fl-mono">
                       {formatMoney(row.amount, row.currency)}
-                    </td>
-                    <td className="fl-muted">
-                      {format(new Date(row.dueDate), "d MMM yyyy", {
-                        locale: fr,
-                      })}
                     </td>
                     <td>
                       <span

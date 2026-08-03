@@ -112,6 +112,13 @@ export function TaskDetailClient({
     profiles.find((p) => p.id === assignedTo)?.email ??
     c.unassigned;
 
+  const creatorLabel =
+    task.created_profile?.full_name?.trim() ||
+    task.created_profile?.email ||
+    profiles.find((p) => p.id === task.created_by)?.full_name?.trim() ||
+    profiles.find((p) => p.id === task.created_by)?.email ||
+    "—";
+
   const leadLabel =
     leads.find((l) => l.id === leadId)?.title ?? c.none;
 
@@ -417,6 +424,11 @@ export function TaskDetailClient({
             </Field>
 
             <p className="text-[11px] fl-faint">
+              {c.createdBy}:{" "}
+              <span className="font-medium text-[var(--text-dim)]">
+                {creatorLabel}
+              </span>
+              {" · "}
               {c.created}:{" "}
               {format(new Date(task.created_at), "d MMM yyyy · HH:mm")}
             </p>

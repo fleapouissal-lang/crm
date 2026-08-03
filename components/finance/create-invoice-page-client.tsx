@@ -36,6 +36,7 @@ const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
 const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
 
 const schema = z.object({
+  number: z.string().min(1),
   clientName: z.string().min(1),
   clientType: z.enum(["pro", "particulier"]),
   currency: z.string().min(1),
@@ -107,6 +108,7 @@ export function CreateInvoicePageClient({
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      number: nextInvoiceNumber(initialInvoices),
       clientName: "",
       clientType: "pro",
       currency: "MAD",
@@ -118,7 +120,6 @@ export function CreateInvoicePageClient({
   });
 
   const status = watch("status");
-  const templateId = watch("templateId");
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
 
@@ -148,7 +149,7 @@ export function CreateInvoicePageClient({
 
     const record: InvoiceRecord = {
       id: `inv-${crypto.randomUUID().slice(0, 8)}`,
-      number: nextInvoiceNumber(initialInvoices),
+      number: values.number.trim(),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
       amount: documentAmountTtc(cleaned),
@@ -208,12 +209,25 @@ export function CreateInvoicePageClient({
           <div className="fl-pad space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
+                label={inv.number}
+                htmlFor="ci-number"
+                error={errors.number?.message}
+              >
+                <Input
+                  id="ci-number"
+                  className="fl-inp fl-mono"
+                  {...register("number")}
+                />
+              </Field>
+              <Field
                 label={inv.client}
                 htmlFor="ci-client"
                 error={errors.clientName?.message}
               >
                 <Input id="ci-client" className="fl-inp" {...register("clientName")} />
               </Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={f.clientType}>
                 <Select
                   value={clientType}
@@ -241,23 +255,11 @@ export function CreateInvoicePageClient({
                   </SelectContent>
                 </Select>
               </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
               <Field label={f.currency} htmlFor="ci-currency">
                 <Input id="ci-currency" className="fl-inp" {...register("currency")} />
               </Field>
-              <Field
-                label={inv.dueDate}
-                htmlFor="ci-due"
-                error={errors.dueDate?.message}
-              >
-                <Input
-                  id="ci-due"
-                  type="date"
-                  className="fl-inp"
-                  {...register("dueDate")}
-                />
-              </Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={inv.status}>
                 <Select
                   value={status}
@@ -276,31 +278,6 @@ export function CreateInvoicePageClient({
                 </Select>
               </Field>
             </div>
-            <Field label={f.applyTemplate}>
-              <Select
-                value={templateId || "none"}
-                onValueChange={(v) =>
-                  setValue("templateId", !v || v === "none" ? "" : v)
-                }
-              >
-                <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue>
-                    {templateId
-                      ? templates.find((t) => t.id === templateId)?.name ??
-                        f.noTemplate
-                      : f.noTemplate}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{f.noTemplate}</SelectItem>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field label={dict.common.notes} htmlFor="ci-notes">
               <Textarea
                 id="ci-notes"

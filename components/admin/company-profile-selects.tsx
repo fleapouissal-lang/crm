@@ -77,12 +77,20 @@ export function CompanyProfileSelects({
             <SelectTrigger className="fl-select-trigger fl-input w-full">
               <span className="inline-flex min-w-0 flex-1 items-center gap-2">
                 <Globe2 className="size-4 shrink-0 fl-faint" strokeWidth={1.75} />
-                <SelectValue placeholder={s.selectCountry} />
+                <SelectValue placeholder={s.selectCountry}>
+                  {country
+                    ? s.countries[country as keyof typeof s.countries]
+                    : s.selectCountry}
+                </SelectValue>
               </span>
             </SelectTrigger>
             <SelectContent className="fl-select-panel">
               {COUNTRY_OPTIONS.map((opt) => (
-                <SelectItem key={opt.code} value={opt.code}>
+                <SelectItem
+                  key={opt.code}
+                  value={opt.code}
+                  label={s.countries[opt.code]}
+                >
                   {s.countries[opt.code]}
                 </SelectItem>
               ))}
@@ -102,12 +110,22 @@ export function CompanyProfileSelects({
                 <MapPin className="size-4 shrink-0 fl-faint" strokeWidth={1.75} />
                 <SelectValue
                   placeholder={country ? s.selectCity : s.selectCountryFirst}
-                />
+                >
+                  {city
+                    ? (s.cities[city as keyof typeof s.cities] ?? city)
+                    : country
+                      ? s.selectCity
+                      : s.selectCountryFirst}
+                </SelectValue>
               </span>
             </SelectTrigger>
             <SelectContent className="fl-select-panel">
               {cities.map((key) => (
-                <SelectItem key={key} value={key}>
+                <SelectItem
+                  key={key}
+                  value={key}
+                  label={s.cities[key as keyof typeof s.cities]}
+                >
                   {s.cities[key as keyof typeof s.cities]}
                 </SelectItem>
               ))}

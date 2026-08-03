@@ -119,7 +119,6 @@ export function CreateQuotePageClient({
   });
 
   const status = watch("status");
-  const templateId = watch("templateId");
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
 
@@ -276,31 +275,6 @@ export function CreateQuotePageClient({
                 </Select>
               </Field>
             </div>
-            <Field label={f.applyTemplate}>
-              <Select
-                value={templateId || "none"}
-                onValueChange={(v) =>
-                  setValue("templateId", !v || v === "none" ? "" : v)
-                }
-              >
-                <SelectTrigger className="fl-inp h-auto w-full">
-                  <SelectValue>
-                    {templateId
-                      ? templates.find((t) => t.id === templateId)?.name ??
-                        f.noTemplate
-                      : f.noTemplate}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{f.noTemplate}</SelectItem>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field label={dict.common.notes} htmlFor="cq-notes">
               <Textarea
                 id="cq-notes"

@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import {
   ChevronDown,
-  ExternalLink,
+  Download,
+  Eye,
   FileText,
   Folder,
   FolderPlus,
   Loader2,
+  Pencil,
   Plus,
+  Search,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -22,6 +25,7 @@ import {
   deleteReportFolderFileAction,
   getReportFolderFileSignedUrlAction,
   listReportFoldersAction,
+  renameReportFolderFileAction,
   uploadReportFolderFileAction,
   type ReportFolder,
   type ReportFolderFile,
@@ -37,6 +41,10 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+function matchesQuery(value: string, query: string) {
+  return value.toLowerCase().includes(query);
+}
+
 export function ReportFoldersSection() {
   const dict = useDict();
   const r = dict.fusion.reports;
@@ -48,9 +56,13 @@ export function ReportFoldersSection() {
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [deleteFolder, setDeleteFolder] = useState<ReportFolder | null>(null);
+  const [deleteFile, setDeleteFile] = useState<ReportFolderFile | null>(null);
+  const [renameFile, setRenameFile] = useState<ReportFolderFile | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [uploadingFolderId, setUploadingFolderId] = useState<string | null>(
     null
   );
@@ -67,9 +79,6 @@ export function ReportFoldersSection() {
       setFolders(result.data.folders);
       setFiles(result.data.files);
       setLoading(false);
-      if (!openFolderId && result.data.folders[0]) {
-        setOpenFolderId(result.data.folders[0].id);
-      }
     });
   }
 
@@ -77,6 +86,8 @@ export function ReportFoldersSection() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const query = search.trim().toLowerCase();
 
   const filesByFolder = useMemo(() => {
     const map = new Map<string, ReportFolderFile[]>();
@@ -87,6 +98,27 @@ export function ReportFoldersSection() {
     }
     return map;
   }, [files]);
+
+  const visibleFolders = useMemo(() => {
+    if (!query) return folders;
+    return folders.filter((folder) => {
+      if (matchesQuery(folder.name, query)) return true;
+      const folderFiles = filesByFolder.get(folder.id) ?? [];
+      return folderFiles.some(
+        (file) =>
+          matchesQuery(file.label, query) || matchesQuery(file.fileName, query)
+      );
+    });
+  }, [folders, filesByFolder, query]);
+
+  function getVisibleFiles(folderId: string) {
+    const folderFiles = filesByFolder.get(folderId) ?? [];
+    if (!query) return folderFiles;
+    return folderFiles.filter(
+      (file) =>
+        matchesQuery(file.label, query) || matchesQuery(file.fileName, query)
+    );
+  }
 
   function handleCreateFolder() {
     const name = folderName.trim();
@@ -138,41 +170,69 @@ export function ReportFoldersSection() {
           f.id === folderId ? { ...f, fileCount: f.fileCount + 1 } : f
         )
       );
+      setOpenFolderId(folderId);
       toast.success(r.projectPdfUploaded);
     });
   }
 
-  function handleOpenFile(file: ReportFolderFile) {
+  async function resolveSignedUrl(
+    file: ReportFolderFile,
+    download = false
+  ): Promise<string | null> {
+    if (!download && file.signedUrl) return file.signedUrl;
+    const result = await getReportFolderFileSignedUrlAction(file.id, {
+      download,
+    });
+    if (!result.success) {
+      toast.error(result.error);
+      return null;
+    }
+    return result.data;
+  }
+
+  function handleViewFile(file: ReportFolderFile) {
     startTransition(async () => {
-      if (file.signedUrl) {
-        window.open(file.signedUrl, "_blank", "noopener,noreferrer");
-        return;
-      }
-      const result = await getReportFolderFileSignedUrlAction(file.id);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      window.open(result.data, "_blank", "noopener,noreferrer");
+      const url = await resolveSignedUrl(file, false);
+      if (!url) return;
+      window.open(url, "_blank", "noopener,noreferrer");
     });
   }
 
-  function handleDeleteFile(file: ReportFolderFile) {
+  function handleDownloadFile(file: ReportFolderFile) {
     startTransition(async () => {
-      const result = await deleteReportFolderFileAction(file.id);
+      const url = await resolveSignedUrl(file, true);
+      if (!url) return;
+      const a = document.createElement("a");
+      a.href = url;
+      a.rel = "noopener noreferrer";
+      a.download = file.label.toLowerCase().endsWith(".pdf")
+        ? file.label
+        : `${file.label}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+  }
+
+  function handleRenameFile() {
+    if (!renameFile) return;
+    const next = renameValue.trim();
+    if (!next) {
+      toast.error(r.fileNameRequired);
+      return;
+    }
+    startTransition(async () => {
+      const result = await renameReportFolderFileAction(renameFile.id, next);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      setFiles((prev) => prev.filter((row) => row.id !== file.id));
-      setFolders((prev) =>
-        prev.map((f) =>
-          f.id === file.folderId
-            ? { ...f, fileCount: Math.max(0, f.fileCount - 1) }
-            : f
-        )
+      setFiles((prev) =>
+        prev.map((row) => (row.id === result.data.id ? result.data : row))
       );
-      toast.success(r.projectPdfDeleted);
+      setRenameFile(null);
+      setRenameValue("");
+      toast.success(r.fileRenamed);
     });
   }
 
@@ -186,6 +246,15 @@ export function ReportFoldersSection() {
               <p className="mt-0.5 text-[12px] fl-faint">{r.foldersSub}</p>
             </div>
             <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={r.searchFilesPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
               <button
                 type="button"
                 className="fl-btn primary sm fl-toolbar-create shrink-0"
@@ -217,11 +286,15 @@ export function ReportFoldersSection() {
               {r.newFolder}
             </button>
           </div>
+        ) : visibleFolders.length === 0 ? (
+          <div className="fl-pad py-14 text-center text-sm fl-faint">
+            {r.noSearchResults}
+          </div>
         ) : (
           <ul className="divide-y divide-[var(--border)]">
-            {folders.map((folder) => {
-              const folderFiles = filesByFolder.get(folder.id) ?? [];
+            {visibleFolders.map((folder) => {
               const isOpen = openFolderId === folder.id;
+              const folderFiles = isOpen ? getVisibleFiles(folder.id) : [];
               const uploading = uploadingFolderId === folder.id && pending;
 
               return (
@@ -229,7 +302,7 @@ export function ReportFoldersSection() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <button
                       type="button"
-                      className="flex min-w-0 items-center gap-3 text-start"
+                      className="flex min-w-0 flex-1 items-center gap-3 text-start"
                       onClick={() =>
                         setOpenFolderId(isOpen ? null : folder.id)
                       }
@@ -307,7 +380,7 @@ export function ReportFoldersSection() {
                     folderFiles.length === 0 ? (
                       <p className="inline-flex items-center gap-2 text-sm fl-faint">
                         <FileText className="size-3.5" />
-                        {r.noFolderFiles}
+                        {query ? r.noSearchResults : r.noFolderFiles}
                       </p>
                     ) : (
                       <ul className="space-y-2">
@@ -336,11 +409,34 @@ export function ReportFoldersSection() {
                                 type="button"
                                 className="rowbtn"
                                 disabled={pending}
-                                aria-label={r.openProjectPdf}
-                                title={r.openProjectPdf}
-                                onClick={() => handleOpenFile(file)}
+                                aria-label={r.viewFile}
+                                title={r.viewFile}
+                                onClick={() => handleViewFile(file)}
                               >
-                                <ExternalLink className="size-4" />
+                                <Eye className="size-4" strokeWidth={2} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rowbtn"
+                                disabled={pending}
+                                aria-label={r.downloadFile}
+                                title={r.downloadFile}
+                                onClick={() => handleDownloadFile(file)}
+                              >
+                                <Download className="size-4" strokeWidth={2} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rowbtn"
+                                disabled={pending}
+                                aria-label={r.renameFile}
+                                title={r.renameFile}
+                                onClick={() => {
+                                  setRenameFile(file);
+                                  setRenameValue(file.label);
+                                }}
+                              >
+                                <Pencil className="size-4" strokeWidth={2} />
                               </button>
                               <button
                                 type="button"
@@ -348,9 +444,9 @@ export function ReportFoldersSection() {
                                 disabled={pending}
                                 aria-label={r.deleteProjectPdf}
                                 title={r.deleteProjectPdf}
-                                onClick={() => handleDeleteFile(file)}
+                                onClick={() => setDeleteFile(file)}
                               >
-                                <Trash2 className="size-4" />
+                                <Trash2 className="size-4" strokeWidth={2} />
                               </button>
                             </div>
                           </li>
@@ -430,6 +526,82 @@ export function ReportFoldersSection() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={!!renameFile}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRenameFile(null);
+            setRenameValue("");
+          }
+        }}
+      >
+        <DialogContent className="fl-dialog-content ring-0 sm:max-w-md">
+          <DialogHeader className="fl-dialog-header">
+            <DialogTitle className="flex items-center gap-3">
+              <span
+                className="grid size-10 place-items-center rounded-xl text-white shadow-sm"
+                style={{ background: "var(--grad-brand)" }}
+              >
+                <Pencil className="size-5" strokeWidth={1.75} />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span>{r.renameFileTitle}</span>
+                <span className="text-xs font-normal fl-faint">
+                  {r.renameFileHint}
+                </span>
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="fl-dialog-body space-y-4">
+            <div className="fl-field">
+              <label className="fl-field-label" htmlFor="report-file-name">
+                {r.fileName}
+              </label>
+              <Input
+                id="report-file-name"
+                className="fl-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder={r.fileNamePlaceholder}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleRenameFile();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter className="fl-dialog-footer">
+            <button
+              type="button"
+              className="fl-btn sm ghost"
+              disabled={pending}
+              onClick={() => {
+                setRenameFile(null);
+                setRenameValue("");
+              }}
+            >
+              {dict.common.cancel}
+            </button>
+            <button
+              type="button"
+              className="fl-btn sm primary"
+              disabled={pending || !renameValue.trim()}
+              onClick={handleRenameFile}
+            >
+              {pending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Pencil className="size-3.5" />
+              )}
+              {pending ? dict.common.working : r.renameFile}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DeleteConfirmDialog
         open={!!deleteFolder}
         onOpenChange={(open) => {
@@ -455,6 +627,37 @@ export function ReportFoldersSection() {
           if (openFolderId === deleteFolder.id) setOpenFolderId(null);
           setDeleteFolder(null);
           toast.success(r.folderDeleted);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteFile}
+        onOpenChange={(open) => {
+          if (!open) setDeleteFile(null);
+        }}
+        title={r.deleteFileTitle}
+        description={r.deleteFileConfirm.replace(
+          "{name}",
+          deleteFile?.label ?? ""
+        )}
+        confirmLabel={dict.common.delete}
+        onConfirm={async () => {
+          if (!deleteFile) return;
+          const result = await deleteReportFolderFileAction(deleteFile.id);
+          if (!result.success) {
+            toast.error(result.error);
+            return;
+          }
+          setFiles((prev) => prev.filter((row) => row.id !== deleteFile.id));
+          setFolders((prev) =>
+            prev.map((f) =>
+              f.id === deleteFile.folderId
+                ? { ...f, fileCount: Math.max(0, f.fileCount - 1) }
+                : f
+            )
+          );
+          setDeleteFile(null);
+          toast.success(r.projectPdfDeleted);
         }}
       />
     </>

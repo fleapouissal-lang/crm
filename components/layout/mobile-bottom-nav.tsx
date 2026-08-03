@@ -149,7 +149,7 @@ export function MobileBottomNav({
       },
       {
         id: "tasks",
-        href: "/tasks?view=list",
+        href: "/tasks",
         label: dict.nav.tabTasks,
         icon: CheckSquare,
         allowed:

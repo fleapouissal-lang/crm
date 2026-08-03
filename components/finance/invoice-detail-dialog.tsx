@@ -1,9 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
 import { ExternalLink, Pencil } from "lucide-react";
-import { useDict, useI18n } from "@/components/shared/i18n-provider";
-import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
+import { useDict } from "@/components/shared/i18n-provider";
 import { InvoicePdfExportButton } from "@/components/finance/pdf-export-button";
 import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
 import {
@@ -46,8 +44,6 @@ export function InvoiceDetailDialog({
   onViewPdf?: () => void;
 }) {
   const dict = useDict();
-  const { locale } = useI18n();
-  const dateLocale = getDateFnsLocale(locale);
   const inv = dict.fusion.invoices;
   if (!invoice) return null;
 
@@ -75,10 +71,6 @@ export function InvoiceDetailDialog({
             clientName={invoice.clientName}
             amount={invoice.amount}
             currency={invoice.currency}
-            secondaryLabel={inv.dueDate}
-            secondaryValue={format(new Date(invoice.dueDate), "dd MMM yyyy", {
-              locale: dateLocale,
-            })}
             tertiaryLabel={dict.fusion.quotes.service}
             tertiaryValue={service}
             lineItems={items}

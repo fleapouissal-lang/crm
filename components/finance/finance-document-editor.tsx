@@ -14,7 +14,6 @@ import {
   formatMoney,
   lineItemTotalTtc,
   type ClientType,
-  type DocumentTemplate,
   type FinanceLineItem,
 } from "@/lib/finance/types";
 import { Input } from "@/components/ui/input";
@@ -49,6 +48,8 @@ type MetaField =
 export function FinanceDocumentEditor({
   kind,
   number,
+  onNumberChange,
+  numberError,
   statusFieldLabel,
   statusOptions,
   status,
@@ -60,9 +61,6 @@ export function FinanceDocumentEditor({
   onClientTypeChange,
   currency,
   onCurrencyChange,
-  templateId,
-  templates,
-  onTemplateChange,
   metaFields,
   items,
   onItemsChange,
@@ -72,6 +70,8 @@ export function FinanceDocumentEditor({
 }: {
   kind: "quote" | "invoice";
   number: string;
+  onNumberChange?: (value: string) => void;
+  numberError?: string;
   statusFieldLabel: string;
   statusBadge?: string;
   status: string;
@@ -84,9 +84,6 @@ export function FinanceDocumentEditor({
   onClientTypeChange: (value: ClientType) => void;
   currency: string;
   onCurrencyChange: (value: string) => void;
-  templateId: string;
-  templates: DocumentTemplate[];
-  onTemplateChange: (value: string) => void;
   metaFields: MetaField[];
   items: FinanceLineItem[];
   onItemsChange: (items: FinanceLineItem[]) => void;
@@ -127,9 +124,6 @@ export function FinanceDocumentEditor({
 
   const statusOptionLabel =
     statusOptions.find((opt) => opt.value === status)?.label ?? status;
-  const templateLabel = templateId
-    ? templates.find((t) => t.id === templateId)?.name ?? f.noTemplate
-    : f.noTemplate;
 
   return (
     <div className="fl-fin-editor">
@@ -141,7 +135,7 @@ export function FinanceDocumentEditor({
           />
           <h4>{f.optionsPanel}</h4>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="fl-field">
             <label className="fl-field-label">{statusFieldLabel}</label>
             <Select
@@ -155,28 +149,6 @@ export function FinanceDocumentEditor({
                 {statusOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="fl-field">
-            <label className="fl-field-label">{f.template}</label>
-            <Select
-              value={templateId || "none"}
-              onValueChange={(v) => {
-                if (!v || v === "none") onTemplateChange("");
-                else onTemplateChange(v);
-              }}
-            >
-              <SelectTrigger className="fl-select-trigger fl-input w-full">
-                <SelectValue>{templateLabel}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="fl-select-panel">
-                <SelectItem value="none">{f.noTemplate}</SelectItem>
-                {templates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -204,7 +176,27 @@ export function FinanceDocumentEditor({
             <header className="fl-fin-sheet__header">
               <div className="fl-fin-sheet__header-main">
                 <h2 className="fl-fin-sheet__doc-kind">{kindLabel}</h2>
-                <p className="fl-fin-sheet__doc-no">{number}</p>
+                {onNumberChange ? (
+                  <div className="fl-fin-sheet__doc-no-field">
+                    <label className="fl-field-label" htmlFor="fin-doc-number">
+                      {kind === "invoice"
+                        ? dict.fusion.invoices.number
+                        : dict.fusion.quotes.reference}
+                    </label>
+                    <Input
+                      id="fin-doc-number"
+                      className="fl-input fl-fin-sheet__doc-no-input"
+                      value={number}
+                      onChange={(e) => onNumberChange(e.target.value)}
+                      aria-invalid={Boolean(numberError)}
+                    />
+                    {numberError ? (
+                      <p className="text-xs text-destructive">{numberError}</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="fl-fin-sheet__doc-no">{number}</p>
+                )}
                 <div className="fl-fin-sheet__company-lines">
                   {companyLines.map((line) => (
                     <p key={line}>{line}</p>

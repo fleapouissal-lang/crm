@@ -8,7 +8,7 @@ import { Plus, Search, X, Eye, Pencil, Wallet, Trash2 } from "lucide-react";
 import type { OrgJobRole, Profile, Role } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { DataPagination } from "@/components/shared/data-pagination";
-import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
+import { CellMain, FlProgress, StatLine } from "@/components/fusion/primitives";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
 import { EmployeeProfileFormDialog } from "@/components/hr/hr-form-dialogs";
@@ -23,13 +23,11 @@ import type { EmployeeProfile, HrDepartment } from "@/lib/hr/types";
 import {
   avgUtilization,
   formatBaseSalary,
-  memberStatusBadgeClass,
   sumEntries,
 } from "@/lib/hr/types";
 import { currentMonthKey, teamPayrollTotals } from "@/lib/hr/payroll";
 import { useHrStore } from "@/lib/hr/use-hr-store";
 import { hrMemberPath, hrSalaryPath } from "@/lib/hr/paths";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -54,7 +52,7 @@ function MemberRowActions({
 
   return (
     <div
-      className="flex items-center justify-end gap-0.5"
+      className="flex items-center justify-end gap-1.5"
       onClick={(e) => e.stopPropagation()}
     >
       <button
@@ -111,7 +109,6 @@ export function HrPageClient({
   const h = dict.fusion.hr;
   const s = dict.fusion.settings;
   const l = dict.fusion.labels;
-  const b = dict.fusion.badges;
   const router = useRouter();
 
   const {
@@ -324,14 +321,13 @@ export function HrPageClient({
                 <th>{h.baseSalary}</th>
                 <th>{h.overtime}</th>
                 <th>{h.lateness}</th>
-                <th>{h.contractAndStatus}</th>
-                <th className="col-actions" />
+                <th className="col-actions">{l.actions}</th>
               </tr>
             </thead>
             <tbody>
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center fl-faint">
+                  <td colSpan={7} className="py-16 text-center fl-faint">
                     {h.noEntries}
                   </td>
                 </tr>
@@ -397,21 +393,6 @@ export function HrPageClient({
                       </td>
                       <td className="fl-mono text-[13px]">
                         {sumEntries(entries, "lateness")}
-                      </td>
-                      <td>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <FlChip>{h.contracts[profile.contractType]}</FlChip>
-                          <span
-                            className={cn(
-                              "fl-badge",
-                              memberStatusBadgeClass(profile.status)
-                            )}
-                          >
-                            {profile.status === "active"
-                              ? b.active
-                              : h.statuses[profile.status]}
-                          </span>
-                        </div>
                       </td>
                       <td
                         className="col-actions"

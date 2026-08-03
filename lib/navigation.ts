@@ -6,7 +6,6 @@ import {
   UserPlus,
   Users,
   FolderKanban,
-  Columns3,
   CheckSquare,
   Calendar,
   TrendingUp,
@@ -81,8 +80,7 @@ export const workspaceNav: NavItem[] = [
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
-  { id: "tasks", href: "/tasks?view=list", icon: CheckSquare, labelKey: "tasks", capability: "tasks" },
-  { id: "kanban", href: "/tasks?view=board", icon: Columns3, labelKey: "kanbanTasks", capability: "tasks" },
+  { id: "tasks", href: "/tasks", icon: CheckSquare, labelKey: "tasks", capability: "tasks" },
   { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "calendar" },
 ];
 

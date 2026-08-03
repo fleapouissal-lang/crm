@@ -982,6 +982,39 @@
   flex-shrink: 0;
   margin-bottom: 4px;
 }
+.fusion-sidebar-locale {
+  flex-shrink: 0;
+  margin: 0 0 10px;
+  padding: 0 2px 10px;
+  border-bottom: 1px solid var(--sb-line);
+}
+.fusion-sidebar-locale .fusion-locale-select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none;
+  height: 36px !important;
+  border-radius: 10px !important;
+  background: color-mix(in oklch, var(--sb-text-hi) 6%, transparent);
+  border: 1px solid var(--sb-line);
+  color: var(--sb-text-hi);
+}
+.fusion-sidebar-locale .fusion-locale-select__icon {
+  color: var(--sb-text);
+}
+.fusion-sidebar-locale .fusion-icon-btn {
+  width: 42px;
+  height: 42px;
+  margin-inline: auto;
+  color: var(--sb-text-hi);
+  border: 1px solid var(--sb-line);
+  background: color-mix(in oklch, var(--sb-text-hi) 6%, transparent);
+}
+.fusion-sidebar.collapsed .fusion-sidebar-locale {
+  display: grid;
+  place-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+}
 .fusion-user-card:hover {
   border-color: transparent;
   box-shadow: none;
@@ -2118,6 +2151,14 @@ a.fusion-user-card:hover .fusion-user-meta b {
   padding-inline: 0.5rem 0.75rem;
   text-align: end;
 }
+.fl-tbl-hr th.col-actions,
+.fl-tbl-hr td.col-actions {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  padding-inline: 0.5rem 0.75rem;
+  text-align: end;
+  white-space: nowrap;
+}
 .fl-tbl-clients td.col-contact,
 .fl-tbl-clients td.col-engagement {
   overflow: hidden;
@@ -2820,7 +2861,7 @@ a.fusion-user-card:hover .fusion-user-meta b {
 }
 .fl-kanban-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
@@ -2829,7 +2870,7 @@ a.fusion-user-card:hover .fusion-user-meta b {
 }
 .fl-kanban-toolbar__left {
   order: 1;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 .fl-kanban-toolbar > .fl-toolbar-create {
@@ -2838,9 +2879,14 @@ a.fusion-user-card:hover .fusion-user-meta b {
 }
 .fl-kanban-toolbar__right {
   order: 3;
-  flex: 1 1 100%;
-  margin-inline-start: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-inline-start: 0;
 }
 .fl-kanban-body {
   padding: 1rem 1.25rem 1.25rem;
@@ -8465,6 +8511,17 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   font-size: 0.82rem;
   color: #4f4f54 !important;
   font-family: var(--font-mono);
+}
+.fl-fin-sheet__doc-no-field {
+  margin: 0.45rem 0 0.85rem;
+  max-width: 16rem;
+}
+.fl-fin-sheet__doc-no-field .fl-field-label {
+  margin-bottom: 0.25rem;
+}
+.fl-fin-sheet__doc-no-input {
+  font-family: var(--font-mono) !important;
+  font-size: 0.82rem !important;
 }
 .fl-fin-sheet__company-lines {
   display: grid;

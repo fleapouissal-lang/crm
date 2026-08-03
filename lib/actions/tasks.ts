@@ -60,7 +60,7 @@ export async function getTasks(filters?: {
   let query = supabase
     .from("tasks")
     .select(
-      "*, assigned_profile:profiles!tasks_assigned_to_fkey(*), lead:leads!tasks_lead_id_fkey(*)"
+      "*, assigned_profile:profiles!tasks_assigned_to_fkey(*), created_profile:profiles!tasks_created_by_fkey(*), lead:leads!tasks_lead_id_fkey(*)"
     )
     .eq("organization_id", profile.organization_id)
     .order("due_date", { ascending: true, nullsFirst: false });
@@ -89,7 +89,7 @@ export async function getTask(id: string): Promise<Task | null> {
   const { data } = await supabase
     .from("tasks")
     .select(
-      "*, assigned_profile:profiles!tasks_assigned_to_fkey(*), lead:leads!tasks_lead_id_fkey(*)"
+      "*, assigned_profile:profiles!tasks_assigned_to_fkey(*), created_profile:profiles!tasks_created_by_fkey(*), lead:leads!tasks_lead_id_fkey(*)"
     )
     .eq("id", id)
     .single();
@@ -108,7 +108,9 @@ export async function getTasksForLead(leadId: string): Promise<Task[]> {
 
   let query = supabase
     .from("tasks")
-    .select("*, assigned_profile:profiles!tasks_assigned_to_fkey(*)")
+    .select(
+      "*, assigned_profile:profiles!tasks_assigned_to_fkey(*), created_profile:profiles!tasks_created_by_fkey(*)"
+    )
     .eq("lead_id", leadId)
     .eq("organization_id", profile.organization_id)
     .order("due_date", { ascending: true });

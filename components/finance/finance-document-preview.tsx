@@ -31,8 +31,8 @@ export function FinanceDocumentPreview({
   clientName: string;
   amount: number;
   currency: string;
-  secondaryLabel: string;
-  secondaryValue: string;
+  secondaryLabel?: string;
+  secondaryValue?: string;
   tertiaryLabel?: string;
   tertiaryValue?: string;
   templateName?: string | null;
@@ -53,7 +53,9 @@ export function FinanceDocumentPreview({
   const kindLabel = kind === "quote" ? f.kindQuote : f.kindInvoice;
   const meta = [
     { label: f.previewDate, value: today },
-    { label: secondaryLabel, value: secondaryValue },
+    ...(secondaryLabel && secondaryValue
+      ? [{ label: secondaryLabel, value: secondaryValue }]
+      : []),
     ...(tertiaryLabel && tertiaryValue
       ? [{ label: tertiaryLabel, value: tertiaryValue }]
       : []),

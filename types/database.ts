@@ -182,6 +182,7 @@ export interface Task {
   created_at: string;
   updated_at: string;
   assigned_profile?: Profile | null;
+  created_profile?: Profile | null;
   lead?: Lead | null;
 }
 

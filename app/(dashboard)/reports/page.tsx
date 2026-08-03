@@ -1,52 +1,12 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/actions/auth";
-import { getProjects } from "@/lib/actions/projects";
-import {
-  getReportsData,
-  type ReportsPeriod,
-} from "@/lib/actions/reports";
 import { isLeadership } from "@/lib/permissions";
 import { ReportsPageClient } from "@/components/reports/reports-page-client";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function ReportsRoutePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string }>;
-}) {
+export default async function ReportsRoutePage() {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
   if (!isLeadership(profile)) redirect("/dashboard");
 
-  const params = await searchParams;
-  const period = (
-    ["weekly", "monthly", "quarterly"].includes(params.period ?? "")
-      ? params.period
-      : "monthly"
-  ) as ReportsPeriod;
-
-  const [data, projects] = await Promise.all([
-    getReportsData(period),
-    getProjects(),
-  ]);
-
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-4 gap-4">
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-          </div>
-          <Skeleton className="h-80 w-full" />
-        </div>
-      }
-    >
-      <ReportsPageClient data={data} projects={projects} />
-    </Suspense>
-  );
+  return <ReportsPageClient />;
 }

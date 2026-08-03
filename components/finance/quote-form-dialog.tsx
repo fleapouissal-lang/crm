@@ -102,7 +102,6 @@ export function QuoteFormDialog({
   });
 
   const status = watch("status") as QuoteStatus;
-  const templateId = watch("templateId") || "";
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
   const clientName = watch("clientName") || "";
@@ -209,9 +208,6 @@ export function QuoteFormDialog({
               onCurrencyChange={(v) =>
                 setValue("currency", v, { shouldValidate: true })
               }
-              templateId={templateId}
-              templates={quoteTemplates}
-              onTemplateChange={(v) => setValue("templateId", v)}
               metaFields={[
                 {
                   key: "validity",
