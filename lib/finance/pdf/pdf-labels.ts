@@ -23,6 +23,9 @@ export type PdfLabels = {
   page: string;
   days: string;
   until: string;
+  paid: string;
+  unpaid: string;
+  paymentStatus: string;
 };
 
 const LABELS: Record<Locale, PdfLabels> = {
@@ -48,6 +51,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     page: "Page",
     days: "jours",
     until: "jusqu'au",
+    paid: "PAYEE",
+    unpaid: "NON PAYEE",
+    paymentStatus: "Paiement",
   },
   en: {
     rtl: false,
@@ -71,6 +77,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     page: "Page",
     days: "days",
     until: "until",
+    paid: "PAID",
+    unpaid: "UNPAID",
+    paymentStatus: "Payment",
   },
   ar: {
     rtl: true,
@@ -94,6 +103,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     page: "Page",
     days: "jours",
     until: "jusqu'au",
+    paid: "PAYEE",
+    unpaid: "NON PAYEE",
+    paymentStatus: "Paiement",
   },
 };
 

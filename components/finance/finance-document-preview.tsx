@@ -23,6 +23,7 @@ export function FinanceDocumentPreview({
   tertiaryValue,
   lineItems,
   templateName,
+  isPaid,
 }: {
   kind: "quote" | "invoice";
   number: string;
@@ -36,6 +37,7 @@ export function FinanceDocumentPreview({
   tertiaryLabel?: string;
   tertiaryValue?: string;
   templateName?: string | null;
+  isPaid?: boolean;
   lineItems?: Array<{
     id: string;
     description: string;
@@ -51,6 +53,7 @@ export function FinanceDocumentPreview({
   const today = format(new Date(), "dd MMM yyyy", { locale: dateLocale });
   const subtitle = issuerSubtitle(issuer);
   const kindLabel = kind === "quote" ? f.kindQuote : f.kindInvoice;
+  const showPayStamp = kind === "invoice" && typeof isPaid === "boolean";
   const meta = [
     { label: f.previewDate, value: today },
     ...(secondaryLabel && secondaryValue
@@ -66,6 +69,17 @@ export function FinanceDocumentPreview({
       <div className="fl-lux-doc__rail" aria-hidden />
 
       <div className="fl-lux-doc__inner">
+        {showPayStamp ? (
+          <div
+            className={cn(
+              "fl-lux-doc__pay-stamp",
+              isPaid ? "fl-lux-doc__pay-stamp--paid" : "fl-lux-doc__pay-stamp--unpaid"
+            )}
+            aria-hidden
+          >
+            {isPaid ? f.stampPaid : f.stampUnpaid}
+          </div>
+        ) : null}
         <header className="fl-lux-doc__masthead">
           <div className="fl-lux-doc__brand">
             {issuer.logoUrl || issuer.storedLogoUrl ? (

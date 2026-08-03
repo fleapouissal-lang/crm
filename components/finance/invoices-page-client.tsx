@@ -29,10 +29,18 @@ import {
   type InvoiceStatus,
   type QuoteRecord,
 } from "@/lib/finance/types";
+import { cn } from "@/lib/utils";
 import { deleteInvoice, upsertInvoice } from "@/lib/actions/finance-docs";
 
 const STATUS_FILTERS: Array<InvoiceStatus | "all"> = [
   "all",
+  "draft",
+  "pending",
+  "paid",
+  "overdue",
+];
+
+const INVOICE_STATUSES: InvoiceStatus[] = [
   "draft",
   "pending",
   "paid",
@@ -151,6 +159,27 @@ export function InvoicesPageClient({
       return [result.data, ...prev];
     });
     toast.success(exists ? f.invoiceUpdated : f.invoiceCreated);
+    router.refresh();
+  }
+
+  async function handleStatusChange(row: InvoiceRecord, status: InvoiceStatus) {
+    if (row.status === status) return;
+    const next = {
+      ...row,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    const result = await upsertInvoice(next);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    setInvoices((prev) =>
+      prev.map((x) =>
+        x.id === result.data.id || x.id === row.id ? result.data : x
+      )
+    );
+    toast.success(f.invoiceUpdated);
     router.refresh();
   }
 
@@ -313,11 +342,30 @@ export function InvoicesPageClient({
                       {formatMoney(row.amount, row.currency)}
                     </td>
                     <td>
-                      <span
-                        className={`fl-badge ${INVOICE_STATUS_BADGE[row.status]}`}
+                      <Select
+                        value={row.status}
+                        onValueChange={(v) => {
+                          if (!v) return;
+                          void handleStatusChange(row, v as InvoiceStatus);
+                        }}
                       >
-                        {statusLabel(row)}
-                      </span>
+                        <SelectTrigger
+                          className={cn(
+                            "fl-status-select",
+                            `fl-badge ${INVOICE_STATUS_BADGE[row.status]}`
+                          )}
+                          aria-label={inv.status}
+                        >
+                          <SelectValue>{statusLabel(row)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="fl-select-panel" align="start">
+                          {INVOICE_STATUSES.map((key) => (
+                            <SelectItem key={key} value={key}>
+                              {statusFilterLabel(key)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </td>
                     <td>
                       <FinanceRowActions

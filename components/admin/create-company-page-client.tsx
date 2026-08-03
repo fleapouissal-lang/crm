@@ -21,7 +21,6 @@ import {
   PLAN_KEYS,
   PLAN_PRICES_EUR,
   SUBSCRIPTION_STATUSES,
-  defaultTrialEndsAt,
   type PlanKey,
   type SubscriptionStatus,
 } from "@/lib/billing/plans";
@@ -41,6 +40,14 @@ import {
 function toDateInput(value: string | null | undefined): string {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function todayDateInput() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function CreateCompanyPageClient() {
@@ -81,11 +88,12 @@ export function CreateCompanyPageClient() {
     if (next === "free") {
       setSubscriptionStatus("active");
       setTrialEndsAt("");
+      setCurrentPeriodEnd("");
       return;
     }
     if (subscriptionStatus === "active" && !trialEndsAt) {
       setSubscriptionStatus("trialing");
-      setTrialEndsAt(toDateInput(defaultTrialEndsAt()));
+      setTrialEndsAt(todayDateInput());
     }
   }
 
@@ -105,8 +113,8 @@ export function CreateCompanyPageClient() {
       fd.set("phone", phone);
       fd.set("plan", plan);
       fd.set("subscriptionStatus", subscriptionStatus);
-      fd.set("trialEndsAt", trialEndsAt);
-      fd.set("currentPeriodEnd", currentPeriodEnd);
+      fd.set("trialEndsAt", plan === "free" ? "" : trialEndsAt);
+      fd.set("currentPeriodEnd", plan === "free" ? "" : currentPeriodEnd);
       fd.set("directorName", directorName);
       fd.set("directorEmail", directorEmail);
       fd.set("directorPassword", directorPassword);
@@ -366,27 +374,28 @@ export function CreateCompanyPageClient() {
               </Select>
             </div>
           </div>
-          <div className="fl-form-row">
-            <div className="fl-field">
-              <label className="fl-field-label">{s.trialEndsAt}</label>
-              <Input
-                type="date"
-                value={trialEndsAt}
-                onChange={(e) => setTrialEndsAt(e.target.value)}
-                className="fl-input"
-                disabled={plan === "free"}
-              />
+          {plan !== "free" ? (
+            <div className="fl-form-row">
+              <div className="fl-field">
+                <label className="fl-field-label">{s.trialEndsAt}</label>
+                <Input
+                  type="date"
+                  value={trialEndsAt}
+                  onChange={(e) => setTrialEndsAt(e.target.value)}
+                  className="fl-input"
+                />
+              </div>
+              <div className="fl-field">
+                <label className="fl-field-label">{s.currentPeriodEnd}</label>
+                <Input
+                  type="date"
+                  value={currentPeriodEnd}
+                  onChange={(e) => setCurrentPeriodEnd(e.target.value)}
+                  className="fl-input"
+                />
+              </div>
             </div>
-            <div className="fl-field">
-              <label className="fl-field-label">{s.currentPeriodEnd}</label>
-              <Input
-                type="date"
-                value={currentPeriodEnd}
-                onChange={(e) => setCurrentPeriodEnd(e.target.value)}
-                className="fl-input"
-              />
-            </div>
-          </div>
+          ) : null}
         </div>
       </section>
 

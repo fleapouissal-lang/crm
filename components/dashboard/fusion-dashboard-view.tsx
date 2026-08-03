@@ -8,7 +8,6 @@ import {
   FolderKanban,
   Plus,
   Target,
-  UserPlus,
   FileText,
   Receipt,
   AlertTriangle,
@@ -22,7 +21,6 @@ import {
 } from "@/components/dashboard/charts";
 import {
   ActivityFeed,
-  RecentLeads,
   UpcomingTasks,
 } from "@/components/dashboard/activity-feed";
 import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
@@ -32,7 +30,6 @@ import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
   canAccessCalendar,
   canAccessClients,
-  canAccessLeads,
   canAccessTasks,
   isLeadership,
 } from "@/lib/permissions/capabilities";
@@ -78,12 +75,6 @@ export function FusionDashboardView({
   }
 
   const quickActions = [
-    {
-      href: "/leads",
-      label: dict.leads.newLead,
-      icon: UserPlus,
-      show: true,
-    },
     {
       href: "/tasks/new",
       label: dict.tasks.newTask,
@@ -177,24 +168,18 @@ export function FusionDashboardView({
 
       <div className="grid gap-[18px] lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentLeads
-            leads={stats.recentLeads}
+          <UpcomingTasks
+            tasks={stats.upcomingTasks}
             dict={dict}
             locale={locale}
           />
         </div>
-        <UpcomingTasks
-          tasks={stats.upcomingTasks}
+        <ActivityFeed
+          activities={stats.activities}
           dict={dict}
           locale={locale}
         />
       </div>
-
-      <ActivityFeed
-        activities={stats.activities}
-        dict={dict}
-        locale={locale}
-      />
     </div>
   );
 }
@@ -213,8 +198,7 @@ function MemberDashboardView({
   const dict = useDict();
   const { locale } = useI18n();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
-  const isCommercial =
-    canAccessLeads(profile) || canAccessClients(profile);
+  const isCommercial = canAccessClients(profile);
   const showTasks = canAccessTasks(profile);
   const showCalendar = canAccessCalendar(profile);
 
@@ -277,14 +261,8 @@ function MemberDashboardView({
             </p>
           </div>
           <div className="fl-filter-bar__actions !ms-0">
-            {canAccessLeads(profile) ? (
-              <Link href="/leads" className="fl-btn sm primary shrink-0">
-                <UserPlus strokeWidth={2} className="size-3.5" />
-                <span className="hidden sm:inline">{dict.leads.newLead}</span>
-              </Link>
-            ) : null}
             {canAccessClients(profile) ? (
-              <Link href="/clients/new" className="fl-btn sm ghost shrink-0">
+              <Link href="/clients/new" className="fl-btn sm primary shrink-0">
                 <Target strokeWidth={2} className="size-3.5" />
                 <span className="hidden sm:inline">{dict.clients.newClient}</span>
               </Link>
@@ -305,13 +283,6 @@ function MemberDashboardView({
         </div>
 
         <div className="dash-kpi-grid">
-          <MiniStat
-            href="/leads"
-            label={dict.dashboard.openLeads}
-            value={String(stats.openLeads)}
-            hint={dict.dashboard.totalLeadsHint}
-            icon={<UserPlus className="size-3.5" strokeWidth={2} />}
-          />
           <MiniStat
             href="/clients"
             label={dict.dashboard.totalClients ?? dict.nav.clients}
@@ -346,18 +317,9 @@ function MemberDashboardView({
             </div>
           </div>
           <div className="fl-pad">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {(
                 [
-                  canAccessLeads(profile)
-                    ? {
-                        href: "/leads",
-                        label: dict.nav.leads,
-                        hint: dict.nav.leadsSub,
-                        icon: UserPlus,
-                        value: String(stats.openLeads),
-                      }
-                    : null,
                   canAccessClients(profile)
                     ? {
                         href: "/clients",
@@ -427,11 +389,6 @@ function MemberDashboardView({
         </div>
 
         <div className="grid gap-[18px] lg:grid-cols-2">
-          <RecentLeads
-            leads={stats.recentLeads}
-            dict={dict}
-            locale={locale}
-          />
           {showTasks ? (
             <UpcomingTasks
               tasks={stats.upcomingTasks}

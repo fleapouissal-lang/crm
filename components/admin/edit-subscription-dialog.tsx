@@ -8,7 +8,6 @@ import {
   PLAN_KEYS,
   PLAN_PRICES_EUR,
   SUBSCRIPTION_STATUSES,
-  defaultTrialEndsAt,
   type PlanKey,
   type SubscriptionStatus,
 } from "@/lib/billing/plans";
@@ -33,6 +32,14 @@ import type { Organization } from "@/types/database";
 function toDateInput(value: string | null | undefined): string {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function todayDateInput() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function fromDateInput(value: string): string | null {
@@ -70,13 +77,15 @@ export function EditSubscriptionDialog({
 
   function handlePlanChange(next: PlanKey) {
     setPlan(next);
-    if (next !== "free" && status === "active" && !trialEndsAt) {
-      setStatus("trialing");
-      setTrialEndsAt(toDateInput(defaultTrialEndsAt()));
-    }
     if (next === "free") {
       setStatus("active");
       setTrialEndsAt("");
+      setPeriodEnd("");
+      return;
+    }
+    if (status === "active" && !trialEndsAt) {
+      setStatus("trialing");
+      setTrialEndsAt(todayDateInput());
     }
   }
 
@@ -87,8 +96,8 @@ export function EditSubscriptionDialog({
         organizationId: company.id,
         plan,
         subscriptionStatus: status,
-        trialEndsAt: fromDateInput(trialEndsAt),
-        currentPeriodEnd: fromDateInput(periodEnd),
+        trialEndsAt: plan === "free" ? null : fromDateInput(trialEndsAt),
+        currentPeriodEnd: plan === "free" ? null : fromDateInput(periodEnd),
       });
       if (!result.success) {
         toast.error(result.error);
@@ -157,25 +166,29 @@ export function EditSubscriptionDialog({
             </Select>
           </div>
 
-          <div className="fl-field">
-            <label className="fl-field-label">{s.trialEndsAt}</label>
-            <Input
-              type="date"
-              value={trialEndsAt}
-              onChange={(e) => setTrialEndsAt(e.target.value)}
-              className="fl-input"
-            />
-          </div>
+          {plan !== "free" ? (
+            <>
+              <div className="fl-field">
+                <label className="fl-field-label">{s.trialEndsAt}</label>
+                <Input
+                  type="date"
+                  value={trialEndsAt}
+                  onChange={(e) => setTrialEndsAt(e.target.value)}
+                  className="fl-input"
+                />
+              </div>
 
-          <div className="fl-field">
-            <label className="fl-field-label">{s.currentPeriodEnd}</label>
-            <Input
-              type="date"
-              value={periodEnd}
-              onChange={(e) => setPeriodEnd(e.target.value)}
-              className="fl-input"
-            />
-          </div>
+              <div className="fl-field">
+                <label className="fl-field-label">{s.currentPeriodEnd}</label>
+                <Input
+                  type="date"
+                  value={periodEnd}
+                  onChange={(e) => setPeriodEnd(e.target.value)}
+                  className="fl-input"
+                />
+              </div>
+            </>
+          ) : null}
         </div>
         <DialogFooter className="fl-dialog-footer">
           <button

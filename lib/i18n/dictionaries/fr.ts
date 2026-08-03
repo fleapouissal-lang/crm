@@ -173,6 +173,7 @@ export const fr = {
     signingIn: "Connexion en cours…",
     noAccount: "Pas encore de compte ?",
     createOne: "Créer un compte",
+    contactUs: "Nous contacter",
     createAccount: "Créer votre compte",
     signUpSubtitle: "Créez votre entreprise et votre compte directeur",
     companyEmailHint: "Utilisez l'e-mail de votre entreprise (ex. vous@fusionleap.com). Vous serez directeur.",

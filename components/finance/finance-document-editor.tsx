@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type MetaField =
   | {
@@ -171,6 +172,20 @@ export function FinanceDocumentEditor({
       <div className="fl-fin-editor__stage">
         <article className="fl-fin-sheet">
           <div className="fl-fin-sheet__bar" aria-hidden />
+
+          {kind === "invoice" ? (
+            <div
+              className={cn(
+                "fl-fin-sheet__pay-stamp",
+                status === "paid"
+                  ? "fl-fin-sheet__pay-stamp--paid"
+                  : "fl-fin-sheet__pay-stamp--unpaid"
+              )}
+              aria-hidden
+            >
+              {status === "paid" ? f.stampPaid : f.stampUnpaid}
+            </div>
+          ) : null}
 
           <div className="fl-fin-sheet__page">
             <header className="fl-fin-sheet__header">

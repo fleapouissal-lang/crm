@@ -3,12 +3,10 @@ import type { NavCapability } from "@/lib/permissions/capabilities";
 import {
   LayoutDashboard,
   Building2,
-  UserPlus,
   Users,
   FolderKanban,
   CheckSquare,
   Calendar,
-  TrendingUp,
   Wallet,
   FileText,
   Receipt,
@@ -76,7 +74,6 @@ export const platformAdminNav: NavItem[] = [
 
 export const workspaceNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard", capability: "always" },
-  { id: "leads", href: "/leads", icon: UserPlus, labelKey: "leads", badge: "leads", capability: "leads" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
@@ -85,7 +82,6 @@ export const workspaceNav: NavItem[] = [
 ];
 
 export const operationsNav: NavItem[] = [
-  { id: "sales", href: "/sales", icon: TrendingUp, labelKey: "sales", capability: "leadership" },
   { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance", capability: "leadership" },
   {
     id: "quotes",

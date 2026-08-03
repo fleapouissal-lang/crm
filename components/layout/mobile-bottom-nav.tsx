@@ -10,7 +10,6 @@ import {
   Home,
   LayoutGrid,
   Settings,
-  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -20,7 +19,6 @@ import {
 } from "@/lib/navigation/vertical-presets";
 import {
   canAccessClients,
-  canAccessLeads,
   canAccessTasks,
   isPlatformAdmin,
 } from "@/lib/permissions";
@@ -55,7 +53,6 @@ function formatBadge(n: number) {
 export function MobileBottomNav({
   profile,
   activityDomain,
-  leadCount = 0,
   menuOpen,
   onOpenMenu,
 }: {
@@ -130,15 +127,6 @@ export function MobileBottomNav({
         allowed: true,
       },
       {
-        id: "leads",
-        href: "/leads",
-        label: dict.nav.tabLeads,
-        icon: UserPlus,
-        allowed:
-          canAccessLeads(profile) && isNavIdVisibleInPreset(preset, "leads"),
-        badge: leadCount,
-      },
-      {
         id: "clients",
         href: "/clients",
         label: dict.nav.tabClients,
@@ -164,7 +152,7 @@ export function MobileBottomNav({
       .map(({ allowed: _allowed, ...tab }) => tab);
 
     return [...primary, moreTab];
-  }, [dict.nav, leadCount, platformAdmin, preset, profile, unread]);
+  }, [dict.nav, platformAdmin, preset, profile, unread]);
 
   return (
     <nav className="fusion-bottom-nav" aria-label={dict.nav.main}>

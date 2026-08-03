@@ -109,7 +109,7 @@ export function AppHeader({
           onSubmit={(e) => {
             e.preventDefault();
             const q = new FormData(e.currentTarget).get("q") as string;
-            if (q?.trim()) router.push(`/leads?q=${encodeURIComponent(q.trim())}`);
+            if (q?.trim()) router.push(`/clients?q=${encodeURIComponent(q.trim())}`);
           }}
         >
           <Search strokeWidth={2} className="size-4 shrink-0" />

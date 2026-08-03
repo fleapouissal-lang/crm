@@ -68,6 +68,7 @@ export function InvoiceDetailDialog({
             number={invoice.number}
             statusLabel={statusLabel(invoice, inv)}
             statusBadge={badge}
+            isPaid={invoice.status === "paid"}
             clientName={invoice.clientName}
             amount={invoice.amount}
             currency={invoice.currency}

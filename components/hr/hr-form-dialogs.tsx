@@ -50,7 +50,6 @@ type FormValues = {
   amount: string;
   currency: string;
   hours: string;
-  minutes: string;
   note: string;
 };
 
@@ -97,7 +96,6 @@ export function HrEntryFormDialog({
       amount: "",
       currency: "MAD",
       hours: "",
-      minutes: "",
       note: "",
     },
   });
@@ -115,7 +113,6 @@ export function HrEntryFormDialog({
         amount: "",
         currency: "MAD",
         hours: "",
-        minutes: "",
         note: "",
       });
     }
@@ -182,8 +179,12 @@ export function HrEntryFormDialog({
         toast.error(h.entryNote);
         return;
       }
-      const minutes = Number(values.minutes);
-      if (minutes > 0) entry.minutes = minutes;
+      const hours = Number(values.hours);
+      if (!hours || hours <= 0) {
+        toast.error(h.hoursLate);
+        return;
+      }
+      entry.hours = hours;
     }
 
     if (values.type === "note" && !values.note.trim()) {
@@ -301,15 +302,15 @@ export function HrEntryFormDialog({
 
           {entryType === "lateness" && (
             <div className="space-y-2">
-              <Label htmlFor="hr-minutes">{h.minutesLate}</Label>
+              <Label htmlFor="hr-late-hours">{h.hoursLate}</Label>
               <Input
-                id="hr-minutes"
+                id="hr-late-hours"
                 type="number"
-                min="1"
-                step="1"
+                min="0.25"
+                step="0.25"
                 className="fl-inp"
-                placeholder={h.minutesLateHint}
-                {...register("minutes")}
+                placeholder={h.hoursLateHint}
+                {...register("hours")}
               />
             </div>
           )}

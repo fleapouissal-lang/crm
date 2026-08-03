@@ -137,7 +137,7 @@ export function LoginForm() {
 
           <p className="login-split__register">
             {dict.auth.noAccount}{" "}
-            <Link href="/signup">{dict.auth.createOne}</Link>
+            <Link href="/contact">{dict.auth.contactUs}</Link>
           </p>
         </div>
 

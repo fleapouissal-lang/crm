@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Marketing is merged into /sales */
-export default function MarketingRoutePage() {
-  redirect("/sales");
+/** Marketing module removed — redirect to dashboard. */
+export default function MarketingPage() {
+  redirect("/dashboard");
 }

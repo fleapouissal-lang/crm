@@ -1,6 +1,7 @@
 import {
   PDFDocument,
   StandardFonts,
+  degrees,
   rgb,
   type PDFImage,
   type PDFFont,
@@ -468,6 +469,29 @@ class PdfWriter {
     });
   }
 
+  /** Diagonal paid / unpaid stamp on the first page. */
+  drawPaymentStamp(paid: boolean) {
+    const page = this.pages[0];
+    if (!page) return;
+    const label = paid ? this.labels.paid : this.labels.unpaid;
+    const color = paid ? rgb(0.12, 0.55, 0.32) : rgb(0.72, 0.18, 0.22);
+    const size = 28;
+    const text = t(label);
+    const tw = this.fonts.bold.widthOfTextAtSize(text, size);
+    const x = PAGE_W / 2 - tw / 2 + 40;
+    const y = PAGE_H / 2 + 20;
+    page.drawText(text, {
+      x,
+      y,
+      size,
+      font: this.fonts.bold,
+      color,
+      rotate: degrees(-22),
+      opacity: 0.55,
+    });
+    // Border around stamp (approximate box via lines is noisy with rotation — text is enough)
+  }
+
   /** Meta info strip — light gray background */
   drawMetaStrip(rows: DocMeta[]) {
     const stripH = 14 * rows.length + 16;
@@ -931,12 +955,19 @@ export async function buildInvoicePdfBytes(
     true
   );
 
+  const isPaid = invoice.status === "paid";
+
   writer.drawMetaStrip([
     { label: labels.date, value: formatDateFr(invoice.createdAt) },
+    {
+      label: labels.paymentStatus,
+      value: isPaid ? labels.paid : labels.unpaid,
+    },
   ]);
   writer.drawClientBlock(invoice.clientName, clientType);
   writer.drawItemsTable(items, invoice.currency);
   writer.drawTotals(invoice.amount, invoice.currency);
+  writer.drawPaymentStamp(isPaid);
 
   writer.finalize();
   return doc.save();

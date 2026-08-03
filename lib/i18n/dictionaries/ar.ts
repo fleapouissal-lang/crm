@@ -173,6 +173,7 @@ export const ar = {
     signingIn: "جاري الاتصال…",
     noAccount: "ليس لديك حساب؟",
     createOne: "إنشاء حساب",
+    contactUs: "اتصل بنا",
     createAccount: "إنشاء حسابك",
     signUpSubtitle: "أنشئ شركتك وحساب المدير",
     companyEmailHint: "استخدم بريد شركتك (مثل you@fusionleap.com). ستكون المدير.",

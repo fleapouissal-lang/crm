@@ -25,8 +25,9 @@ export interface HrEntry {
   date: string;
   amount?: number;
   currency?: string;
+  /** Duration in hours (overtime / lateness). */
   hours?: number;
-  /** Minutes late (lateness entries). */
+  /** @deprecated Prefer hours for lateness. Kept for legacy rows. */
   minutes?: number;
   days?: number;
   /** End date for leave entries (inclusive range with date). */

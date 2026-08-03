@@ -380,12 +380,7 @@ export function TaskList({
                           </span>
                         )}
                         {task.lead && (
-                          <Link
-                            href={`/leads/${task.lead.id}`}
-                            className="hover:text-primary hover:underline"
-                          >
-                            {task.lead.title}
-                          </Link>
+                          <span>{task.lead.title}</span>
                         )}
                         {task.project_id &&
                           projectsById.get(task.project_id) && (

@@ -29,8 +29,17 @@ export function formatHrEntryValue(
     return `${days} ${dayLabel}`;
   }
   if (entry.type === "lateness") {
-    if (entry.minutes && entry.minutes > 0) {
-      return `${h.lateness} · ${entry.minutes} ${h.minutes.toLowerCase()}`;
+    const hours =
+      entry.hours && entry.hours > 0
+        ? entry.hours
+        : entry.minutes && entry.minutes > 0
+          ? entry.minutes / 60
+          : 0;
+    if (hours > 0) {
+      const label = Number.isInteger(hours)
+        ? String(hours)
+        : hours.toFixed(2).replace(/\.?0+$/, "");
+      return `${h.lateness} · ${label}h`;
     }
     return h.lateness;
   }

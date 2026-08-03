@@ -85,17 +85,11 @@ export function RecentLeads({
           <h3>{dict.dashboard.recentLeads}</h3>
           <div className="ch-sub">{dict.nav.leads}</div>
         </div>
-        <Link href="/leads" className="fl-btn sm ghost">
-          {dict.common.viewAll}
-        </Link>
       </div>
       <div className="fl-tbl-wrap mt-4">
         {leads.length === 0 ? (
           <p className="fl-pad py-6 text-center text-sm fl-faint">
-            {dict.dashboard.noLeadsYet}{" "}
-            <Link href="/leads" className="text-[var(--iris)] hover:underline">
-              {dict.dashboard.createOne}
-            </Link>
+            {dict.dashboard.noLeadsYet}
           </p>
         ) : (
           <table className="fl-tbl">
@@ -110,12 +104,7 @@ export function RecentLeads({
               {leads.map((lead) => (
                 <tr key={lead.id}>
                   <td>
-                    <Link
-                      href={`/leads/${lead.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {lead.title}
-                    </Link>
+                    <span className="font-medium">{lead.title}</span>
                     {lead.company && (
                       <p className="fl-faint text-[11.5px]">{lead.company}</p>
                     )}

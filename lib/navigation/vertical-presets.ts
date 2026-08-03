@@ -11,7 +11,6 @@ import {
   Home,
   Receipt,
   Ticket,
-  UserPlus,
   Users,
   Wallet,
 } from "lucide-react";
@@ -63,12 +62,10 @@ export type VerticalNavPreset = {
 
 const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "dashboard",
-  "leads",
   "clients",
   "projects",
   "tasks",
   "calendar",
-  "sales",
   "finance",
   "quotes",
   "invoices",
@@ -88,12 +85,10 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     key: "digital",
     visibleIds: [
       "dashboard",
-      "leads",
       "clients",
       "projects",
       "tasks",
       "calendar",
-      "sales",
       "quotes",
       "invoices",
       "expenses",
@@ -103,11 +98,9 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "settings",
     ],
     labelOverrides: {
-      leads: "leads",
       clients: "clients",
       projects: "projects",
       tasks: "tasks",
-      sales: "sales",
       quotes: "quotes",
       invoices: "invoices",
       expenses: "expenses",
@@ -116,7 +109,6 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     iconOverrides: {
       projects: FolderKanban,
       tasks: Ticket,
-      leads: UserPlus,
       clients: Building2,
       quotes: FileText,
       invoices: Receipt,
@@ -160,11 +152,9 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     key: "real_estate",
     visibleIds: [
       "dashboard",
-      "leads",
       "clients",
       "projects",
       "calendar",
-      "sales",
       "quotes",
       "invoices",
       "expenses",
@@ -174,18 +164,15 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
       "settings",
     ],
     labelOverrides: {
-      leads: "leads",
       clients: "clients",
       projects: "projects",
       calendar: "calendar",
-      sales: "sales",
       quotes: "quotes",
       invoices: "invoices",
       expenses: "expenses",
     },
     iconOverrides: {
       projects: Home,
-      leads: UserPlus,
       clients: Users,
       calendar: Calendar,
       tasks: Columns3,
@@ -232,9 +219,6 @@ export function pathnameToNavId(pathname: string): VerticalNavId | null {
   if (pathname.startsWith("/projects")) return "projects";
   if (pathname.startsWith("/tasks")) return "tasks";
   if (pathname.startsWith("/calendar")) return "calendar";
-  if (pathname.startsWith("/sales") || pathname.startsWith("/marketing")) {
-    return "sales";
-  }
   if (pathname.startsWith("/finance/quotes")) return "quotes";
   if (pathname.startsWith("/finance/invoices")) return "invoices";
   if (pathname.startsWith("/finance/expenses")) return "expenses";

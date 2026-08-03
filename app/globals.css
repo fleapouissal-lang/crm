@@ -8170,7 +8170,31 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   background: linear-gradient(180deg, #2a2a2e, #111114);
 }
 .fl-lux-doc__inner {
+  position: relative;
   padding: 1.35rem 1.4rem 1.25rem 1.55rem;
+}
+.fl-lux-doc__pay-stamp {
+  pointer-events: none;
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  border: 3px solid currentColor;
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.72;
+}
+.fl-lux-doc__pay-stamp--paid {
+  color: #1a8f4c;
+}
+.fl-lux-doc__pay-stamp--unpaid {
+  color: #c2313a;
 }
 .fl-lux-doc__masthead {
   display: flex;
@@ -8476,6 +8500,7 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   --fin-surface: #f6f6f7;
   --fin-accent: #111114;
   color-scheme: light;
+  position: relative;
   overflow: hidden;
   border-radius: 4px;
   background: #ffffff !important;
@@ -8483,6 +8508,29 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
     0 22px 48px -28px rgba(0, 0, 0, 0.55);
+}
+.fl-fin-sheet__pay-stamp {
+  pointer-events: none;
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  border: 3px solid currentColor;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.55;
+}
+.fl-fin-sheet__pay-stamp--paid {
+  color: #1a8f4c;
+}
+.fl-fin-sheet__pay-stamp--unpaid {
+  color: #c2313a;
 }
 .fl-fin-sheet__bar {
   height: 5px;
