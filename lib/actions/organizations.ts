@@ -10,7 +10,13 @@ import {
   canRemoveTeamMember,
   canResetTeamMemberPassword,
 } from "@/lib/permissions";
-import { sortJobRolesByCatalog } from "@/lib/organizations/job-role-access";
+import {
+  buildStagiaireMemberPages,
+  isStagiaireJob,
+  normalizeMemberPages,
+  sortJobRolesByCatalog,
+  STAGIAIRE_DEFAULT_TOGGLES,
+} from "@/lib/organizations/job-role-access";
 import { provisionTenantCompany } from "@/lib/organizations/provision-tenant";
 import { DEFAULT_ORG_JOB_ROLES } from "@/lib/organizations/default-roles";
 import {
@@ -396,6 +402,8 @@ export async function createTeamMember(input: {
   password: string;
   role: Role;
   jobRoleId: string;
+  /** Custom pages for stagiaire; ignored / cleared for other jobs */
+  memberPages?: string[] | null;
 }): Promise<ActionResult<Profile>> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) {
@@ -437,13 +445,19 @@ export async function createTeamMember(input: {
     return { success: false, error: "Invalid job role" };
   }
 
-  // Stagiaire always gets member access (personalized Tasks + Calendar pages).
-  const role: Role =
-    jobRole.slug === "stagiaire"
+  const internJob = isStagiaireJob(jobRole.slug, jobRole.name);
+
+  // Stagiaire always gets member access (personalized pages).
+  const role: Role = internJob
+    ? "member"
+    : input.role === "platform_admin"
       ? "member"
-      : input.role === "platform_admin"
-        ? "member"
-        : input.role;
+      : input.role;
+
+  const memberPages = internJob
+    ? normalizeMemberPages(input.memberPages) ??
+      buildStagiaireMemberPages(STAGIAIRE_DEFAULT_TOGGLES)
+    : null;
 
   if (profile.role === "manager" && role === "admin") {
     return { success: false, error: "Managers cannot create director accounts" };
@@ -484,6 +498,7 @@ export async function createTeamMember(input: {
       email,
       job_role_id: input.jobRoleId,
       job_title: jobRole.name,
+      member_pages: memberPages,
     })
     .eq("id", authData.user.id);
 
@@ -505,7 +520,7 @@ export async function createTeamMember(input: {
       base_salary: null,
       salary_currency: "MAD",
       overtime_rate: null,
-      contract_type: jobRole.slug === "stagiaire" ? "stage" : "core",
+      contract_type: internJob ? "stage" : "core",
       utilization: 75,
       status: "active",
       contract_start: null,
@@ -662,6 +677,8 @@ export async function updateTeamMemberAccess(input: {
   phone?: string;
   /** Optional: leave empty to keep the current password */
   password?: string;
+  /** Custom pages for stagiaire; cleared for other jobs */
+  memberPages?: string[] | null;
 }): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) {
@@ -725,7 +742,24 @@ export async function updateTeamMemberAccess(input: {
     return { success: false, error: "You don't have permission to edit this member" };
   }
 
-  if (target.role === "admin" && input.role !== "admin") {
+  const { data: jobRole } = await admin
+    .from("org_job_roles")
+    .select("id, name, slug, organization_id")
+    .eq("id", input.jobRoleId)
+    .maybeSingle();
+
+  if (!jobRole || jobRole.organization_id !== profile.organization_id) {
+    return { success: false, error: "Invalid job role" };
+  }
+
+  const internJob = isStagiaireJob(jobRole.slug, jobRole.name);
+  const nextRole: Role = internJob ? "member" : input.role;
+  const memberPages = internJob
+    ? normalizeMemberPages(input.memberPages) ??
+      buildStagiaireMemberPages(STAGIAIRE_DEFAULT_TOGGLES)
+    : null;
+
+  if (target.role === "admin" && nextRole !== "admin") {
     const { count, error: countError } = await admin
       .from("profiles")
       .select("id", { count: "exact", head: true })
@@ -738,16 +772,6 @@ export async function updateTeamMemberAccess(input: {
         error: "Cannot demote the last director of the company",
       };
     }
-  }
-
-  const { data: jobRole } = await admin
-    .from("org_job_roles")
-    .select("id, name, organization_id")
-    .eq("id", input.jobRoleId)
-    .maybeSingle();
-
-  if (!jobRole || jobRole.organization_id !== profile.organization_id) {
-    return { success: false, error: "Invalid job role" };
   }
 
   if (email && email !== (target.email ?? "").toLowerCase()) {
@@ -788,9 +812,10 @@ export async function updateTeamMemberAccess(input: {
   const patch: Record<string, unknown> = {
     full_name: fullName,
     phone,
-    role: input.role,
+    role: nextRole,
     job_role_id: input.jobRoleId,
     job_title: jobRole.name,
+    member_pages: memberPages,
   };
   if (email) patch.email = email;
 

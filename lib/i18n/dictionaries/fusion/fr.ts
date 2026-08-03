@@ -884,13 +884,20 @@ export const fusionFr: FusionDictionary = {
     accessManagerHint:
       "CRM complet · ajouter/supprimer des users (pas de directeur)",
     accessMemberHint: "Limité selon la fonction (voir liste)",
+    jobAccessPagesLabel: "Pages affichées au membre",
+    jobAccessPersonalizedLabel: "Pages personnalisées du stagiaire",
+    stagiairePagesHint:
+      "Par défaut tout est affiché (comme Directeur). Décochez pour masquer une page.",
+    stagiairePageAlwaysOn: "Toujours visible",
+    stagiairePagesSelectAll: "Tout afficher",
+    stagiairePagesClearAll: "Tout masquer",
     jobAccess: {
       director: "Accès suggéré : Directeur · CRM complet",
       manager: "Accès suggéré : Gérant · CRM complet",
       dev: "En Membre : Tâches + Calendrier (suppression de ses tâches)",
       design: "En Membre : Tâches + Calendrier",
-      sales: "En Membre : Leads + Clients + Tâches + Calendrier",
-      intern: "En Membre : pages personnalisées · Tâches + Calendrier",
+      sales: "En Membre : Clients + Tâches + Calendrier",
+      intern: "En Membre : toutes les pages (comme Directeur) · masquables",
       finance: "En Membre : Dashboard et Paramètres seulement",
       hr: "En Membre : Dashboard et Paramètres seulement",
       support: "En Membre : Dashboard et Paramètres seulement",

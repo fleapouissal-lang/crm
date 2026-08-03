@@ -30,6 +30,7 @@ import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
   canAccessCalendar,
   canAccessClients,
+  canAccessProjects,
   canAccessTasks,
   getJobSlug,
   isLeadership,
@@ -204,6 +205,7 @@ function MemberDashboardView({
   const isStagiaire = getJobSlug(profile) === "stagiaire";
   const showTasks = canAccessTasks(profile);
   const showCalendar = canAccessCalendar(profile);
+  const showProjects = canAccessProjects(profile);
   /** Personalized module home for commercial & stagiaire roles. */
   const usePersonalizedModules = isCommercial || isStagiaire;
 
@@ -305,6 +307,15 @@ function MemberDashboardView({
               icon={<Target className="size-3.5" strokeWidth={2} />}
             />
           ) : null}
+          {isStagiaire && showProjects ? (
+            <MiniStat
+              href="/projects"
+              label={dict.dashboard.myProjects ?? dict.nav.projects}
+              value={String(projects.length)}
+              hint={dict.dashboard.myProjectsHint ?? dict.nav.projectsSub}
+              icon={<FolderKanban className="size-3.5" strokeWidth={2} />}
+            />
+          ) : null}
           <MiniStat
             href="/tasks?view=list"
             label={dict.dashboard.openTasks}
@@ -339,7 +350,7 @@ function MemberDashboardView({
             <div
               className={cn(
                 "grid gap-3 sm:grid-cols-2",
-                isCommercial ? "xl:grid-cols-3" : "xl:grid-cols-2"
+                isCommercial || isStagiaire ? "xl:grid-cols-3" : "xl:grid-cols-2"
               )}
             >
               {(
@@ -351,6 +362,15 @@ function MemberDashboardView({
                         hint: dict.nav.clientsSub,
                         icon: Target,
                         value: String(stats.totalClients),
+                      }
+                    : null,
+                  showProjects
+                    ? {
+                        href: "/projects",
+                        label: dict.nav.projects,
+                        hint: dict.nav.projectsSub,
+                        icon: FolderKanban,
+                        value: String(projects.length),
                       }
                     : null,
                   showTasks

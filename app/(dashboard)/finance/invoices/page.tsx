@@ -6,12 +6,12 @@ import {
   getQuotes,
   getTemplates,
 } from "@/lib/actions/finance-docs";
-import { canViewFinanceDocumentsForRole } from "@/lib/permissions";
+import { canAccessInvoices } from "@/lib/permissions";
 
 export default async function FinanceInvoicesPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (!canViewFinanceDocumentsForRole(profile.role)) redirect("/dashboard");
+  if (!canAccessInvoices(profile)) redirect("/dashboard");
 
   const [invoices, quotes, templates] = await Promise.all([
     getInvoices(),

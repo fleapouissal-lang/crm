@@ -24,7 +24,7 @@ import {
   type VerticalNavPreset,
   type VerticalPresetKey,
 } from "@/lib/navigation/vertical-presets";
-import { isPlatformAdmin, hasNavCapability, canViewFinanceDocumentsForRole } from "@/lib/permissions";
+import { isPlatformAdmin, hasNavCapability, canViewFinanceDocuments } from "@/lib/permissions";
 import { signOut } from "@/lib/actions/auth";
 import { clearHrLocalCache } from "@/lib/hr/storage";
 import { CompanyBrand } from "@/components/brand/company-brand";
@@ -97,7 +97,7 @@ function NavSection({
   const dict = useDict();
   const visibleItems = items.filter((item) => {
     if (applyVerticalFilter && !isNavIdVisibleInPreset(preset, item.id)) return false;
-    if (item.adminOnly && !canViewFinanceDocumentsForRole(profile.role)) return false;
+    if (item.adminOnly && !canViewFinanceDocuments(profile)) return false;
     if (item.capability && !hasNavCapability(profile, item.capability)) return false;
     return true;
   });

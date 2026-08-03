@@ -1,12 +1,24 @@
 import type { Profile, Role, Task } from "@/types/database";
+import {
+  resolveJobSlug,
+  resolveStagiairePages,
+  type MemberPageNavKey,
+} from "@/lib/organizations/job-role-access";
 
 export type NavCapability =
   | "always"
   | "leadership"
   | "leads"
   | "clients"
+  | "projects"
   | "tasks"
   | "calendar"
+  | "reports"
+  | "finance"
+  | "quotes"
+  | "invoices"
+  | "expenses"
+  | "hr"
   | "finance_docs";
 
 export function getJobSlug(
@@ -17,36 +29,25 @@ export function getJobSlug(
     | Array<NonNullable<Profile["job_role"]>>
     | null
     | undefined;
-  if (Array.isArray(jr)) {
-    const slug = jr[0]?.slug ?? null;
-    if (slug) return slug;
-  } else if (jr?.slug) {
-    return jr.slug;
-  }
+  const joined = Array.isArray(jr) ? jr[0] : jr;
+  return resolveJobSlug(
+    joined?.slug,
+    joined?.name ?? profile.job_title
+  );
+}
 
-  // Fallback when the job_role join is missing but job_title was set at invite time.
-  const title = (profile.job_title ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-  if (title.includes("commercial")) return "commercial";
-  if (title.includes("developpeur") || title.includes("developer")) {
-    return "developpeur";
-  }
-  if (title.includes("designer")) return "designer";
-  if (title.includes("stagiaire") || title.includes("intern")) return "stagiaire";
-  if (title.includes("comptable") || title.includes("accountant")) {
-    return "comptable";
-  }
-  if (title.includes("ressource") || title === "rh" || title.includes("human")) {
-    return "rh";
-  }
-  if (title.includes("support")) return "support";
-  if (title.includes("directeur") || title.includes("director")) {
-    return "directeur";
-  }
-  if (title.includes("gerant") || title.includes("manager")) return "gerant";
-  return null;
+/** null = not a stagiaire (use job-slug rules). */
+function stagiaireAllowsPage(
+  profile: Profile,
+  page: MemberPageNavKey
+): boolean | null {
+  const pages = resolveStagiairePages({
+    member_pages: profile.member_pages,
+    job_role: profile.job_role,
+    job_title: profile.job_title,
+  });
+  if (!pages) return null;
+  return pages.includes(page);
 }
 
 export function isLeadership(profile: Pick<Profile, "role">): boolean {
@@ -57,17 +58,39 @@ export function canViewFinanceDocumentsForRole(role: Role): boolean {
   return role === "admin" || role === "manager";
 }
 
-export function canViewFinanceDocuments(profile: Pick<Profile, "role">): boolean {
-  return canViewFinanceDocumentsForRole(profile.role);
+export function canViewFinanceDocuments(profile: Profile): boolean {
+  if (canViewFinanceDocumentsForRole(profile.role)) return true;
+  const finance = stagiaireAllowsPage(profile, "finance");
+  const quotes = stagiaireAllowsPage(profile, "quotes");
+  const invoices = stagiaireAllowsPage(profile, "invoices");
+  const expenses = stagiaireAllowsPage(profile, "expenses");
+  if (
+    finance === null &&
+    quotes === null &&
+    invoices === null &&
+    expenses === null
+  ) {
+    return false;
+  }
+  return (
+    finance === true ||
+    quotes === true ||
+    invoices === true ||
+    expenses === true
+  );
 }
 
 export function canAccessClients(profile: Profile): boolean {
   if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "clients");
+  if (custom !== null) return custom;
   return getJobSlug(profile) === "commercial";
 }
 
 export function canAccessTasks(profile: Profile): boolean {
   if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "tasks");
+  if (custom !== null) return custom;
   const slug = getJobSlug(profile);
   return (
     slug === "developpeur" ||
@@ -77,14 +100,60 @@ export function canAccessTasks(profile: Profile): boolean {
   );
 }
 
-/** Calendar for leadership + équipe who can access tasks. */
+/** Calendar for leadership + équipe who can access tasks / calendar page. */
 export function canAccessCalendar(profile: Profile): boolean {
-  return isLeadership(profile) || canAccessTasks(profile);
+  if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "calendar");
+  if (custom !== null) return custom;
+  return canAccessTasks(profile);
 }
 
-export function canAccessLeads(profile: Profile): boolean {
+/** Leads page removed from the product — keep helper for legacy callers. */
+export function canAccessLeads(_profile: Profile): boolean {
+  return false;
+}
+
+export function canAccessProjects(profile: Profile): boolean {
   if (isLeadership(profile)) return true;
-  return getJobSlug(profile) === "commercial";
+  const custom = stagiaireAllowsPage(profile, "projects");
+  if (custom !== null) return custom;
+  return getJobSlug(profile) === "stagiaire";
+}
+
+export function canAccessReports(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  return stagiaireAllowsPage(profile, "reports") === true;
+}
+
+export function canAccessFinanceHub(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  return stagiaireAllowsPage(profile, "finance") === true;
+}
+
+export function canAccessQuotes(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "quotes");
+  if (custom !== null) return custom;
+  return stagiaireAllowsPage(profile, "finance") === true;
+}
+
+export function canAccessInvoices(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "invoices");
+  if (custom !== null) return custom;
+  return stagiaireAllowsPage(profile, "finance") === true;
+}
+
+export function canAccessExpenses(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "expenses");
+  if (custom !== null) return custom;
+  return stagiaireAllowsPage(profile, "finance") === true;
+}
+
+export function canAccessHr(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  return stagiaireAllowsPage(profile, "hr") === true;
 }
 
 export function canAccessFullCrm(profile: Profile): boolean {
@@ -133,8 +202,15 @@ export function hasNavCapability(
   if (capability === "leadership") return isLeadership(profile);
   if (capability === "leads") return canAccessLeads(profile);
   if (capability === "clients") return canAccessClients(profile);
+  if (capability === "projects") return canAccessProjects(profile);
   if (capability === "tasks") return canAccessTasks(profile);
   if (capability === "calendar") return canAccessCalendar(profile);
+  if (capability === "reports") return canAccessReports(profile);
+  if (capability === "finance") return canAccessFinanceHub(profile);
+  if (capability === "quotes") return canAccessQuotes(profile);
+  if (capability === "invoices") return canAccessInvoices(profile);
+  if (capability === "expenses") return canAccessExpenses(profile);
+  if (capability === "hr") return canAccessHr(profile);
   if (capability === "finance_docs") return canViewFinanceDocuments(profile);
   return true;
 }
@@ -148,14 +224,28 @@ export function canAccessNavItem(profile: Profile, itemId: string): boolean {
     case "notifications":
       return true;
     case "leads":
-      return canAccessLeads(profile);
+      return false;
     case "clients":
       return canAccessClients(profile);
+    case "projects":
+      return canAccessProjects(profile);
     case "tasks":
     case "kanban":
       return canAccessTasks(profile);
     case "calendar":
       return canAccessCalendar(profile);
+    case "reports":
+      return canAccessReports(profile);
+    case "finance":
+      return canAccessFinanceHub(profile);
+    case "quotes":
+      return canAccessQuotes(profile);
+    case "invoices":
+      return canAccessInvoices(profile);
+    case "expenses":
+      return canAccessExpenses(profile);
+    case "hr":
+      return canAccessHr(profile);
     default:
       return false;
   }

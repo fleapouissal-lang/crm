@@ -6,12 +6,12 @@ import {
   getQuotes,
   getTemplates,
 } from "@/lib/actions/finance-docs";
-import { canViewFinanceDocumentsForRole } from "@/lib/permissions";
+import { canAccessQuotes } from "@/lib/permissions";
 
 export default async function FinanceQuotesPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (!canViewFinanceDocumentsForRole(profile.role)) redirect("/dashboard");
+  if (!canAccessQuotes(profile)) redirect("/dashboard");
 
   const [quotes, templates, invoices] = await Promise.all([
     getQuotes(),

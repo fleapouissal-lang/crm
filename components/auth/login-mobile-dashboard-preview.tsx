@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bell,
   CheckCircle2,
+  CheckSquare,
   DollarSign,
   FolderKanban,
   LayoutDashboard,
@@ -244,8 +245,8 @@ export function LoginMobileDashboardPreview({
           {dict.nav.dashboard}
         </span>
         <span>
-          <TrendingUp size={14} />
-          {dict.nav.leads}
+          <CheckSquare size={14} />
+          {dict.nav.tasks}
         </span>
         <span>
           <Users size={14} />

@@ -5,6 +5,6 @@ export default async function CrmLeadRedirect({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  redirect(`/leads/${id}`);
+  await params;
+  redirect("/dashboard");
 }

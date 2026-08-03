@@ -2,15 +2,19 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { getProjects } from "@/lib/actions/projects";
-import { isLeadership } from "@/lib/permissions";
+import {
+  canAccessProjects,
+  isLeadership,
+} from "@/lib/permissions";
 import { ProjectsPageClient } from "@/components/projects/projects-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function ProjectsRoutePage() {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
-  if (!isLeadership(profile)) redirect("/dashboard");
+  if (!canAccessProjects(profile)) redirect("/dashboard");
 
+  const leadership = isLeadership(profile);
   const [profiles, projects] = await Promise.all([
     getOrgProfiles(),
     getProjects(),
@@ -25,7 +29,11 @@ export default async function ProjectsRoutePage() {
         </div>
       }
     >
-      <ProjectsPageClient profiles={profiles} initialProjects={projects} />
+      <ProjectsPageClient
+        profiles={profiles}
+        initialProjects={projects}
+        canManage={leadership}
+      />
     </Suspense>
   );
 }

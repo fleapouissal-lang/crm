@@ -75,40 +75,37 @@ export const platformAdminNav: NavItem[] = [
 export const workspaceNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard", capability: "always" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
-  { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "leadership" },
-  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "leadership" },
+  { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "projects" },
+  { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "reports" },
   { id: "tasks", href: "/tasks", icon: CheckSquare, labelKey: "tasks", capability: "tasks" },
   { id: "calendar", href: "/calendar", icon: Calendar, labelKey: "calendar", capability: "calendar" },
 ];
 
 export const operationsNav: NavItem[] = [
-  { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance", capability: "leadership" },
+  { id: "finance", href: "/finance", icon: Wallet, labelKey: "finance", capability: "finance" },
   {
     id: "quotes",
     href: "/finance/quotes",
     icon: FileText,
     labelKey: "quotes",
     badge: "quotes",
-    adminOnly: true,
-    capability: "finance_docs",
+    capability: "quotes",
   },
   {
     id: "invoices",
     href: "/finance/invoices",
     icon: Receipt,
     labelKey: "invoices",
-    adminOnly: true,
-    capability: "finance_docs",
+    capability: "invoices",
   },
   {
     id: "expenses",
     href: "/finance/expenses",
     icon: CircleDollarSign,
     labelKey: "expenses",
-    adminOnly: true,
-    capability: "finance_docs",
+    capability: "expenses",
   },
-  { id: "hr", href: "/hr", icon: Users, labelKey: "hr", capability: "leadership" },
+  { id: "hr", href: "/hr", icon: Users, labelKey: "hr", capability: "hr" },
 ];
 
 export const systemNav: NavItem[] = [

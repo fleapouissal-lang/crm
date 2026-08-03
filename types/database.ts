@@ -144,6 +144,8 @@ export interface Profile {
   organization_id: string | null;
   job_role_id: string | null;
   email: string | null;
+  /** Custom CRM page ids for members (e.g. stagiaire). Null = job-role defaults. */
+  member_pages?: string[] | null;
   created_at: string;
   updated_at: string;
   job_role?: OrgJobRole | null;

@@ -10,8 +10,11 @@ import {
 } from "@/lib/actions/platform-admin";
 import type { OrgJobRole, Organization, Role } from "@/types/database";
 import {
+  isStagiaireJob,
   jobRoleAccessKey,
+  memberPagesForJob,
   suggestedAccessRole,
+  type MemberPageNavKey,
 } from "@/lib/organizations/job-role-access";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
@@ -67,8 +70,12 @@ export function CreatePlatformUserDialog({
     [organizations, organizationId]
   );
   const selectedJob = jobRoles.find((j) => j.id === jobRoleId);
-  const accessHintKey = jobRoleAccessKey(selectedJob?.slug);
+  const isInternJob = isStagiaireJob(selectedJob?.slug, selectedJob?.name);
+  const accessHintKey = jobRoleAccessKey(selectedJob?.slug, selectedJob?.name);
   const accessHint = s.jobAccess[accessHintKey];
+  const memberPages = memberPagesForJob(selectedJob?.slug, selectedJob?.name);
+  const roleLockedToMember = isInternJob;
+  const effectiveRole: Role = roleLockedToMember ? "member" : role;
 
   useEffect(() => {
     if (!open) return;
@@ -96,7 +103,7 @@ export function CreatePlatformUserDialog({
       setJobRoles(roles);
       const first = roles[0];
       setJobRoleId(first?.id ?? "");
-      setRole(suggestedAccessRole(first?.slug));
+      setRole(suggestedAccessRole(first?.slug, first?.name));
       setLoadingRoles(false);
     });
 
@@ -108,7 +115,15 @@ export function CreatePlatformUserDialog({
   function onJobRoleChange(id: string) {
     setJobRoleId(id);
     const job = jobRoles.find((j) => j.id === id);
-    setRole(suggestedAccessRole(job?.slug));
+    setRole(
+      isStagiaireJob(job?.slug, job?.name)
+        ? "member"
+        : suggestedAccessRole(job?.slug, job?.name)
+    );
+  }
+
+  function navLabelForPage(page: MemberPageNavKey): string {
+    return dict.nav[page] ?? page;
   }
 
   function handleSubmit() {
@@ -127,7 +142,7 @@ export function CreatePlatformUserDialog({
               email,
               password,
               organizationId,
-              role,
+              role: roleLockedToMember ? "member" : role,
               jobRoleId,
             });
 
@@ -286,11 +301,12 @@ export function CreatePlatformUserDialog({
               <div className="fl-field">
                 <label className="fl-field-label">{s.accessLevel}</label>
                 <Select
-                  value={role}
+                  value={effectiveRole}
                   onValueChange={(v) => v && setRole(v as Role)}
+                  disabled={roleLockedToMember}
                 >
                   <SelectTrigger className="fl-select-trigger fl-input w-full">
-                    <SelectValue>{dict.roles[role]}</SelectValue>
+                    <SelectValue>{dict.roles[effectiveRole]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="fl-select-panel">
                     {COMPANY_ROLES.map((r) => (
@@ -305,19 +321,39 @@ export function CreatePlatformUserDialog({
           ) : null}
 
           {mode === "company" && selectedJob ? (
-            <p className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2 text-[12.5px] fl-muted">
+            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2 text-[12.5px] fl-muted">
+              <p>
               <b className="text-[var(--text)]">{selectedJob.name}</b>
               {" · "}
               {accessHint}
-              <br />
-              <span className="fl-faint">
-                {role === "admin"
+              </p>
+              {effectiveRole === "member" ? (
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-medium text-[var(--text)]">
+                    {isInternJob
+                      ? s.jobAccessPersonalizedLabel
+                      : s.jobAccessPagesLabel}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {memberPages.map((page) => (
+                      <span
+                        key={page}
+                        className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--text)]"
+                      >
+                        {navLabelForPage(page)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <p className="fl-faint">
+                {effectiveRole === "admin"
                   ? s.accessAdminHint
-                  : role === "manager"
+                  : effectiveRole === "manager"
                     ? s.accessManagerHint
                     : s.accessMemberHint}
-              </span>
-            </p>
+              </p>
+            </div>
           ) : null}
         </div>
 

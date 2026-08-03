@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { getOrgJobRoles } from "@/lib/actions/organizations";
 import { canManageUsers } from "@/lib/permissions";
-import { isLeadership } from "@/lib/permissions/capabilities";
-import { buildTeamOptions, profileToTeamOption } from "@/lib/team/members";
+import { canAccessHr, isLeadership } from "@/lib/permissions/capabilities";
 import type { ActionResult, OrgJobRole, Profile, Role } from "@/types/database";
+import { buildTeamOptions, profileToTeamOption } from "@/lib/team/members";
 import type { EmployeeProfile, HrContractScan, HrEntry } from "@/lib/hr/types";
 import { normalizeEmployeeProfile } from "@/lib/hr/types";
 import {
@@ -142,41 +143,44 @@ export async function getHrWorkspace(): Promise<{
   jobRoles: OrgJobRole[];
   emailDomain: string | null;
 } | null> {
-  const gate = await requireLeadership();
-  if (!gate.ok) return null;
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) return null;
+  if (!canAccessHr(profile)) return null;
 
+  const orgId = profile.organization_id;
   const teamProfiles = await getOrgProfiles();
   const team = buildTeamOptions(teamProfiles);
-  const supabase = await createClient();
-  const manageUsers = canManageUsers(gate.profile.role);
+  // Admin client so stagiaires with HR page can read (RLS is leadership-only).
+  const db = isLeadership(profile) ? await createClient() : createAdminClient();
+  const manageUsers = canManageUsers(profile.role);
 
   const [profilesRes, entriesRes, scansRes, jobRoles, orgRes] = await Promise.all([
-    supabase
+    db
       .from("hr_employee_profiles")
       .select("*")
-      .eq("organization_id", gate.orgId),
-    supabase
+      .eq("organization_id", orgId),
+    db
       .from("hr_entries")
       .select("*")
-      .eq("organization_id", gate.orgId)
+      .eq("organization_id", orgId)
       .order("entry_date", { ascending: false }),
-    supabase
+    db
       .from("hr_contract_scans")
       .select("*")
-      .eq("organization_id", gate.orgId)
+      .eq("organization_id", orgId)
       .order("uploaded_at", { ascending: false }),
-    getOrgJobRoles(gate.orgId),
-    supabase
+    getOrgJobRoles(orgId),
+    db
       .from("organizations")
       .select("email_domain")
-      .eq("id", gate.orgId)
+      .eq("id", orgId)
       .maybeSingle(),
   ]);
 
   const meta = {
     canManageUsers: manageUsers,
-    actorId: gate.profile.id,
-    actorRole: gate.profile.role,
+    actorId: profile.id,
+    actorRole: profile.role,
     jobRoles,
     emailDomain: orgRes.data?.email_domain ?? null,
   };

@@ -12,9 +12,16 @@ import { toast } from "sonner";
 import { updateTeamMemberAccess } from "@/lib/actions/organizations";
 import type { OrgJobRole, Profile, Role } from "@/types/database";
 import {
+  buildStagiaireMemberPages,
+  isStagiaireJob,
   jobRoleAccessKey,
+  memberPagesForJob,
+  STAGIAIRE_DEFAULT_TOGGLES,
+  stagiaireTogglesFromPages,
   suggestedAccessRole,
+  type MemberPageNavKey,
 } from "@/lib/organizations/job-role-access";
+import { StagiairePagesPicker } from "@/components/settings/stagiaire-pages-picker";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -71,6 +78,9 @@ export function TeamMemberAccessDialog({
   const [role, setRole] = useState<Role>("member");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [stagiaireToggles, setStagiaireToggles] = useState<MemberPageNavKey[]>([
+    ...STAGIAIRE_DEFAULT_TOGGLES,
+  ]);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -90,6 +100,16 @@ export function TeamMemberAccessDialog({
     setJobRoleId(currentJobId);
     setPassword("");
     setConfirmPassword("");
+    const currentJob =
+      jobRoles.find((j) => j.id === currentJobId) ??
+      jobRoles.find((j) => j.slug === member.job_role?.slug) ??
+      null;
+    if (isStagiaireJob(currentJob?.slug, currentJob?.name ?? member.job_role?.name)) {
+      setRole("member");
+      setStagiaireToggles(stagiaireTogglesFromPages(member.member_pages));
+      return;
+    }
+    setStagiaireToggles([...STAGIAIRE_DEFAULT_TOGGLES]);
     const nextRole =
       actorRole === "manager" && member.role === "admin"
         ? "manager"
@@ -100,19 +120,38 @@ export function TeamMemberAccessDialog({
   }, [open, member, jobRoles, actorRole]);
 
   const selectedJob = jobRoles.find((j) => j.id === jobRoleId);
-  const accessHint = s.jobAccess[jobRoleAccessKey(selectedJob?.slug)];
+  const isInternJob = isStagiaireJob(selectedJob?.slug, selectedJob?.name);
+  const accessHint = s.jobAccess[jobRoleAccessKey(selectedJob?.slug, selectedJob?.name)];
+  const memberPages = isInternJob
+    ? buildStagiaireMemberPages(stagiaireToggles)
+    : memberPagesForJob(selectedJob?.slug, selectedJob?.name);
+  const roleLockedToMember = isInternJob;
+  const effectiveRole: Role = roleLockedToMember ? "member" : role;
   const displayName = fullName.trim() || member?.email || dict.common.user;
   const accessLabel =
-    role === "admin"
+    effectiveRole === "admin"
       ? s.accessAdminHint
-      : role === "manager"
+      : effectiveRole === "manager"
         ? s.accessManagerHint
         : s.accessMemberHint;
+
+  function navLabelForPage(page: MemberPageNavKey): string {
+    return dict.nav[page] ?? page;
+  }
 
   function onJobRoleChange(id: string) {
     setJobRoleId(id);
     const job = jobRoles.find((j) => j.id === id);
-    const suggested = suggestedAccessRole(job?.slug);
+    if (isStagiaireJob(job?.slug, job?.name)) {
+      setRole("member");
+      setStagiaireToggles(
+        member
+          ? stagiaireTogglesFromPages(member.member_pages)
+          : [...STAGIAIRE_DEFAULT_TOGGLES]
+      );
+      return;
+    }
+    const suggested = suggestedAccessRole(job?.slug, job?.name);
     if (actorRole === "manager" && suggested === "admin") {
       setRole("manager");
     } else if (allowedRoles.includes(suggested)) {
@@ -146,12 +185,15 @@ export function TeamMemberAccessDialog({
     startTransition(async () => {
       const result = await updateTeamMemberAccess({
         memberId: member.id,
-        role,
+        role: roleLockedToMember ? "member" : role,
         jobRoleId,
         fullName,
         email,
         phone,
         password: password || undefined,
+        memberPages: isInternJob
+          ? buildStagiaireMemberPages(stagiaireToggles)
+          : null,
       });
       if (!result.success) {
         toast.error(result.error);
@@ -292,11 +334,12 @@ export function TeamMemberAccessDialog({
               <div className="fl-field">
                 <label className="fl-field-label">{s.accessLevel}</label>
                 <Select
-                  value={role}
+                  value={effectiveRole}
                   onValueChange={(v) => v && setRole(v as Role)}
+                  disabled={roleLockedToMember}
                 >
                   <SelectTrigger className="fl-select-trigger fl-input w-full">
-                    <SelectValue>{dict.roles[role]}</SelectValue>
+                    <SelectValue>{dict.roles[effectiveRole]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="fl-select-panel">
                     {allowedRoles.map((r) => (
@@ -308,20 +351,45 @@ export function TeamMemberAccessDialog({
                 </Select>
               </div>
             </div>
-            {selectedJob ? (
-              <p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2.5 text-[12.5px] leading-relaxed fl-muted">
+            {isInternJob ? (
+              <div className="mt-3">
+                <StagiairePagesPicker
+                  value={stagiaireToggles}
+                  onChange={setStagiaireToggles}
+                />
+              </div>
+            ) : selectedJob ? (
+              <div className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2.5 text-[12.5px] leading-relaxed fl-muted">
                 <Shield
                   className="mt-0.5 size-3.5 shrink-0 text-[var(--iris)]"
                   strokeWidth={1.75}
                 />
-                <span>
-                  <b className="text-[var(--text)]">{selectedJob.name}</b>
-                  {" · "}
-                  {accessHint}
-                  <br />
-                  <span className="fl-faint">{accessLabel}</span>
-                </span>
-              </p>
+                <div className="min-w-0 space-y-2">
+                  <p>
+                    <b className="text-[var(--text)]">{selectedJob.name}</b>
+                    {" · "}
+                    {accessHint}
+                  </p>
+                  {effectiveRole === "member" ? (
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-medium text-[var(--text)]">
+                        {s.jobAccessPagesLabel}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {memberPages.map((page) => (
+                          <span
+                            key={page}
+                            className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-[11px] text-[var(--text)]"
+                          >
+                            {navLabelForPage(page)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <p className="fl-faint">{accessLabel}</p>
+                </div>
+              </div>
             ) : null}
           </section>
 

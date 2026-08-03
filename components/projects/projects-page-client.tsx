@@ -53,11 +53,13 @@ function tabLabel(base: string, count: number) {
 
 function ProjectRowActions({
   project,
+  canManage,
   onView,
   onEdit,
   onDelete,
 }: {
   project: ProjectRecord;
+  canManage: boolean;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -73,18 +75,21 @@ function ProjectRowActions({
       icon: <Eye className="size-4" />,
       onClick: onView,
     },
-    {
-      label: dict.common.edit,
-      icon: <Pencil className="size-4" />,
-      onClick: onEdit,
-    },
-    { separator: true },
-    {
-      label: dict.common.delete,
-      icon: <Trash2 className="size-4" />,
-      destructive: true,
-      onClick: () => setDeleteOpen(true),
-    },
+    ...(canManage
+      ? [
+          {
+            label: dict.common.edit,
+            icon: <Pencil className="size-4" />,
+            onClick: onEdit,
+          } satisfies RowActionItem,
+          {
+            label: dict.common.delete,
+            icon: <Trash2 className="size-4" />,
+            destructive: true,
+            onClick: () => setDeleteOpen(true),
+          } satisfies RowActionItem,
+        ]
+      : []),
   ];
 
   return (
@@ -125,9 +130,11 @@ function ProjectRowActions({
 export function ProjectsPageClient({
   profiles,
   initialProjects = [],
+  canManage = true,
 }: {
   profiles: Profile[];
   initialProjects?: ProjectRecord[];
+  canManage?: boolean;
 }) {
   const dict = useDict();
   const router = useRouter();
@@ -416,16 +423,18 @@ export function ProjectsPageClient({
                 </button>
               ) : null}
 
-              <button
-                type="button"
-                className="fl-btn primary sm fl-toolbar-create shrink-0"
-                onClick={openCreate}
-              >
-                <Plus strokeWidth={2} />
-                <span className="fl-toolbar-create__label hidden sm:inline">
-                  {p.addProject}
-                </span>
-              </button>
+              {canManage ? (
+                <button
+                  type="button"
+                  className="fl-btn primary sm fl-toolbar-create shrink-0"
+                  onClick={openCreate}
+                >
+                  <Plus strokeWidth={2} />
+                  <span className="fl-toolbar-create__label hidden sm:inline">
+                    {p.addProject}
+                  </span>
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -476,30 +485,36 @@ export function ProjectsPageClient({
                       </td>
                       <td className="fl-muted">{phaseLabels[proj.phase]}</td>
                       <td>
-                        <Select
-                          value={proj.statusKey}
-                          onValueChange={(v) => {
-                            if (!v) return;
-                            handleStatusChange(proj, v as ProjectStatusKey);
-                          }}
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              "fl-status-select",
-                              `fl-badge ${proj.badgeClass}`
-                            )}
-                            aria-label={dict.common.status}
+                        {canManage ? (
+                          <Select
+                            value={proj.statusKey}
+                            onValueChange={(v) => {
+                              if (!v) return;
+                              handleStatusChange(proj, v as ProjectStatusKey);
+                            }}
                           >
-                            <SelectValue>{b[proj.statusKey]}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="fl-select-panel fl-status-select-panel" align="start" alignItemWithTrigger={false}>
-                            {PROJECT_FORM_STATUSES.map((key) => (
-                              <SelectItem key={key} value={key}>
-                                {b[key]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              className={cn(
+                                "fl-status-select",
+                                `fl-badge ${proj.badgeClass}`
+                              )}
+                              aria-label={dict.common.status}
+                            >
+                              <SelectValue>{b[proj.statusKey]}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="fl-select-panel fl-status-select-panel" align="start" alignItemWithTrigger={false}>
+                              {PROJECT_FORM_STATUSES.map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {b[key]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={cn("fl-badge", proj.badgeClass)}>
+                            {b[proj.statusKey]}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <div className="min-w-[7rem] max-w-[9rem]">
@@ -541,6 +556,7 @@ export function ProjectsPageClient({
                       <td>
                         <ProjectRowActions
                           project={proj}
+                          canManage={canManage}
                           onView={() => openView(proj)}
                           onEdit={() => openEdit(proj)}
                           onDelete={() => handleDelete(proj.id)}
