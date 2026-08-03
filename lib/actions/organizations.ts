@@ -396,7 +396,7 @@ export async function createTeamMember(input: {
   password: string;
   role: Role;
   jobRoleId: string;
-}): Promise<ActionResult> {
+}): Promise<ActionResult<Profile>> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) {
     return { success: false, error: "No organization" };
@@ -429,12 +429,24 @@ export async function createTeamMember(input: {
 
   const { data: jobRole } = await supabase
     .from("org_job_roles")
-    .select("id, name, organization_id")
+    .select("id, name, slug, organization_id")
     .eq("id", input.jobRoleId)
     .single();
 
   if (!jobRole || jobRole.organization_id !== profile.organization_id) {
     return { success: false, error: "Invalid job role" };
+  }
+
+  // Stagiaire always gets member access (personalized Tasks + Calendar pages).
+  const role: Role =
+    jobRole.slug === "stagiaire"
+      ? "member"
+      : input.role === "platform_admin"
+        ? "member"
+        : input.role;
+
+  if (profile.role === "manager" && role === "admin") {
+    return { success: false, error: "Managers cannot create director accounts" };
   }
 
   const { data: existingMember } = await supabase
@@ -467,7 +479,7 @@ export async function createTeamMember(input: {
     .from("profiles")
     .update({
       organization_id: profile.organization_id,
-      role: input.role,
+      role,
       full_name: fullName,
       email,
       job_role_id: input.jobRoleId,
@@ -480,9 +492,43 @@ export async function createTeamMember(input: {
     return { success: false, error: profileError.message };
   }
 
+  // Seed HR row so the member appears in Équipe immediately (stage contract for interns).
+  await admin.from("hr_employee_profiles").upsert(
+    {
+      organization_id: profile.organization_id,
+      member_id: authData.user.id,
+      role_title: jobRole.name,
+      department: jobRole.slug === "commercial" ? "commercial" : "tech",
+      business_unit: "",
+      phone: "",
+      email,
+      base_salary: null,
+      salary_currency: "MAD",
+      overtime_rate: null,
+      contract_type: jobRole.slug === "stagiaire" ? "stage" : "core",
+      utilization: 75,
+      status: "active",
+      contract_start: null,
+      contract_end: null,
+    },
+    { onConflict: "organization_id,member_id" }
+  );
+
+  const { data: created, error: fetchError } = await admin
+    .from("profiles")
+    .select("*, job_role:org_job_roles(*)")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (fetchError || !created) {
+    revalidatePath("/settings");
+    revalidatePath("/hr");
+    return { success: false, error: fetchError?.message ?? "Member created but could not load profile" };
+  }
+
   revalidatePath("/settings");
   revalidatePath("/hr");
-  return { success: true, data: undefined };
+  return { success: true, data: created as Profile };
 }
 
 export async function deleteTeamMember(memberId: string): Promise<ActionResult> {

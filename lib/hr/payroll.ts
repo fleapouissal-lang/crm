@@ -28,11 +28,11 @@ export function computePayrollMonth(
   const currency = profile.salaryCurrency || "MAD";
   const baseSalary =
     profile.baseSalary != null && profile.baseSalary > 0 ? profile.baseSalary : 0;
-  const bonuses = sumEntries(profile.entries, "bonus", { month });
-  const commissions = sumEntries(profile.entries, "commission", { month });
-  const overtimeHours = sumEntries(profile.entries, "overtime", { month });
-  const latenessCount = sumEntries(profile.entries, "lateness", { month });
-  const leaveDays = sumEntries(profile.entries, "leave", { month });
+  const bonuses = sumEntries(profile.entries ?? [], "bonus", { month });
+  const commissions = sumEntries(profile.entries ?? [], "commission", { month });
+  const overtimeHours = sumEntries(profile.entries ?? [], "overtime", { month });
+  const latenessCount = sumEntries(profile.entries ?? [], "lateness", { month });
+  const leaveDays = sumEntries(profile.entries ?? [], "leave", { month });
   const overtimeRate = profile.overtimeRate ?? 0;
   const overtimeValue = overtimeRate > 0 ? overtimeHours * overtimeRate : 0;
 

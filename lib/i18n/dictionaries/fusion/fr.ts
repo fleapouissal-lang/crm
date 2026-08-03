@@ -890,7 +890,7 @@ export const fusionFr: FusionDictionary = {
       dev: "En Membre : Tâches + Calendrier (suppression de ses tâches)",
       design: "En Membre : Tâches + Calendrier",
       sales: "En Membre : Leads + Clients + Tâches + Calendrier",
-      intern: "En Membre : Tâches + Calendrier",
+      intern: "En Membre : pages personnalisées · Tâches + Calendrier",
       finance: "En Membre : Dashboard et Paramètres seulement",
       hr: "En Membre : Dashboard et Paramètres seulement",
       support: "En Membre : Dashboard et Paramètres seulement",

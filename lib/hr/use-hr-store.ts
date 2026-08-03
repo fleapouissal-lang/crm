@@ -6,6 +6,7 @@ import type { Profile } from "@/types/database";
 import { buildTeamOptions, type TeamMemberOption } from "@/lib/team/members";
 import type { EmployeeProfile, HrContractScan, HrEntry } from "./types";
 import { buildEmptyHrProfiles, clearHrLocalCache } from "./storage";
+import { emptyProfileForMember } from "./map-rows";
 import {
   deleteHrContractScanAction,
   deleteHrEntryAction,
@@ -34,8 +35,11 @@ export function useHrStore(
     if (initialHrProfiles) {
       setHrProfiles(initialHrProfiles);
       setHydrated(true);
-      return;
     }
+  }, [initialHrProfiles]);
+
+  useEffect(() => {
+    if (initialHrProfiles) return;
 
     let cancelled = false;
     startTransition(async () => {
@@ -51,11 +55,20 @@ export function useHrStore(
     return () => {
       cancelled = true;
     };
-  }, [initialHrProfiles, teamOptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when SSR data is absent
+  }, [initialHrProfiles]);
+
+  // Always expose one HR profile per CRM member (avoids race after create).
+  const resolvedHrProfiles = useMemo(() => {
+    const byId = new Map(hrProfiles.map((p) => [p.memberId, p]));
+    return teamOptions.map(
+      (member) => byId.get(member.id) ?? emptyProfileForMember(member)
+    );
+  }, [hrProfiles, teamOptions]);
 
   const profileByMember = useMemo(
-    () => new Map(hrProfiles.map((p) => [p.memberId, p])),
-    [hrProfiles]
+    () => new Map(resolvedHrProfiles.map((p) => [p.memberId, p])),
+    [resolvedHrProfiles]
   );
 
   const getMember = useCallback(
@@ -75,13 +88,14 @@ export function useHrStore(
       setHrProfiles((prev) =>
         prev.map((p) => {
           if (p.memberId !== entry.memberId) return p;
-          const idx = p.entries.findIndex((e) => e.id === entry.id);
+          const current = p.entries ?? [];
+          const idx = current.findIndex((e) => e.id === entry.id);
           if (idx >= 0) {
-            const entries = [...p.entries];
+            const entries = [...current];
             entries[idx] = entry;
             return { ...p, entries };
           }
-          return { ...p, entries: [entry, ...p.entries] };
+          return { ...p, entries: [entry, ...current] };
         })
       );
       startTransition(async () => {
@@ -95,13 +109,14 @@ export function useHrStore(
         setHrProfiles((prev) =>
           prev.map((p) => {
             if (p.memberId !== res.data.memberId) return p;
-            const idx = p.entries.findIndex((e) => e.id === res.data.id);
+            const current = p.entries ?? [];
+            const idx = current.findIndex((e) => e.id === res.data.id);
             if (idx >= 0) {
-              const entries = [...p.entries];
+              const entries = [...current];
               entries[idx] = res.data;
               return { ...p, entries };
             }
-            return { ...p, entries: [res.data, ...p.entries] };
+            return { ...p, entries: [res.data, ...current] };
           })
         );
       });
@@ -113,7 +128,7 @@ export function useHrStore(
     setHrProfiles((prev) =>
       prev.map((p) =>
         p.memberId === memberId
-          ? { ...p, entries: p.entries.filter((e) => e.id !== entryId) }
+          ? { ...p, entries: (p.entries ?? []).filter((e) => e.id !== entryId) }
           : p
       )
     );
@@ -128,11 +143,22 @@ export function useHrStore(
   }, []);
 
   const saveProfile = useCallback((profile: EmployeeProfile) => {
-    setHrProfiles((prev) =>
-      prev.map((p) => (p.memberId === profile.memberId ? profile : p))
-    );
+    const normalized = {
+      ...profile,
+      entries: profile.entries ?? [],
+      contractScans: profile.contractScans ?? [],
+    };
+    setHrProfiles((prev) => {
+      const idx = prev.findIndex((p) => p.memberId === normalized.memberId);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = normalized;
+        return next;
+      }
+      return [...prev, normalized];
+    });
     startTransition(async () => {
-      const res = await upsertHrEmployeeProfile(profile);
+      const res = await upsertHrEmployeeProfile(normalized);
       if (!res.success) {
         toast.error(res.error);
         const data = await getHrWorkspace();
@@ -197,7 +223,7 @@ export function useHrStore(
   return {
     hydrated,
     teamOptions,
-    hrProfiles,
+    hrProfiles: resolvedHrProfiles,
     profileByMember,
     getMember,
     getProfile,

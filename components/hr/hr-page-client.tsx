@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -89,7 +89,7 @@ function MemberRowActions({
 }
 
 export function HrPageClient({
-  profiles,
+  profiles: initialProfiles,
   initialHrProfiles,
   canManageUsers = false,
   actorId = "",
@@ -110,6 +110,11 @@ export function HrPageClient({
   const s = dict.fusion.settings;
   const l = dict.fusion.labels;
   const router = useRouter();
+
+  const [profiles, setProfiles] = useState(initialProfiles);
+  useEffect(() => {
+    setProfiles(initialProfiles);
+  }, [initialProfiles]);
 
   const {
     hydrated,
@@ -333,9 +338,10 @@ export function HrPageClient({
                 </tr>
               ) : (
                 pagination.pageItems.map((member) => {
-                  const profile = profileByMember.get(member.id)!;
+                  const profile = profileByMember.get(member.id);
+                  if (!profile) return null;
                   const crmProfile = crmProfileById.get(member.id);
-                  const entries = profile.entries;
+                  const entries = profile.entries ?? [];
                   const phone = profile.phone?.trim() || member.phone || "";
                   const email = profile.email?.trim() || member.email || "";
                   const canRemove =
@@ -439,7 +445,12 @@ export function HrPageClient({
           jobRoles={jobRoles}
           emailDomain={emailDomain}
           actorRole={actorRole}
-          onCreated={() => router.refresh()}
+          onCreated={(member) => {
+            setProfiles((prev) => {
+              if (prev.some((p) => p.id === member.id)) return prev;
+              return [...prev, member];
+            });
+          }}
         />
       ) : null}
 

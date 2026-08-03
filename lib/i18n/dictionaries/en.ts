@@ -225,8 +225,11 @@ export const en = {
     memberSubtitle: "Your assigned projects and priority tasks.",
     commercialSubtitle:
       "Your leads, clients, tasks and calendar to track sales activity.",
+    internSubtitle:
+      "Your personalized pages: tasks and calendar to follow your activity.",
     modulesTitle: "Your modules",
     modulesHint: "Open leads, clients, tasks and calendar",
+    internModulesHint: "Open your pages: tasks and calendar",
     restrictedSubtitle: "Your workspace access is limited to account settings.",
     restrictedTitle: "Limited access",
     restrictedHint:

@@ -156,11 +156,11 @@ function monthKey(date: string): string {
 }
 
 export function sumEntries(
-  entries: HrEntry[],
+  entries: HrEntry[] | undefined | null,
   type: HrEntryType,
   opts?: { month?: string }
 ): number {
-  return entries
+  return (entries ?? [])
     .filter((e) => {
       if (e.type !== type) return false;
       if (opts?.month && monthKey(e.date) !== opts.month) return false;

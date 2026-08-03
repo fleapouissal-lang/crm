@@ -75,7 +75,10 @@ export function profileToTeamOption(profile: Profile): TeamMemberOption {
     id: profile.id,
     initials: initialsFromName(profile.full_name ?? profile.email),
     name: profile.full_name ?? profile.email ?? "User",
-    role: profile.role,
+    role:
+      profile.job_title ??
+      profile.job_role?.name ??
+      profile.role,
     color: colorForMemberId(profile.id),
     email: profile.email ?? undefined,
     phone: profile.phone ?? undefined,

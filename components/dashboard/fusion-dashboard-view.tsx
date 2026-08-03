@@ -31,11 +31,13 @@ import {
   canAccessCalendar,
   canAccessClients,
   canAccessTasks,
+  getJobSlug,
   isLeadership,
 } from "@/lib/permissions/capabilities";
 import { projectMatchesMember, type ProjectRecord } from "@/lib/projects/types";
 import type { Profile, Task } from "@/types/database";
 import { EmptyState } from "@/components/shared/page-header";
+import { cn } from "@/lib/utils";
 
 function formatCompact(value: number, locale: string) {
   if (value >= 1_000_000) {
@@ -199,8 +201,11 @@ function MemberDashboardView({
   const { locale } = useI18n();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const isCommercial = canAccessClients(profile);
+  const isStagiaire = getJobSlug(profile) === "stagiaire";
   const showTasks = canAccessTasks(profile);
   const showCalendar = canAccessCalendar(profile);
+  /** Personalized module home for commercial & stagiaire roles. */
+  const usePersonalizedModules = isCommercial || isStagiaire;
 
   useEffect(() => {
     setProjects(
@@ -210,7 +215,7 @@ function MemberDashboardView({
     );
   }, [allProjects, profile.id]);
 
-  if (!isCommercial && !showTasks) {
+  if (!usePersonalizedModules && !showTasks) {
     return (
       <div className="space-y-[18px]">
         <div className="fl-card fl-pad flex flex-wrap items-center justify-between gap-3">
@@ -247,7 +252,7 @@ function MemberDashboardView({
     );
   }
 
-  if (isCommercial) {
+  if (usePersonalizedModules) {
     return (
       <div className="space-y-[18px] dash-home">
         <div className="fl-card fl-pad flex flex-wrap items-center justify-between gap-3">
@@ -257,7 +262,9 @@ function MemberDashboardView({
               {profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
             </h2>
             <p className="mt-1 text-sm fl-faint">
-              {dict.dashboard.commercialSubtitle ?? dict.dashboard.subtitle}
+              {isStagiaire
+                ? (dict.dashboard.internSubtitle ?? dict.dashboard.memberSubtitle)
+                : (dict.dashboard.commercialSubtitle ?? dict.dashboard.subtitle)}
             </p>
           </div>
           <div className="fl-filter-bar__actions !ms-0">
@@ -268,7 +275,13 @@ function MemberDashboardView({
               </Link>
             ) : null}
             {showTasks ? (
-              <Link href="/tasks/new" className="fl-btn sm ghost shrink-0">
+              <Link
+                href="/tasks/new"
+                className={cn(
+                  "fl-btn sm shrink-0",
+                  isStagiaire ? "primary" : "ghost"
+                )}
+              >
                 <Plus strokeWidth={2} className="size-3.5" />
                 <span className="hidden sm:inline">{dict.tasks.newTask}</span>
               </Link>
@@ -283,13 +296,15 @@ function MemberDashboardView({
         </div>
 
         <div className="dash-kpi-grid">
-          <MiniStat
-            href="/clients"
-            label={dict.dashboard.totalClients ?? dict.nav.clients}
-            value={String(stats.totalClients)}
-            hint={dict.dashboard.totalClientsHint ?? dict.nav.clientsSub}
-            icon={<Target className="size-3.5" strokeWidth={2} />}
-          />
+          {isCommercial ? (
+            <MiniStat
+              href="/clients"
+              label={dict.dashboard.totalClients ?? dict.nav.clients}
+              value={String(stats.totalClients)}
+              hint={dict.dashboard.totalClientsHint ?? dict.nav.clientsSub}
+              icon={<Target className="size-3.5" strokeWidth={2} />}
+            />
+          ) : null}
           <MiniStat
             href="/tasks?view=list"
             label={dict.dashboard.openTasks}
@@ -312,12 +327,21 @@ function MemberDashboardView({
             <div>
               <h3>{dict.dashboard.modulesTitle ?? dict.nav.main}</h3>
               <div className="ch-sub">
-                {dict.dashboard.modulesHint ?? dict.dashboard.commercialSubtitle}
+                {isStagiaire
+                  ? (dict.dashboard.internModulesHint ??
+                    dict.dashboard.modulesHint)
+                  : (dict.dashboard.modulesHint ??
+                    dict.dashboard.commercialSubtitle)}
               </div>
             </div>
           </div>
           <div className="fl-pad">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              className={cn(
+                "grid gap-3 sm:grid-cols-2",
+                isCommercial ? "xl:grid-cols-3" : "xl:grid-cols-2"
+              )}
+            >
               {(
                 [
                   canAccessClients(profile)

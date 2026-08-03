@@ -891,7 +891,7 @@ export const fusionEn = {
       dev: "With Member: Tasks + Calendar (can delete own tasks)",
       design: "With Member: Tasks + Calendar",
       sales: "With Member: Leads + Clients + Tasks + Calendar",
-      intern: "With Member: Tasks + Calendar",
+      intern: "With Member: personalized pages · Tasks + Calendar",
       finance: "With Member: Dashboard & Settings only",
       hr: "With Member: Dashboard & Settings only",
       support: "With Member: Dashboard & Settings only",

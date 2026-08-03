@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createTeamMember } from "@/lib/actions/organizations";
-import type { OrgJobRole, Role } from "@/types/database";
+import type { OrgJobRole, Profile, Role } from "@/types/database";
 import {
   jobRoleAccessKey,
   suggestedAccessRole,
@@ -43,7 +43,7 @@ export function TeamMemberDialog({
   /** Kept for call-site compatibility; member emails are personal and not domain-bound */
   emailDomain: string | null;
   actorRole: Role;
-  onCreated?: () => void;
+  onCreated?: (member: Profile) => void;
 }) {
   const dict = useDict();
   const s = dict.fusion.settings;
@@ -117,7 +117,7 @@ export function TeamMemberDialog({
       toast.success(s.memberCreated);
       reset();
       onOpenChange(false);
-      onCreated?.();
+      onCreated?.(result.data);
     });
   }
 

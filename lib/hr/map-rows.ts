@@ -94,17 +94,22 @@ export function mapScanRow(
 }
 
 export function emptyProfileForMember(member: TeamMemberOption): EmployeeProfile {
+  const role = (member.role ?? "").toLowerCase();
+  const isIntern =
+    role.includes("stagiaire") ||
+    role.includes("stage") ||
+    role.includes("intern");
   return normalizeEmployeeProfile({
     memberId: member.id,
     roleTitle: member.role ?? member.name,
-    department: "tech",
+    department: role.includes("commercial") ? "commercial" : "tech",
     businessUnit: "",
     phone: member.phone ?? "",
     email: member.email ?? "",
     baseSalary: undefined,
     salaryCurrency: "MAD",
     overtimeRate: undefined,
-    contractType: "core",
+    contractType: isIntern ? "stage" : "core",
     utilization: 75,
     status: "active",
     contractStart: "",
