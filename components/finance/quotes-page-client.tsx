@@ -287,58 +287,58 @@ export function QuotesPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{q.recentQuotes}</h2>
-            <Link
-              href="/finance/quotes/new"
-              className="fl-btn primary sm fl-toolbar-create"
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {q.newQuote}
-              </span>
-            </Link>
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={q.searchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
-            <div className="fl-clients-status">
-              <Select
-                value={statusFilter}
-                onValueChange={(v) =>
-                  setStatusFilter((v as QuoteStatus | "all") ?? "all")
-                }
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={q.searchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
+              <div className="fl-clients-status">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter((v as QuoteStatus | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {statusFilter === "all" ? q.allStatuses : q[statusFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    {STATUS_FILTERS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {key === "all" ? q.allStatuses : q[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={clearFilters}
+                  title={q.clearFilters}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                  <span className="hidden sm:inline">{q.clearFilters}</span>
+                </button>
+              ) : null}
+              <Link
+                href="/finance/quotes/new"
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
               >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {statusFilter === "all" ? q.allStatuses : q[statusFilter]}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  {STATUS_FILTERS.map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {key === "all" ? q.allStatuses : q[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {q.newQuote}
+                </span>
+              </Link>
             </div>
-            {hasFilters ? (
-              <button
-                type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={clearFilters}
-                title={q.clearFilters}
-              >
-                <X className="size-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">{q.clearFilters}</span>
-              </button>
-            ) : null}
           </div>
         </div>
 

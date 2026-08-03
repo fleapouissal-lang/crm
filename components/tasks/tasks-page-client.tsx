@@ -92,57 +92,57 @@ export function TasksPageClient({
                   {dict.tasks.list}
                 </button>
               </div>
-              <Link
-                href="/tasks/new"
-                className="fl-btn primary sm fl-toolbar-create"
-              >
-                <Plus strokeWidth={2} />
-                <span className="fl-toolbar-create__label hidden sm:inline">
-                  {dict.tasks.newTask}
-                </span>
-              </Link>
-            </div>
-            <div className="fl-filter-bar__actions">
-              <div className="fl-filter-field fl-filter-field--lg">
-                <Select
-                  value={projectFilter}
-                  onValueChange={(v) => v && updateFilter("project_id", v)}
-                >
-                  <SelectTrigger className="fl-select-trigger">
-                    <SelectValue>{projectFilterLabel}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="fl-select-panel" align="end">
-                    <SelectItem value="all">
-                      {dict.fusion.kanban.allProjects}
-                    </SelectItem>
-                    <SelectItem value="none">
-                      {dict.fusion.kanban.noProject}
-                    </SelectItem>
-                    {projects.map((proj) => (
-                      <SelectItem key={proj.id} value={proj.id}>
-                        {proj.title}
+              <div className="fl-clients-toolbar__actions">
+                <div className="fl-filter-field fl-filter-field--lg">
+                  <Select
+                    value={projectFilter}
+                    onValueChange={(v) => v && updateFilter("project_id", v)}
+                  >
+                    <SelectTrigger className="fl-select-trigger">
+                      <SelectValue>{projectFilterLabel}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="fl-select-panel" align="end">
+                      <SelectItem value="all">
+                        {dict.fusion.kanban.allProjects}
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="fl-filter-field">
-                <Select
-                  value={status}
-                  onValueChange={(v) => v && updateFilter("status", v)}
-                >
-                  <SelectTrigger className="fl-select-trigger">
-                    <SelectValue>{statusFilterLabel}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="fl-select-panel" align="end">
-                    <SelectItem value="all">{dict.common.allStatuses}</SelectItem>
-                    {TASK_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {dict.taskStatus[s]}
+                      <SelectItem value="none">
+                        {dict.fusion.kanban.noProject}
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      {projects.map((proj) => (
+                        <SelectItem key={proj.id} value={proj.id}>
+                          {proj.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="fl-filter-field">
+                  <Select
+                    value={status}
+                    onValueChange={(v) => v && updateFilter("status", v)}
+                  >
+                    <SelectTrigger className="fl-select-trigger">
+                      <SelectValue>{statusFilterLabel}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="fl-select-panel" align="end">
+                      <SelectItem value="all">{dict.common.allStatuses}</SelectItem>
+                      {TASK_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {dict.taskStatus[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Link
+                  href="/tasks/new"
+                  className="fl-btn primary sm fl-toolbar-create shrink-0"
+                >
+                  <Plus strokeWidth={2} />
+                  <span className="fl-toolbar-create__label hidden sm:inline">
+                    {dict.tasks.newTask}
+                  </span>
+                </Link>
               </div>
             </div>
           </div>

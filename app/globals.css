@@ -2419,13 +2419,25 @@ a.fusion-user-card:hover .fusion-user-meta b {
 
 .fl-filter-bar__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
-  margin-inline-start: 0;
+  width: auto;
+  margin-inline-start: auto;
   min-width: 0;
   justify-content: flex-end;
+  flex: 0 0 auto;
+}
+.fl-filter-bar__actions .fl-toolbar-create {
+  margin-inline-start: 0;
+}
+.fl-filter-bar__actions .fl-clients-search-wrap {
+  flex: 0 0 14rem;
+  max-width: 14rem;
+  min-width: 10rem;
+}
+.fl-filter-bar__head > .fl-clients-toolbar__actions {
+  margin-inline-start: auto;
 }
 
 .fl-clients-toolbar,
@@ -2513,6 +2525,7 @@ a.fusion-user-card:hover .fusion-user-meta b {
 .fl-clients-toolbar__head,
 .fl-filter-bar__head {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -2534,10 +2547,24 @@ a.fusion-user-card:hover .fusion-user-meta b {
     min-width: 0;
   }
   .fl-clients-toolbar__head > .fl-toolbar-create,
+  .fl-clients-toolbar__head > .fl-clients-toolbar__actions,
   .fl-filter-bar__head > .fl-toolbar-create {
     order: 1;
-    align-self: flex-end;
-    width: fit-content;
+    align-self: stretch;
+    width: 100%;
+    margin-inline-start: 0;
+  }
+  .fl-clients-toolbar__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .fl-clients-toolbar__actions .fl-clients-search-wrap {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 8rem;
+  }
+  .fl-clients-toolbar__actions .fl-toolbar-create {
     margin-inline-start: 0;
   }
 }
@@ -2546,8 +2573,27 @@ a.fusion-user-card:hover .fusion-user-meta b {
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
+  white-space: nowrap;
+}
+.fl-clients-toolbar__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+.fl-clients-toolbar__actions .fl-toolbar-create {
+  margin-inline-start: 0;
+}
+.fl-clients-toolbar__actions .fl-clients-search-wrap {
+  flex: 0 0 14rem;
+  max-width: 14rem;
+  min-width: 10rem;
 }
 .fl-clients-toolbar__row {
   width: 100%;
@@ -2555,9 +2601,9 @@ a.fusion-user-card:hover .fusion-user-meta b {
 }
 .fl-clients-search-wrap {
   position: relative;
-  flex: 1;
+  flex: 0 0 14rem;
   min-width: 10rem;
-  max-width: 15rem;
+  max-width: 14rem;
 }
 .fl-clients-search-wrap svg {
   position: absolute;
@@ -3048,6 +3094,15 @@ textarea.fl-control {
   background: none;
 }
 .rowbtn:hover { background: var(--glass-hi); color: var(--text); }
+.rowbtn--danger { color: var(--rose); }
+.rowbtn--danger:hover {
+  background: color-mix(in oklch, var(--rose) 12%, transparent);
+  color: var(--rose);
+}
+.rowbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .funnel-row .fl-bar i { display: block; height: 100%; }
 .donut-center {
@@ -5521,6 +5576,10 @@ textarea.fl-control {
 
 .login-split__submit {
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   padding: 0.95rem 1.25rem;
   border: none;
   border-radius: 14px;

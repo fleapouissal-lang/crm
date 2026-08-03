@@ -75,49 +75,52 @@ export function LeadsPageClient({
                 </span>
               </button>
             </div>
-            <button
-              type="button"
-              className="fl-btn primary sm fl-toolbar-create"
-              onClick={() => setFormOpen(true)}
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {dict.leads.newLead}
-              </span>
-            </button>
-          </div>
-
-          <div className="fl-filter-bar__actions">
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                placeholder={dict.leads.searchPlaceholder}
-                className="fl-clients-search"
-                defaultValue={q}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    updateFilter("q", (e.target as HTMLInputElement).value);
-                  }
-                }}
-              />
-            </div>
-            <div className="fl-filter-field">
-              <Select
-                value={stage}
-                onValueChange={(v) => v && updateFilter("stage", v)}
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  placeholder={dict.leads.searchPlaceholder}
+                  className="fl-clients-search"
+                  defaultValue={q}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      updateFilter("q", (e.target as HTMLInputElement).value);
+                    }
+                  }}
+                />
+              </div>
+              <div className="fl-filter-field">
+                <Select
+                  value={stage}
+                  onValueChange={(v) => v && updateFilter("stage", v)}
+                >
+                  <SelectTrigger className="fl-select-trigger">
+                    <SelectValue placeholder={dict.common.allStages}>
+                      {stage === "all"
+                        ? dict.common.allStages
+                        : dict.stages[stage as keyof typeof dict.stages]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{dict.common.allStages}</SelectItem>
+                    {LEAD_STAGES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {dict.stages[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <button
+                type="button"
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
+                onClick={() => setFormOpen(true)}
               >
-                <SelectTrigger className="fl-select-trigger">
-                  <SelectValue placeholder={dict.common.allStages} />
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{dict.common.allStages}</SelectItem>
-                  {LEAD_STAGES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {dict.stages[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {dict.leads.newLead}
+                </span>
+              </button>
             </div>
           </div>
         </div>

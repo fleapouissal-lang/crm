@@ -4,41 +4,22 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  Plus,
-  Search,
-  X,
-  Eye,
-  Pencil,
-  Gift,
-  Coins,
-  Clock,
-  AlertCircle,
-  Palmtree,
-  StickyNote,
-  Wallet,
-  Trash2,
-} from "lucide-react";
+import { Plus, Search, X, Eye, Pencil, Wallet, Trash2 } from "lucide-react";
 import type { OrgJobRole, Profile, Role } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { CellMain, FlChip, FlProgress, StatLine } from "@/components/fusion/primitives";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
-import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { DeleteConfirmDialog } from "@/components/shared/delete-confirm-dialog";
-import {
-  EmployeeProfileFormDialog,
-  HrEntryFormDialog,
-} from "@/components/hr/hr-form-dialogs";
+import { EmployeeProfileFormDialog } from "@/components/hr/hr-form-dialogs";
 import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
+import { TeamMemberAccessDialog } from "@/components/settings/team-member-access-dialog";
 import { deleteTeamMember } from "@/lib/actions/organizations";
-import { canRemoveTeamMember } from "@/lib/permissions";
-import type {
-  EmployeeProfile,
-  HrDepartment,
-  HrEntry,
-  HrEntryType,
-} from "@/lib/hr/types";
+import {
+  canRemoveTeamMember,
+  canResetTeamMemberPassword,
+} from "@/lib/permissions";
+import type { EmployeeProfile, HrDepartment } from "@/lib/hr/types";
 import {
   avgUtilization,
   formatBaseSalary,
@@ -60,90 +41,53 @@ import {
 
 function MemberRowActions({
   onView,
-  onSalary,
   onEdit,
-  onAddEntry,
-  onQuickAdd,
   onRemove,
 }: {
   onView: () => void;
-  onSalary: () => void;
   onEdit: () => void;
-  onAddEntry: () => void;
-  onQuickAdd: (type: HrEntryType) => void;
   onRemove?: () => void;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
   const s = dict.fusion.settings;
 
-  const actions: RowActionItem[] = [
-    {
-      label: h.viewDossier,
-      icon: <Eye className="size-4" />,
-      onClick: onView,
-    },
-    {
-      label: h.openSalaryAccount,
-      icon: <Wallet className="size-4" />,
-      onClick: onSalary,
-    },
-    {
-      label: h.addEntry,
-      icon: <Plus className="size-4" />,
-      onClick: onAddEntry,
-    },
-    { separator: true },
-    {
-      label: h.quickAddBonus,
-      icon: <Gift className="size-4" />,
-      onClick: () => onQuickAdd("bonus"),
-    },
-    {
-      label: h.quickAddCommission,
-      icon: <Coins className="size-4" />,
-      onClick: () => onQuickAdd("commission"),
-    },
-    {
-      label: h.quickAddOvertime,
-      icon: <Clock className="size-4" />,
-      onClick: () => onQuickAdd("overtime"),
-    },
-    {
-      label: h.quickAddLateness,
-      icon: <AlertCircle className="size-4" />,
-      onClick: () => onQuickAdd("lateness"),
-    },
-    {
-      label: h.quickAddLeave,
-      icon: <Palmtree className="size-4" />,
-      onClick: () => onQuickAdd("leave"),
-    },
-    {
-      label: h.quickAddNote,
-      icon: <StickyNote className="size-4" />,
-      onClick: () => onQuickAdd("note"),
-    },
-    { separator: true },
-    {
-      label: h.editProfile,
-      icon: <Pencil className="size-4" />,
-      onClick: onEdit,
-    },
-    ...(onRemove
-      ? ([
-          { separator: true },
-          {
-            label: s.removeMember,
-            icon: <Trash2 className="size-4" />,
-            destructive: true,
-            onClick: onRemove,
-          },
-        ] satisfies RowActionItem[])
-      : []),
-  ];
-
-  return <RowActionsMenu actions={actions} />;
+  return (
+    <div
+      className="flex items-center justify-end gap-0.5"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="rowbtn"
+        aria-label={h.viewDossier}
+        title={h.viewDossier}
+        onClick={onView}
+      >
+        <Eye className="size-4" strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className="rowbtn"
+        aria-label={dict.common.edit}
+        title={dict.common.edit}
+        onClick={onEdit}
+      >
+        <Pencil className="size-4" strokeWidth={2} />
+      </button>
+      {onRemove ? (
+        <button
+          type="button"
+          className="rowbtn rowbtn--danger"
+          aria-label={s.removeMember}
+          title={s.removeMember}
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" strokeWidth={2} />
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export function HrPageClient({
@@ -175,7 +119,6 @@ export function HrPageClient({
     teamOptions,
     hrProfiles,
     profileByMember,
-    saveEntry,
     saveProfile,
   } = useHrStore(profiles, initialHrProfiles);
 
@@ -188,11 +131,9 @@ export function HrPageClient({
   const [deptFilter, setDeptFilter] = useState<HrDepartment | "all">("all");
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<Profile | null>(null);
-
-  const [entryOpen, setEntryOpen] = useState(false);
+  const [accessTarget, setAccessTarget] = useState<Profile | null>(null);
   const [profileFormOpen, setProfileFormOpen] = useState(false);
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
-  const [entryDefaultType, setEntryDefaultType] = useState<HrEntryType | undefined>();
 
   const activeMember = teamOptions.find((m) => m.id === activeMemberId) ?? null;
   const activeProfile = activeMemberId
@@ -234,46 +175,49 @@ export function HrPageClient({
     resetKey: `${deptFilter}:${search}`,
   });
 
-  function openMember(
-    memberId: string,
-    mode: "entry" | "profile" | "quick",
-    entryType?: HrEntryType
-  ) {
-    setActiveMemberId(memberId);
-    if (mode === "entry") {
-      setEntryDefaultType(undefined);
-      setEntryOpen(true);
-    }
-    if (mode === "profile") setProfileFormOpen(true);
-    if (mode === "quick") {
-      setEntryDefaultType(entryType);
-      setEntryOpen(true);
-    }
-  }
-
   function goToProfile(memberId: string) {
     router.push(hrMemberPath(memberId));
   }
 
-  function goToSalary(memberId: string) {
-    router.push(hrSalaryPath(memberId));
+  function handleSaveProfile(next: EmployeeProfile) {
+    void saveProfile(next);
+    setProfileFormOpen(false);
   }
 
-  function handleSaveEntry(entry: HrEntry) {
-    saveEntry(entry);
-  }
+  function handleEditMember(memberId: string, crmProfile: Profile | undefined) {
+    const canManageAccount =
+      canManageUsers &&
+      !!crmProfile &&
+      canResetTeamMemberPassword(
+        { id: actorId, role: actorRole },
+        crmProfile
+      );
 
-  function handleSaveProfile(profile: EmployeeProfile) {
-    saveProfile(profile);
+    if (canManageAccount && crmProfile) {
+      setAccessTarget(crmProfile);
+      return;
+    }
+
+    setActiveMemberId(memberId);
+    setProfileFormOpen(true);
   }
 
   if (!hydrated) {
-    return <div className="h-40 animate-pulse rounded-xl bg-[var(--glass-hi)]" />;
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="fl-card fl-pad h-28 animate-pulse bg-[var(--glass)]" />
+          ))}
+        </div>
+        <div className="fl-card h-96 animate-pulse bg-[var(--glass)]" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-[18px]">
-      <div className="grid g-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="fl-card fl-pad">
           <div className="k-label">{h.headcount}</div>
           <StatLine value={String(kpis.headcount)} />
@@ -305,63 +249,68 @@ export function HrPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{h.team}</h2>
-            {canManageUsers ? (
-              <button
-                type="button"
-                className="fl-btn primary sm fl-toolbar-create"
-                onClick={() => setMemberDialogOpen(true)}
-              >
-                <Plus strokeWidth={2} />
-                <span className="fl-toolbar-create__label hidden sm:inline">
-                  {s.addMember}
-                </span>
-              </button>
-            ) : null}
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={h.searchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={h.searchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
 
-            <div className="fl-clients-status">
-              <Select
-                value={deptFilter}
-                onValueChange={(v) =>
-                  setDeptFilter((v as HrDepartment | "all") ?? "all")
-                }
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue placeholder={h.filterDepartment} />
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{h.allDepartments}</SelectItem>
-                  {(Object.keys(h.departments) as HrDepartment[]).map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {h.departments[d]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="fl-clients-status">
+                <Select
+                  value={deptFilter}
+                  onValueChange={(v) =>
+                    setDeptFilter((v as HrDepartment | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue placeholder={h.filterDepartment}>
+                      {deptFilter === "all"
+                        ? h.allDepartments
+                        : h.departments[deptFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{h.allDepartments}</SelectItem>
+                    {(Object.keys(h.departments) as HrDepartment[]).map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {h.departments[d]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {(search || deptFilter !== "all") && (
-              <button
-                type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={() => {
-                  setSearch("");
-                  setDeptFilter("all");
-                }}
-              >
-                <X className="size-3.5" strokeWidth={2} />
-              </button>
-            )}
+              {(search || deptFilter !== "all") && (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={() => {
+                    setSearch("");
+                    setDeptFilter("all");
+                  }}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                </button>
+              )}
+
+              {canManageUsers ? (
+                <button
+                  type="button"
+                  className="fl-btn primary sm fl-toolbar-create shrink-0"
+                  onClick={() => setMemberDialogOpen(true)}
+                >
+                  <Plus strokeWidth={2} />
+                  <span className="fl-toolbar-create__label hidden sm:inline">
+                    {s.addMember}
+                  </span>
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -382,7 +331,7 @@ export function HrPageClient({
             <tbody>
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center fl-faint">
+                  <td colSpan={8} className="py-16 text-center fl-faint">
                     {h.noEntries}
                   </td>
                 </tr>
@@ -470,10 +419,7 @@ export function HrPageClient({
                       >
                         <MemberRowActions
                           onView={() => goToProfile(member.id)}
-                          onSalary={() => goToSalary(member.id)}
-                          onEdit={() => openMember(member.id, "profile")}
-                          onAddEntry={() => openMember(member.id, "entry")}
-                          onQuickAdd={(type) => openMember(member.id, "quick", type)}
+                          onEdit={() => handleEditMember(member.id, crmProfile)}
                           onRemove={
                             canRemove && crmProfile
                               ? () => setRemoveTarget(crmProfile)
@@ -497,14 +443,6 @@ export function HrPageClient({
         />
       </div>
 
-      <HrEntryFormDialog
-        open={entryOpen}
-        onOpenChange={setEntryOpen}
-        member={activeMember}
-        defaultType={entryDefaultType}
-        onSave={handleSaveEntry}
-      />
-
       <EmployeeProfileFormDialog
         open={profileFormOpen}
         onOpenChange={setProfileFormOpen}
@@ -523,6 +461,17 @@ export function HrPageClient({
           onCreated={() => router.refresh()}
         />
       ) : null}
+
+      <TeamMemberAccessDialog
+        open={!!accessTarget}
+        onOpenChange={(open) => {
+          if (!open) setAccessTarget(null);
+        }}
+        member={accessTarget}
+        jobRoles={jobRoles}
+        actorRole={actorRole}
+        onUpdated={() => router.refresh()}
+      />
 
       <DeleteConfirmDialog
         open={!!removeTarget}

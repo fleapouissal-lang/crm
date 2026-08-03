@@ -151,64 +151,64 @@ export function TemplatesPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{f.templatesTitle}</h2>
-            <button
-              type="button"
-              className="fl-btn primary sm fl-toolbar-create"
-              onClick={() => {
-                setActive(null);
-                setFormOpen(true);
-              }}
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {f.newTemplate}
-              </span>
-            </button>
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={f.templateSearchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
-            <div className="fl-clients-status">
-              <Select
-                value={kindFilter}
-                onValueChange={(v) =>
-                  setKindFilter((v as TemplateKind | "all") ?? "all")
-                }
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {kindFilter === "all"
-                      ? f.allTemplateKinds
-                      : kindFilter === "quote"
-                        ? f.kindQuote
-                        : f.kindInvoice}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{f.allTemplateKinds}</SelectItem>
-                  <SelectItem value="quote">{f.kindQuote}</SelectItem>
-                  <SelectItem value="invoice">{f.kindInvoice}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {hasFilters ? (
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={f.templateSearchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
+              <div className="fl-clients-status">
+                <Select
+                  value={kindFilter}
+                  onValueChange={(v) =>
+                    setKindFilter((v as TemplateKind | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {kindFilter === "all"
+                        ? f.allTemplateKinds
+                        : kindFilter === "quote"
+                          ? f.kindQuote
+                          : f.kindInvoice}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{f.allTemplateKinds}</SelectItem>
+                    <SelectItem value="quote">{f.kindQuote}</SelectItem>
+                    <SelectItem value="invoice">{f.kindInvoice}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={clearFilters}
+                  title={f.clearFilters}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                  <span className="hidden sm:inline">{f.clearFilters}</span>
+                </button>
+              ) : null}
               <button
                 type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={clearFilters}
-                title={f.clearFilters}
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
+                onClick={() => {
+                  setActive(null);
+                  setFormOpen(true);
+                }}
               >
-                <X className="size-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">{f.clearFilters}</span>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {f.newTemplate}
+                </span>
               </button>
-            ) : null}
+            </div>
           </div>
         </div>
 

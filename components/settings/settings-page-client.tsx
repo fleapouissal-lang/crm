@@ -7,17 +7,13 @@ import {
   Bell,
   Building2,
   Loader2,
-  KeyRound,
   LogOut,
   Lock,
   Moon,
   Palette,
-  Pencil,
-  Plus,
   Sun,
   Trash2,
   User,
-  Users,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,12 +23,6 @@ import { updateProfile, signOut, updatePassword } from "@/lib/actions/auth";
 import { clearHrLocalCache } from "@/lib/hr/storage";
 import { updateOrganization } from "@/lib/actions/settings";
 import type { SettingsData } from "@/lib/actions/settings";
-import { deleteTeamMember } from "@/lib/actions/organizations";
-import {
-  canRemoveTeamMember,
-  canResetTeamMemberPassword,
-} from "@/lib/permissions";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useRouter } from "next/navigation";
 import {
   clearDemoLocalData,
@@ -48,17 +38,10 @@ import {
   type WorkspacePreferences,
 } from "@/lib/settings/types";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
-import { CellMain, FlChip, StatLine } from "@/components/fusion/primitives";
+import { FlChip, StatLine } from "@/components/fusion/primitives";
 import { ProfileAvatarEditor } from "@/components/settings/profile-avatar-editor";
 import { MemberAccountPanel } from "@/components/settings/member-account-panel";
-import { TeamMemberDialog } from "@/components/settings/team-member-dialog";
-import { TeamMemberPasswordDialog } from "@/components/settings/team-member-password-dialog";
-import { TeamMemberAccessDialog } from "@/components/settings/team-member-access-dialog";
-import type { Profile } from "@/types/database";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { DataPagination } from "@/components/shared/data-pagination";
-import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
-import { jobRoleAccessKey } from "@/lib/organizations/job-role-access";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import {
@@ -71,7 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n/types";
 
-type SettingsTab = "profile" | "account" | "workspace" | "appearance" | "notifications" | "team";
+type SettingsTab = "profile" | "account" | "workspace" | "appearance" | "notifications";
 
 function FlToggle({
   checked,
@@ -132,13 +115,6 @@ function initialsFromName(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#52525b,#3ecf8e)",
-  "linear-gradient(135deg,#e6b567,#f2557a)",
-  "linear-gradient(135deg,#71717a,#52525b)",
-  "linear-gradient(135deg,#3ecf8e,#52525b)",
-];
-
 const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
   fr: "Français",
@@ -163,12 +139,6 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(data.profile.avatar_url);
   const [orgName, setOrgName] = useState(data.organization?.name ?? "");
   const [emailDomain, setEmailDomain] = useState(data.organization?.email_domain ?? "");
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [passwordTarget, setPasswordTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [accessTarget, setAccessTarget] = useState<Profile | null>(null);
   const platformAdmin = data.profile.role === "platform_admin";
   const isTeamMember = data.isTeamMember;
   const [currentPassword, setCurrentPassword] = useState("");
@@ -176,10 +146,6 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [prefs, setPrefs] = useState<WorkspacePreferences>(DEFAULT_PREFERENCES);
   const [pending, startTransition] = useTransition();
-  const teamPagination = useAdaptivePagination(data.team, {
-    rowHeight: 68,
-    resetKey: activeTab,
-  });
 
   useEffect(() => {
     setMounted(true);
@@ -209,11 +175,6 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 key: "workspace" as const,
                 label: s.workspace,
                 icon: <Building2 className="size-3.5" />,
-              },
-              {
-                key: "team" as const,
-                label: s.team,
-                icon: <Users className="size-3.5" />,
               },
             ]),
         { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
@@ -247,6 +208,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         return;
       }
       toast.success(s.profileSaved);
+      router.refresh();
     });
   }
 
@@ -279,6 +241,7 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
         return;
       }
       toast.success(s.workspaceSaved);
+      router.refresh();
     });
   }
 
@@ -742,237 +705,6 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 onChange={(v) => updatePrefs({ leadAlerts: v })}
               />
             </SettingRow>
-          </div>
-        </div>
-      ) : null}
-
-      {activeTab === "team" && !platformAdmin && !isTeamMember ? (
-        <div className="space-y-[18px]">
-          <div className="fl-card fl-pad">
-            <h3 className="text-[15px] font-semibold">{s.functionsTitle}</h3>
-            <p className="mt-1 text-sm fl-faint">{s.functionsSub}</p>
-            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3.5 py-3 text-[12.5px] leading-relaxed fl-muted">
-              <b className="text-[var(--text)]">{s.functionsLogicTitle}</b>
-              <p className="mt-1">{s.functionsLogicBody}</p>
-            </div>
-            {data.jobRoles.length === 0 ? (
-              <p className="mt-4 py-6 text-center text-sm fl-faint">{s.noJobRoles}</p>
-            ) : (
-              <ul className="mt-4 divide-y divide-[var(--border)]">
-                {data.jobRoles.map((jr) => {
-                  const key = jobRoleAccessKey(jr.slug);
-                  return (
-                    <li
-                      key={jr.id}
-                      className="flex flex-wrap items-start justify-between gap-2 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <b className="text-[13.5px]">{jr.name}</b>
-                        <p className="mt-0.5 text-[12px] fl-faint">
-                          {s.jobAccess[key]}
-                        </p>
-                      </div>
-                      <FlChip>{jr.slug}</FlChip>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="fl-card">
-            <div className="fl-card-head">
-              <div className="fl-card-head__title">
-                <h3>{s.teamTitle}</h3>
-                <div className="ch-sub">{s.teamSub}</div>
-              </div>
-              {data.canManageUsers ? (
-                <button
-                  type="button"
-                  className="fl-btn primary sm fl-toolbar-create"
-                  onClick={() => setMemberDialogOpen(true)}
-                >
-                  <Plus strokeWidth={2} />
-                  {s.addMember}
-                </button>
-              ) : null}
-            </div>
-            <div className="fl-tbl-wrap">
-              <table className="fl-tbl">
-                <thead>
-                  <tr>
-                    <th>{l.person}</th>
-                    <th>{dict.common.email}</th>
-                    <th>{s.jobFunction}</th>
-                    <th>{s.roleColumn}</th>
-                    <th>{s.joined}</th>
-                    {data.canManageUsers ? <th className="col-actions" /> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.team.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={data.canManageUsers ? 6 : 5}
-                        className="py-10 text-center text-sm fl-faint"
-                      >
-                        {s.noTeam}
-                      </td>
-                    </tr>
-                  ) : (
-                    teamPagination.pageItems.map((member, i) => {
-                      const name =
-                        member.full_name ?? member.email ?? dict.common.user;
-                      const jobRoleName =
-                        member.job_role?.name ?? member.job_title ?? "—";
-                      const canRemove =
-                        data.canManageUsers &&
-                        canRemoveTeamMember(data.profile, member);
-                      const canResetPassword =
-                        data.canManageUsers &&
-                        canResetTeamMemberPassword(data.profile, member);
-                      return (
-                        <tr key={member.id}>
-                          <td>
-                            <CellMain
-                              initials={initialsFromName(name)}
-                              gradient={
-                                AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]!
-                              }
-                              title={name}
-                              sub={
-                                member.id === data.profile.id ? s.you : undefined
-                              }
-                            />
-                          </td>
-                          <td className="fl-muted">{member.email ?? "—"}</td>
-                          <td>
-                            <FlChip>{jobRoleName}</FlChip>
-                          </td>
-                          <td>
-                            <div className="flex flex-col gap-0.5">
-                              <FlChip>{dict.roles[member.role]}</FlChip>
-                              <span className="fl-tny fl-faint max-w-[10rem]">
-                                {member.role === "admin"
-                                  ? s.accessAdminHint
-                                  : member.role === "manager"
-                                    ? s.accessManagerHint
-                                    : s.accessMemberHint}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="fl-faint fl-tny">
-                            {format(new Date(member.created_at), "dd MMM yyyy", {
-                              locale: dateLocale,
-                            })}
-                          </td>
-                          {data.canManageUsers ? (
-                            <td className="col-actions">
-                              <div className="flex items-center justify-end gap-1">
-                                {canResetPassword ? (
-                                  <button
-                                    type="button"
-                                    className="fl-btn sm ghost"
-                                    disabled={pending}
-                                    aria-label={s.editMemberAccess}
-                                    title={s.editMemberAccess}
-                                    onClick={() => setAccessTarget(member)}
-                                  >
-                                    <Pencil className="size-3.5" />
-                                  </button>
-                                ) : null}
-                                {canResetPassword ? (
-                                  <button
-                                    type="button"
-                                    className="fl-btn sm ghost"
-                                    disabled={pending}
-                                    aria-label={s.resetMemberPassword}
-                                    title={s.resetMemberPassword}
-                                    onClick={() =>
-                                      setPasswordTarget({
-                                        id: member.id,
-                                        name,
-                                      })
-                                    }
-                                  >
-                                    <KeyRound className="size-3.5" />
-                                  </button>
-                                ) : null}
-                                {canRemove ? (
-                                  <ConfirmDialog
-                                    trigger={
-                                      <button
-                                        type="button"
-                                        className="fl-btn sm ghost text-[var(--rose)]"
-                                        disabled={pending}
-                                        aria-label={s.removeMember}
-                                        title={s.removeMember}
-                                      >
-                                        <Trash2 className="size-3.5" />
-                                      </button>
-                                    }
-                                    title={s.removeMemberTitle}
-                                    description={s.removeMemberConfirm.replace(
-                                      "{name}",
-                                      name
-                                    )}
-                                    confirmLabel={dict.common.delete}
-                                    onConfirm={async () => {
-                                      const result = await deleteTeamMember(
-                                        member.id
-                                      );
-                                      if (!result.success) {
-                                        toast.error(result.error);
-                                        return;
-                                      }
-                                      toast.success(s.memberRemoved);
-                                      router.refresh();
-                                    }}
-                                  />
-                                ) : null}
-                              </div>
-                            </td>
-                          ) : null}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <DataPagination
-              page={teamPagination.page}
-              pageSize={teamPagination.pageSize}
-              totalItems={teamPagination.totalItems}
-              totalPages={teamPagination.totalPages}
-              onPageChange={teamPagination.setPage}
-            />
-            <TeamMemberDialog
-              open={memberDialogOpen}
-              onOpenChange={setMemberDialogOpen}
-              jobRoles={data.jobRoles}
-              emailDomain={data.organization?.email_domain ?? null}
-              actorRole={data.profile.role}
-              onCreated={() => router.refresh()}
-            />
-            <TeamMemberPasswordDialog
-              open={!!passwordTarget}
-              onOpenChange={(open) => {
-                if (!open) setPasswordTarget(null);
-              }}
-              memberId={passwordTarget?.id ?? null}
-              memberName={passwordTarget?.name ?? ""}
-            />
-            <TeamMemberAccessDialog
-              open={!!accessTarget}
-              onOpenChange={(open) => {
-                if (!open) setAccessTarget(null);
-              }}
-              member={accessTarget}
-              jobRoles={data.jobRoles}
-              actorRole={data.profile.role}
-              onUpdated={() => router.refresh()}
-            />
           </div>
         </div>
       ) : null}

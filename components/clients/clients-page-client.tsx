@@ -280,78 +280,83 @@ export function ClientsPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{c.directory}</h2>
-            <Link
-              href="/clients/new"
-              className="fl-btn primary sm fl-toolbar-create"
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {l.addClient}
-              </span>
-            </Link>
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-seg shrink-0">
-              {(
-                [
-                  ["all", l.all],
-                  ["gulf", l.gulf],
-                  ["morocco", l.morocco],
-                ] as const
-              ).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={cn(marketTab === tab && "on")}
-                  onClick={() => setMarketTab(tab)}
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-seg shrink-0">
+                {(
+                  [
+                    ["all", l.all],
+                    ["gulf", l.gulf],
+                    ["morocco", l.morocco],
+                  ] as const
+                ).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={cn(marketTab === tab && "on")}
+                    onClick={() => setMarketTab(tab)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={cl.searchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
+
+              <div className="fl-clients-status">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter((v as ClientStatusKey | "all") ?? "all")
+                  }
                 >
-                  {label}
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue placeholder={cl.filterStatus}>
+                      {statusFilter === "all"
+                        ? cl.allStatuses
+                        : f.badges[statusFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{cl.allStatuses}</SelectItem>
+                    {STATUS_FILTER_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {f.badges[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={clearFilters}
+                  title={cl.clearFilters}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                  <span className="hidden sm:inline">{cl.clearFilters}</span>
                 </button>
-              ))}
-            </div>
+              ) : null}
 
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={cl.searchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
-
-            <div className="fl-clients-status">
-              <Select
-                value={statusFilter}
-                onValueChange={(v) =>
-                  setStatusFilter((v as ClientStatusKey | "all") ?? "all")
-                }
+              <Link
+                href="/clients/new"
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
               >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue placeholder={cl.filterStatus} />
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{cl.allStatuses}</SelectItem>
-                  {STATUS_FILTER_KEYS.map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {f.badges[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {l.addClient}
+                </span>
+              </Link>
             </div>
-
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={clearFilters}
-                title={cl.clearFilters}
-              >
-                <X className="size-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">{cl.clearFilters}</span>
-              </button>
-            ) : null}
           </div>
         </div>
 

@@ -169,6 +169,7 @@ export const fr = {
     companyAccessHint: "Connectez-vous avec votre e-mail @votre-entreprise.com pour accéder au CRM de votre STE uniquement.",
     companyCreatedByAdmin: "Les entreprises sont créées par l'administrateur global.",
     signIn: "Se connecter",
+    signingIn: "Connexion en cours…",
     noAccount: "Pas encore de compte ?",
     createOne: "Créer un compte",
     createAccount: "Créer votre compte",

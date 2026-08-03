@@ -388,15 +388,6 @@ export function TaskKanbanBoard({
             {visibleTasks.length} {dict.tasks.list.toLowerCase()}
           </FlChip>
         </div>
-        <Link
-          href={onAddTaskHref}
-          className="fl-btn primary sm fl-toolbar-create"
-        >
-          <Plus strokeWidth={2} />
-          <span className="fl-toolbar-create__label hidden sm:inline">
-            {k.addTask}
-          </span>
-        </Link>
         <div className="fl-kanban-toolbar__right">
           <div className="fl-filter-field fl-filter-field--lg">
             <Select
@@ -404,7 +395,14 @@ export function TaskKanbanBoard({
               onValueChange={(v) => onProjectFilterChange(v ?? "all")}
             >
               <SelectTrigger className="fl-select-trigger">
-                <SelectValue placeholder={k.filterByProject} />
+                <SelectValue placeholder={k.filterByProject}>
+                  {projectFilter === "all"
+                    ? k.allProjects
+                    : projectFilter === "none"
+                      ? k.noProject
+                      : projects.find((p) => p.id === projectFilter)?.title ??
+                        k.filterByProject}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="fl-select-panel" align="end">
                 <SelectItem value="all">{k.allProjects}</SelectItem>
@@ -418,6 +416,15 @@ export function TaskKanbanBoard({
             </Select>
           </div>
           {teamAvatars.length > 0 ? <AvatarStack items={teamAvatars} /> : null}
+          <Link
+            href={onAddTaskHref}
+            className="fl-btn primary sm fl-toolbar-create shrink-0"
+          >
+            <Plus strokeWidth={2} />
+            <span className="fl-toolbar-create__label hidden sm:inline">
+              {k.addTask}
+            </span>
+          </Link>
         </div>
       </div>
 

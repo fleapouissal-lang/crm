@@ -10,6 +10,7 @@ import type { ReportsData, ReportsPeriod } from "@/lib/actions/reports";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { PipelineBreakdownChart } from "@/components/dashboard/charts";
 import { ProjectReportsSection } from "@/components/reports/project-reports-section";
+import { ReportFoldersSection } from "@/components/reports/report-folders-section";
 import { StatLine, FlProgress } from "@/components/fusion/primitives";
 import { cn } from "@/lib/utils";
 
@@ -308,6 +309,8 @@ export function ReportsPageClient({
           </div>
         </div>
       ) : null}
+
+      <ReportFoldersSection />
 
       <ProjectReportsSection projects={projects} />
     </div>

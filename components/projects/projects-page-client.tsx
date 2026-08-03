@@ -333,99 +333,100 @@ export function ProjectsPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{dict.nav.projects}</h2>
-            <button
-              type="button"
-              className="fl-btn primary sm fl-toolbar-create"
-              onClick={openCreate}
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {p.addProject}
-              </span>
-            </button>
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-seg shrink-0">
-              {phaseTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  className={cn(phaseTab === tab.key && "on")}
-                  onClick={() => setPhaseTab(tab.key)}
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-seg shrink-0">
+                {phaseTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={cn(phaseTab === tab.key && "on")}
+                    onClick={() => setPhaseTab(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={p.searchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
+
+              <div className="fl-clients-status">
+                <Select
+                  value={memberFilter}
+                  onValueChange={(v) => setMemberFilter(v ?? "all")}
                 >
-                  {tab.label}
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {memberFilter === "all"
+                        ? p.allMembers
+                        : teamOptions.find((m) => m.id === memberFilter)?.name ??
+                          p.filterByMember}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{p.allMembers}</SelectItem>
+                    {teamOptions.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="fl-clients-status">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter((v as ProjectStatusKey | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {statusFilter === "all" ? p.allStatuses : b[statusFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{p.allStatuses}</SelectItem>
+                    {PROJECT_STATUS_FILTERS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {b[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={clearFilters}
+                  title={p.clearFilters}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                  <span className="hidden sm:inline">{p.clearFilters}</span>
                 </button>
-              ))}
-            </div>
+              ) : null}
 
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={p.searchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
-
-            <div className="fl-clients-status">
-              <Select
-                value={memberFilter}
-                onValueChange={(v) => setMemberFilter(v ?? "all")}
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {memberFilter === "all"
-                      ? p.allMembers
-                      : teamOptions.find((m) => m.id === memberFilter)?.name ??
-                        p.filterByMember}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{p.allMembers}</SelectItem>
-                  {teamOptions.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="fl-clients-status">
-              <Select
-                value={statusFilter}
-                onValueChange={(v) =>
-                  setStatusFilter((v as ProjectStatusKey | "all") ?? "all")
-                }
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {statusFilter === "all" ? p.allStatuses : b[statusFilter]}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{p.allStatuses}</SelectItem>
-                  {PROJECT_STATUS_FILTERS.map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {b[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {hasActiveFilters ? (
               <button
                 type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={clearFilters}
-                title={p.clearFilters}
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
+                onClick={openCreate}
               >
-                <X className="size-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">{p.clearFilters}</span>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {p.addProject}
+                </span>
               </button>
-            ) : null}
+            </div>
           </div>
         </div>
 

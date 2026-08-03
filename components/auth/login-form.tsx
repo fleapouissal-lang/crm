@@ -92,9 +92,12 @@ export function LoginForm() {
         </label>
       </div>
 
-      <button type="submit" className="login-split__submit" disabled={pending}>
+      <button type="submit" className="login-split__submit" disabled={pending} aria-busy={pending}>
         {pending ? (
-          <Loader2 className="size-5 animate-spin" />
+          <>
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+            <span>{dict.auth.signingIn}</span>
+          </>
         ) : (
           dict.auth.signIn
         )}

@@ -253,85 +253,85 @@ export function ExpensesPageClient({
         <div className="fl-clients-toolbar">
           <div className="fl-clients-toolbar__head">
             <h2 className="fl-clients-toolbar__title">{e.listTitle}</h2>
-            <button
-              type="button"
-              className="fl-btn primary sm fl-toolbar-create"
-              onClick={openCreate}
-            >
-              <Plus strokeWidth={2} />
-              <span className="fl-toolbar-create__label hidden sm:inline">
-                {e.newExpense}
-              </span>
-            </button>
-          </div>
-          <div className="fl-clients-toolbar__row">
-            <div className="fl-clients-search-wrap">
-              <Search strokeWidth={2} />
-              <Input
-                value={search}
-                onChange={(ev) => setSearch(ev.target.value)}
-                placeholder={e.searchPlaceholder}
-                className="fl-clients-search"
-              />
-            </div>
-            <div className="fl-clients-status">
-              <Select
-                value={categoryFilter}
-                onValueChange={(v) =>
-                  setCategoryFilter((v as ExpenseCategory | "all") ?? "all")
-                }
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {categoryFilter === "all"
-                      ? e.allCategories
-                      : e.categories[categoryFilter]}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  <SelectItem value="all">{e.allCategories}</SelectItem>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {e.categories[c]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="fl-clients-status">
-              <Select
-                value={statusFilter}
-                onValueChange={(v) =>
-                  setStatusFilter((v as ExpenseStatus | "all") ?? "all")
-                }
-              >
-                <SelectTrigger className="fl-select-trigger w-full">
-                  <SelectValue>
-                    {statusFilter === "all"
-                      ? e.allStatuses
-                      : e.statuses[statusFilter]}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="end">
-                  {STATUS_FILTERS.map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {key === "all" ? e.allStatuses : e.statuses[key]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {hasFilters ? (
+            <div className="fl-clients-toolbar__actions">
+              <div className="fl-clients-search-wrap">
+                <Search strokeWidth={2} />
+                <Input
+                  value={search}
+                  onChange={(ev) => setSearch(ev.target.value)}
+                  placeholder={e.searchPlaceholder}
+                  className="fl-clients-search"
+                />
+              </div>
+              <div className="fl-clients-status">
+                <Select
+                  value={categoryFilter}
+                  onValueChange={(v) =>
+                    setCategoryFilter((v as ExpenseCategory | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {categoryFilter === "all"
+                        ? e.allCategories
+                        : e.categories[categoryFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    <SelectItem value="all">{e.allCategories}</SelectItem>
+                    {EXPENSE_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {e.categories[c]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="fl-clients-status">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter((v as ExpenseStatus | "all") ?? "all")
+                  }
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>
+                      {statusFilter === "all"
+                        ? e.allStatuses
+                        : e.statuses[statusFilter]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="end">
+                    {STATUS_FILTERS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {key === "all" ? e.allStatuses : e.statuses[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  className="fl-btn sm ghost shrink-0"
+                  onClick={clearFilters}
+                  title={e.clearFilters}
+                >
+                  <X className="size-3.5" strokeWidth={2} />
+                  <span className="hidden sm:inline">{e.clearFilters}</span>
+                </button>
+              ) : null}
               <button
                 type="button"
-                className="fl-btn sm ghost shrink-0"
-                onClick={clearFilters}
-                title={e.clearFilters}
+                className="fl-btn primary sm fl-toolbar-create shrink-0"
+                onClick={openCreate}
               >
-                <X className="size-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">{e.clearFilters}</span>
+                <Plus strokeWidth={2} />
+                <span className="fl-toolbar-create__label hidden sm:inline">
+                  {e.newExpense}
+                </span>
               </button>
-            ) : null}
+            </div>
           </div>
         </div>
 

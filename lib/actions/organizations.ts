@@ -611,6 +611,11 @@ export async function updateTeamMemberAccess(input: {
   memberId: string;
   role: Role;
   jobRoleId: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  /** Optional: leave empty to keep the current password */
+  password?: string;
 }): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) {
@@ -626,10 +631,31 @@ export async function updateTeamMemberAccess(input: {
     return { success: false, error: "Managers cannot assign director access" };
   }
 
+  const fullName = (input.fullName ?? "").trim();
+  const phone = (input.phone ?? "").trim() || null;
+  const password = (input.password ?? "").trim();
+
+  if (!fullName) {
+    return { success: false, error: "Full name is required" };
+  }
+
+  let email: string | undefined;
+  if (input.email !== undefined) {
+    const emailCheck = normalizePersonEmail(input.email);
+    if (!emailCheck.ok) {
+      return { success: false, error: emailCheck.error };
+    }
+    email = emailCheck.email;
+  }
+
+  if (password && password.length < 6) {
+    return { success: false, error: "Password must be at least 6 characters" };
+  }
+
   const admin = createAdminClient();
   const { data: target, error: targetError } = await admin
     .from("profiles")
-    .select("id, role, organization_id")
+    .select("id, role, organization_id, email")
     .eq("id", input.memberId)
     .maybeSingle();
 
@@ -678,13 +704,53 @@ export async function updateTeamMemberAccess(input: {
     return { success: false, error: "Invalid job role" };
   }
 
+  if (email && email !== (target.email ?? "").toLowerCase()) {
+    const { data: existingMember } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("organization_id", profile.organization_id)
+      .ilike("email", email)
+      .neq("id", target.id)
+      .maybeSingle();
+
+    if (existingMember) {
+      return {
+        success: false,
+        error: `This email is already used by a team member (${email})`,
+      };
+    }
+
+    const { error: authEmailError } = await admin.auth.admin.updateUserById(
+      target.id,
+      { email, email_confirm: true }
+    );
+    if (authEmailError) {
+      return { success: false, error: authEmailError.message };
+    }
+  }
+
+  if (password) {
+    const { error: authPasswordError } = await admin.auth.admin.updateUserById(
+      target.id,
+      { password }
+    );
+    if (authPasswordError) {
+      return { success: false, error: authPasswordError.message };
+    }
+  }
+
+  const patch: Record<string, unknown> = {
+    full_name: fullName,
+    phone,
+    role: input.role,
+    job_role_id: input.jobRoleId,
+    job_title: jobRole.name,
+  };
+  if (email) patch.email = email;
+
   const { error } = await admin
     .from("profiles")
-    .update({
-      role: input.role,
-      job_role_id: input.jobRoleId,
-      job_title: jobRole.name,
-    })
+    .update(patch)
     .eq("id", target.id)
     .eq("organization_id", profile.organization_id);
 

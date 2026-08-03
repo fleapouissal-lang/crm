@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -55,6 +56,7 @@ export function LeadFormDialog({
   profiles,
 }: LeadFormDialogProps) {
   const dict = useDict();
+  const router = useRouter();
   const l = dict.leads;
   const c = dict.common;
   const [pending, startTransition] = useTransition();
@@ -115,6 +117,7 @@ export function LeadFormDialog({
 
       toast.success(isEdit ? l.updatedLead : l.createdLead);
       onOpenChange(false);
+      router.refresh();
     });
   }
 

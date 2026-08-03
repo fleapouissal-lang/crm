@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Pencil } from "lucide-react";
+import {
+  Briefcase,
+  KeyRound,
+  Loader2,
+  Shield,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { updateTeamMemberAccess } from "@/lib/actions/organizations";
 import type { OrgJobRole, Profile, Role } from "@/types/database";
@@ -10,6 +16,8 @@ import {
   suggestedAccessRole,
 } from "@/lib/organizations/job-role-access";
 import { useDict } from "@/components/shared/i18n-provider";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -26,6 +34,13 @@ import {
 } from "@/components/ui/dialog";
 
 const PERMISSION_ROLES: Role[] = ["admin", "manager", "member"];
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
 
 export function TeamMemberAccessDialog({
   open,
@@ -49,8 +64,13 @@ export function TeamMemberAccessDialog({
       ? PERMISSION_ROLES
       : PERMISSION_ROLES.filter((r) => r !== "admin");
 
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [jobRoleId, setJobRoleId] = useState("");
   const [role, setRole] = useState<Role>("member");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -64,7 +84,12 @@ export function TeamMemberAccessDialog({
       jobRoles.find((j) => j.slug === member.job_role?.slug)?.id ??
       jobRoles[0]?.id ??
       "";
+    setFullName(member.full_name ?? "");
+    setEmail(member.email ?? "");
+    setPhone(member.phone ?? "");
     setJobRoleId(currentJobId);
+    setPassword("");
+    setConfirmPassword("");
     const nextRole =
       actorRole === "manager" && member.role === "admin"
         ? "manager"
@@ -76,8 +101,13 @@ export function TeamMemberAccessDialog({
 
   const selectedJob = jobRoles.find((j) => j.id === jobRoleId);
   const accessHint = s.jobAccess[jobRoleAccessKey(selectedJob?.slug)];
-  const memberName =
-    member?.full_name ?? member?.email ?? dict.common.user;
+  const displayName = fullName.trim() || member?.email || dict.common.user;
+  const accessLabel =
+    role === "admin"
+      ? s.accessAdminHint
+      : role === "manager"
+        ? s.accessManagerHint
+        : s.accessMemberHint;
 
   function onJobRoleChange(id: string) {
     setJobRoleId(id);
@@ -94,17 +124,42 @@ export function TeamMemberAccessDialog({
 
   function handleSave() {
     if (!member) return;
+    if (!fullName.trim()) {
+      toast.error(s.fullNameRequired);
+      return;
+    }
+    if (!email.trim()) {
+      toast.error(dict.auth.errors.emailPassword);
+      return;
+    }
+    if (password || confirmPassword) {
+      if (password.length < 6) {
+        toast.error(dict.auth.errors.passwordMin);
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error(s.passwordMismatch);
+        return;
+      }
+    }
+
     startTransition(async () => {
       const result = await updateTeamMemberAccess({
         memberId: member.id,
         role,
         jobRoleId,
+        fullName,
+        email,
+        phone,
+        password: password || undefined,
       });
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success(s.memberAccessUpdated);
+      toast.success(
+        password ? s.memberProfileAndPasswordUpdated : s.memberAccessUpdated
+      );
       onOpenChange(false);
       onUpdated?.();
     });
@@ -112,66 +167,215 @@ export function TeamMemberAccessDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Pencil className="size-4" strokeWidth={2} />
-            {s.editMemberAccessTitle}
+      <DialogContent className="fl-dialog-content fl-dialog-content--lg ring-0 sm:max-w-xl">
+        <DialogHeader className="fl-dialog-header">
+          <DialogTitle className="flex items-center gap-3">
+            <span
+              className="grid size-10 place-items-center rounded-xl text-white shadow-sm"
+              style={{ background: "var(--grad-brand)" }}
+            >
+              <UserRound className="size-5" strokeWidth={1.75} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span>{s.editMemberAccessTitle}</span>
+              <span className="truncate text-xs font-normal fl-faint">
+                {s.editMemberAccessHint.replace("{name}", displayName)}
+              </span>
+            </span>
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm fl-muted">
-            {s.editMemberAccessHint.replace("{name}", memberName)}
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="fl-field">
-              <label className="fl-field-label">{s.jobRole}</label>
-              <Select
-                value={jobRoleId || null}
-                onValueChange={(v) => v && onJobRoleChange(v)}
+
+        <div className="fl-dialog-body max-h-[70vh] space-y-4 overflow-y-auto">
+          <div className="fl-hr-profile-dialog__hero">
+            <div className="flex items-center gap-3">
+              <span
+                className="grid size-11 place-items-center rounded-xl text-[13px] font-semibold text-white"
+                style={{
+                  background: "linear-gradient(135deg,#52525b,#3ecf8e)",
+                }}
               >
-                <SelectTrigger className="fl-select-trigger fl-input w-full">
-                  <SelectValue placeholder={s.selectJobRole}>
-                    {selectedJob?.name ?? s.selectJobRole}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel">
-                  {jobRoles.map((jr) => (
-                    <SelectItem key={jr.id} value={jr.id}>
-                      {jr.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="fl-field">
-              <label className="fl-field-label">{s.accessLevel}</label>
-              <Select
-                value={role}
-                onValueChange={(v) => v && setRole(v as Role)}
-              >
-                <SelectTrigger className="fl-select-trigger fl-input w-full">
-                  <SelectValue>{dict.roles[role]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel">
-                  {allowedRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {dict.roles[r]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {initialsFromName(displayName)}
+              </span>
+              <div className="min-w-0">
+                <b className="block truncate text-[14px]">{displayName}</b>
+                <span className="block truncate text-[12px] fl-faint">
+                  {selectedJob?.name ?? s.selectJobRole}
+                  {" · "}
+                  {dict.roles[role]}
+                </span>
+              </div>
             </div>
           </div>
-          {selectedJob ? (
-            <p className="rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2 text-[12.5px] fl-muted">
-              <b className="text-[var(--text)]">{selectedJob.name}</b>
-              {" · "}
-              {accessHint}
+
+          <section className="fl-form-section">
+            <div className="fl-form-section__head">
+              <UserRound
+                className="size-3.5 text-[var(--iris)]"
+                strokeWidth={1.75}
+              />
+              <h4>{s.editMemberIdentitySection}</h4>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="fl-field sm:col-span-2">
+                <label className="fl-field-label" htmlFor="edit-member-name">
+                  {s.fullName} *
+                </label>
+                <Input
+                  id="edit-member-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="fl-input"
+                  placeholder="Ouissal Benali"
+                  autoComplete="name"
+                />
+              </div>
+              <div className="fl-field">
+                <label className="fl-field-label" htmlFor="edit-member-email">
+                  {dict.common.email} *
+                </label>
+                <Input
+                  id="edit-member-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="fl-input"
+                  placeholder="ouissal@gmail.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="fl-field">
+                <label className="fl-field-label" htmlFor="edit-member-phone">
+                  {s.phone}
+                </label>
+                <Input
+                  id="edit-member-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="fl-input"
+                  placeholder={s.phonePlaceholder}
+                  autoComplete="tel"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="fl-form-section">
+            <div className="fl-form-section__head">
+              <Briefcase
+                className="size-3.5 text-[var(--iris)]"
+                strokeWidth={1.75}
+              />
+              <h4>{s.editMemberAccessSection}</h4>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="fl-field">
+                <label className="fl-field-label">{s.jobRole}</label>
+                <Select
+                  value={jobRoleId || null}
+                  onValueChange={(v) => v && onJobRoleChange(v)}
+                >
+                  <SelectTrigger className="fl-select-trigger fl-input w-full">
+                    <SelectValue placeholder={s.selectJobRole}>
+                      {selectedJob?.name ?? s.selectJobRole}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel">
+                    {jobRoles.map((jr) => (
+                      <SelectItem key={jr.id} value={jr.id}>
+                        {jr.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="fl-field">
+                <label className="fl-field-label">{s.accessLevel}</label>
+                <Select
+                  value={role}
+                  onValueChange={(v) => v && setRole(v as Role)}
+                >
+                  <SelectTrigger className="fl-select-trigger fl-input w-full">
+                    <SelectValue>{dict.roles[role]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel">
+                    {allowedRoles.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {dict.roles[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {selectedJob ? (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--glass-hi)] px-3 py-2.5 text-[12.5px] leading-relaxed fl-muted">
+                <Shield
+                  className="mt-0.5 size-3.5 shrink-0 text-[var(--iris)]"
+                  strokeWidth={1.75}
+                />
+                <span>
+                  <b className="text-[var(--text)]">{selectedJob.name}</b>
+                  {" · "}
+                  {accessHint}
+                  <br />
+                  <span className="fl-faint">{accessLabel}</span>
+                </span>
+              </p>
+            ) : null}
+          </section>
+
+          <section className="fl-form-section">
+            <div className="fl-form-section__head">
+              <KeyRound
+                className="size-3.5 text-[var(--iris)]"
+                strokeWidth={1.75}
+              />
+              <h4>{s.editMemberPasswordSection}</h4>
+            </div>
+            <p className="mb-3 text-[12px] fl-faint">
+              {s.editMemberPasswordHint}
             </p>
-          ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="fl-field">
+                <label
+                  className="fl-field-label"
+                  htmlFor="edit-member-password"
+                >
+                  {s.newPassword}
+                </label>
+                <PasswordInput
+                  id="edit-member-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  inputClassName="fl-input"
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="fl-field">
+                <label
+                  className="fl-field-label"
+                  htmlFor="edit-member-confirm-password"
+                >
+                  {s.confirmPassword}
+                </label>
+                <PasswordInput
+                  id="edit-member-confirm-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  inputClassName="fl-input"
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+          </section>
         </div>
-        <DialogFooter className="fl-dialog-footer">
+
+        <DialogFooter className="fl-dialog-footer gap-2 border-t border-[var(--border)] pt-4 sm:gap-0">
           <button
             type="button"
             className="fl-btn sm ghost"
@@ -183,14 +387,12 @@ export function TeamMemberAccessDialog({
           <button
             type="button"
             className="fl-btn sm primary"
-            disabled={pending || !member || !jobRoleId}
+            disabled={pending || !member || !jobRoleId || !fullName.trim() || !email.trim()}
             onClick={handleSave}
           >
             {pending ? (
               <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Pencil className="size-3.5" strokeWidth={2} />
-            )}
+            ) : null}
             {pending ? dict.common.working : dict.common.save}
           </button>
         </DialogFooter>

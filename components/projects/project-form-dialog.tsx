@@ -199,14 +199,15 @@ export function ProjectFormDialog({
                 htmlFor="project-progress"
                 error={errors.progress?.message}
               >
-                <Input
-                  id="project-progress"
-                  type="number"
-                  min={0}
-                  max={100}
-                  className="fl-inp"
-                  {...register("progress")}
-                />
+              <Input
+                id="project-progress"
+                type="number"
+                min={0}
+                max={100}
+                className="fl-inp"
+                placeholder="0–100"
+                {...register("progress")}
+              />
               </FormField>
 
               <FormField label={p.phase}>

@@ -169,6 +169,7 @@ export const en = {
     companyAccessHint: "Sign in with your @company.com email to access your company's CRM only.",
     companyCreatedByAdmin: "Companies are created by the global administrator.",
     signIn: "Sign in",
+    signingIn: "Signing in…",
     noAccount: "Don't have an account?",
     createOne: "Create one",
     createAccount: "Create your account",

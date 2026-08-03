@@ -169,6 +169,7 @@ export const ar = {
     companyAccessHint: "سجّل الدخول ببريد @شركتك.com للوصول إلى CRM شركتك فقط.",
     companyCreatedByAdmin: "يتم إنشاء الشركات بواسطة المسؤول العالمي.",
     signIn: "تسجيل الدخول",
+    signingIn: "جاري الاتصال…",
     noAccount: "ليس لديك حساب؟",
     createOne: "إنشاء حساب",
     createAccount: "إنشاء حسابك",
