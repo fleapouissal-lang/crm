@@ -358,7 +358,11 @@ export function InvoicesPageClient({
                         >
                           <SelectValue>{statusLabel(row)}</SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="fl-select-panel" align="start">
+                        <SelectContent
+                          className="fl-select-panel fl-status-select-panel"
+                          align="start"
+                          alignItemWithTrigger={false}
+                        >
                           {INVOICE_STATUSES.map((key) => (
                             <SelectItem key={key} value={key}>
                               {statusFilterLabel(key)}

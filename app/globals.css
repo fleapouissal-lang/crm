@@ -1942,7 +1942,7 @@ a.fusion-user-card:hover .fusion-user-meta b {
   height: auto !important;
   min-height: 0 !important;
   width: auto !important;
-  min-width: 0 !important;
+  min-width: 7.25rem !important;
   gap: 5px !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -4257,6 +4257,13 @@ textarea.fl-control {
   box-shadow: var(--shadow-md) !important;
   padding: 0.375rem !important;
   min-width: var(--anchor-width) !important;
+}
+.fl-select-panel.fl-status-select-panel {
+  width: max-content !important;
+  min-width: 11rem !important;
+}
+.fl-select-panel.fl-status-select-panel [data-slot="select-item"] {
+  padding-inline-end: 2.25rem !important;
 }
 .fl-select-panel [data-slot="select-item"] {
   border-radius: 8px;

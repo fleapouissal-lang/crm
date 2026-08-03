@@ -492,7 +492,7 @@ export function ProjectsPageClient({
                           >
                             <SelectValue>{b[proj.statusKey]}</SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="fl-select-panel" align="start">
+                          <SelectContent className="fl-select-panel fl-status-select-panel" align="start" alignItemWithTrigger={false}>
                             {PROJECT_FORM_STATUSES.map((key) => (
                               <SelectItem key={key} value={key}>
                                 {b[key]}
