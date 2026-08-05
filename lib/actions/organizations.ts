@@ -448,11 +448,8 @@ export async function createTeamMember(input: {
   const internJob = isStagiaireJob(jobRole.slug, jobRole.name);
 
   // Stagiaire always gets member access (personalized pages).
-  const role: Role = internJob
-    ? "member"
-    : input.role === "platform_admin"
-      ? "member"
-      : input.role;
+  // platform_admin is rejected above, so input.role is already a valid org Role.
+  const role: Role = internJob ? "member" : input.role;
 
   const memberPages = internJob
     ? normalizeMemberPages(input.memberPages) ??
