@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { signIn } from "@/lib/actions/auth";
@@ -29,22 +30,47 @@ function useIsMobileLogin() {
   return { mobile, ready };
 }
 
+function LoginSubmitButton({
+  label,
+  pendingLabel,
+}: {
+  label: string;
+  pendingLabel: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      className="login-split__submit"
+      disabled={pending}
+      aria-busy={pending}
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-5 shrink-0 animate-spin" aria-hidden />
+          <span>{pendingLabel}</span>
+        </>
+      ) : (
+        label
+      )}
+    </button>
+  );
+}
+
 export function LoginForm() {
   const dict = useDict();
   const { locale } = useI18n();
   const rtl = isRtlLocale(locale);
   const { mobile, ready } = useIsMobileLogin();
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [remember, setRemember] = useState(false);
 
   async function handleSubmit(formData: FormData) {
-    setPending(true);
     setError(null);
     const result = await signIn(formData);
     if (result && !result.success) {
       setError(result.error);
-      setPending(false);
     }
   }
 
@@ -92,16 +118,10 @@ export function LoginForm() {
         </label>
       </div>
 
-      <button type="submit" className="login-split__submit" disabled={pending} aria-busy={pending}>
-        {pending ? (
-          <>
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            <span>{dict.auth.signingIn}</span>
-          </>
-        ) : (
-          dict.auth.signIn
-        )}
-      </button>
+      <LoginSubmitButton
+        label={dict.auth.signIn}
+        pendingLabel={dict.auth.signingIn}
+      />
     </>
   );
 
