@@ -894,6 +894,11 @@ export const fusionFr: FusionDictionary = {
     memberAccessUpdated: "Profil mis à jour",
     memberProfileAndPasswordUpdated: "Profil et mot de passe mis à jour",
     fullNameRequired: "Le nom est obligatoire",
+    cannotRemoveSelf: "Vous ne pouvez pas supprimer votre propre compte",
+    cannotRemoveLastDirector:
+      "Impossible de supprimer le dernier directeur de l'entreprise",
+    cannotRemoveDirectorAsManager:
+      "Les managers ne peuvent pas supprimer un directeur",
     jobRole: "Poste",
     selectJobRole: "Choisir un poste",
     accessLevel: "Accès",
