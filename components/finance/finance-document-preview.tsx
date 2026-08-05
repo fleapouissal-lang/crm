@@ -132,18 +132,50 @@ export function FinanceDocumentPreview({
               {isFirst ? (
                 <>
                   <header className="fl-fr-doc__masthead">
-                    <div className="fl-fr-doc__co">
+                    <div className="fl-fr-doc__logo">
                       {issuer.logoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={issuer.logoUrl} alt="" />
-                      ) : null}
-                      <div>
+                      ) : (
                         <p className="fl-fr-doc__co-name">{issuer.name}</p>
-                        <div className="fl-fr-doc__co-lines">
-                          {headerLines.map((line) => (
-                            <p key={line}>{line}</p>
-                          ))}
+                      )}
+                    </div>
+                    <div className="fl-fr-doc__title-block fl-fr-doc__title-block--top">
+                      <h1 className="fl-fr-doc__title">
+                        {kindLabel.toUpperCase()}
+                      </h1>
+                      <p className="fl-fr-doc__number fl-mono">{number}</p>
+                      <p className="fl-fr-doc__status-line">{statusLabel}</p>
+                    </div>
+                  </header>
+
+                  <div className="fl-fr-doc__rule" />
+
+                  <section className="fl-fr-doc__info">
+                    <div className="fl-fr-doc__co fl-fr-doc__co--stack">
+                      <p className="fl-fr-doc__co-name">{issuer.name}</p>
+                      <div className="fl-fr-doc__co-lines">
+                        {headerLines.map((line) => (
+                          <p key={line}>{line}</p>
+                        ))}
+                      </div>
+                      <div className="fl-fr-doc__meta fl-fr-doc__meta--under fl-fr-doc__meta--left">
+                        <div className="fl-fr-doc__meta-row">
+                          <span>{f.previewDate}</span>
+                          <span>{issueDate}</span>
                         </div>
+                        {secondaryLabel && secondaryValue ? (
+                          <div className="fl-fr-doc__meta-row">
+                            <span>{secondaryLabel}</span>
+                            <span>{secondaryValue}</span>
+                          </div>
+                        ) : null}
+                        {tertiaryLabel && tertiaryValue ? (
+                          <div className="fl-fr-doc__meta-row">
+                            <span>{tertiaryLabel}</span>
+                            <span>{tertiaryValue}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     <div className="fl-fr-doc__billto fl-fr-doc__billto--right">
@@ -156,36 +188,6 @@ export function FinanceDocumentPreview({
                           {clientLines.map((line) => (
                             <p key={line}>{line}</p>
                           ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </header>
-
-                  <div className="fl-fr-doc__rule" />
-
-                  <section className="fl-fr-doc__info">
-                    <div className="fl-fr-doc__title-block fl-fr-doc__title-block--inline">
-                      <h1 className="fl-fr-doc__title">
-                        {kindLabel.toUpperCase()}
-                      </h1>
-                      <p className="fl-fr-doc__number fl-mono">{number}</p>
-                      <p className="fl-fr-doc__status-line">{statusLabel}</p>
-                    </div>
-                    <div className="fl-fr-doc__meta">
-                      <div className="fl-fr-doc__meta-row">
-                        <span>{f.previewDate}</span>
-                        <span>{issueDate}</span>
-                      </div>
-                      {secondaryLabel && secondaryValue ? (
-                        <div className="fl-fr-doc__meta-row">
-                          <span>{secondaryLabel}</span>
-                          <span>{secondaryValue}</span>
-                        </div>
-                      ) : null}
-                      {tertiaryLabel && tertiaryValue ? (
-                        <div className="fl-fr-doc__meta-row">
-                          <span>{tertiaryLabel}</span>
-                          <span>{tertiaryValue}</span>
                         </div>
                       ) : null}
                     </div>

@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
+import { FinanceImportedFileViewer } from "@/components/finance/finance-imported-file-viewer";
 import {
   QUOTE_STATUS_BADGE,
+  isImportedFinanceDoc,
   isQuoteExpiringSoon,
   quoteExpiryIso,
   type DocumentTemplate,
@@ -25,7 +27,6 @@ export function QuoteDetailDialog({
   open,
   onOpenChange,
   quote,
-  template,
   onEdit,
   onViewPdf,
   onConvertToInvoice,
@@ -45,10 +46,12 @@ export function QuoteDetailDialog({
   const q = dict.fusion.quotes;
   if (!quote) return null;
 
+  const imported = isImportedFinanceDoc(quote);
   const badge = QUOTE_STATUS_BADGE[quote.status];
   const expiry = quoteExpiryIso(quote);
-  const expiring = isQuoteExpiringSoon(quote);
+  const expiring = !imported && isQuoteExpiringSoon(quote);
   const canConvert =
+    !imported &&
     Boolean(onConvertToInvoice) &&
     (quote.status === "accepted" || quote.status === "sent");
 
@@ -66,28 +69,37 @@ export function QuoteDetailDialog({
           <DialogTitle>{q.detailTitle}</DialogTitle>
         </DialogHeader>
         <div className="fl-dialog-body max-h-[min(78vh,880px)] overflow-y-auto px-4 py-3 sm:px-5">
-          <div className="fl-fin-editor">
-            <div className="fl-fin-editor__stage">
-              <FinanceDocumentPreview
-                kind="quote"
-                number={quote.number}
-                statusLabel={q[quote.status]}
-                statusBadge={badge}
-                clientName={quote.clientName}
-                clientDetails={quote.clientDetails}
-                amount={quote.amount}
-                currency={quote.currency}
-                issuedAt={quote.createdAt}
-                secondaryLabel={q.validity}
-                secondaryValue={q.validityDaysUnit.replace(
-                  "{n}",
-                  String(quote.validityDays)
-                )}
-                lineItems={quote.items}
-                notes={quote.notes}
-              />
+          {imported ? (
+            <FinanceImportedFileViewer
+              kind="quote"
+              id={quote.id}
+              fileName={quote.importFileName}
+              mime={quote.importFileMime}
+            />
+          ) : (
+            <div className="fl-fin-editor">
+              <div className="fl-fin-editor__stage">
+                <FinanceDocumentPreview
+                  kind="quote"
+                  number={quote.number}
+                  statusLabel={q[quote.status]}
+                  statusBadge={badge}
+                  clientName={quote.clientName}
+                  clientDetails={quote.clientDetails}
+                  amount={quote.amount}
+                  currency={quote.currency}
+                  issuedAt={quote.createdAt}
+                  secondaryLabel={q.validity}
+                  secondaryValue={q.validityDaysUnit.replace(
+                    "{n}",
+                    String(quote.validityDays)
+                  )}
+                  lineItems={quote.items}
+                  notes={quote.notes}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {expiring ? (
             <p className="mt-3 rounded-xl border border-[color-mix(in_oklch,var(--rose),transparent_65%)] bg-[color-mix(in_oklch,var(--rose),transparent_92%)] px-4 py-2.5 text-sm text-[var(--rose)]">
@@ -96,7 +108,7 @@ export function QuoteDetailDialog({
           ) : null}
         </div>
         <DialogFooter className="fl-dialog-footer flex-wrap gap-2 sm:justify-end">
-          {onViewPdf ? (
+          {!imported && onViewPdf ? (
             <button type="button" className="fl-btn sm ghost" onClick={onViewPdf}>
               <ExternalLink className="size-4" />
               {q.viewPdf}
@@ -112,21 +124,23 @@ export function QuoteDetailDialog({
               {q.convertToInvoice}
             </button>
           ) : null}
-          <button
-            type="button"
-            className="fl-btn sm primary"
-            onClick={() => {
-              onOpenChange(false);
-              if (onEdit) {
-                onEdit();
-                return;
-              }
-              router.push(`/finance/quotes/${quote.id}/edit`);
-            }}
-          >
-            <Pencil className="size-4" />
-            {dict.common.edit}
-          </button>
+          {!imported ? (
+            <button
+              type="button"
+              className="fl-btn sm primary"
+              onClick={() => {
+                onOpenChange(false);
+                if (onEdit) {
+                  onEdit();
+                  return;
+                }
+                router.push(`/finance/quotes/${quote.id}/edit`);
+              }}
+            >
+              <Pencil className="size-4" />
+              {dict.common.edit}
+            </button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

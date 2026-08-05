@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/page-header";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
+import { FinanceImportButton } from "@/components/finance/finance-import-button";
 import { FinancePdfDialog } from "@/components/finance/finance-pdf-dialog";
 import { InvoiceDetailDialog } from "@/components/finance/invoice-detail-dialog";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import {
 import {
   INVOICE_STATUS_BADGE,
   formatMoney,
+  isImportedFinanceDoc,
   type DocumentTemplate,
   type InvoiceRecord,
   type InvoiceStatus,
@@ -280,6 +282,10 @@ export function InvoicesPageClient({
                   <span className="hidden sm:inline">{inv.clearFilters}</span>
                 </button>
               ) : null}
+              <FinanceImportButton
+                kind="invoice"
+                onImported={() => router.refresh()}
+              />
               <Link
                 href="/finance/invoices/new"
                 className="fl-btn primary sm fl-toolbar-create shrink-0"
@@ -318,7 +324,16 @@ export function InvoicesPageClient({
               <tbody>
                 {pagination.pageItems.map((row) => (
                   <tr key={row.id}>
-                    <td className="fl-mono">{row.number}</td>
+                    <td className="fl-mono">
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        {row.number}
+                        {isImportedFinanceDoc(row) ? (
+                          <span className="fl-badge b-gray text-[10px]">
+                            {f.importedFile}
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
                     <td>
                       <b>{row.clientName}</b>
                     </td>
@@ -359,8 +374,11 @@ export function InvoicesPageClient({
                       <FinanceRowActions
                         label={row.number}
                         onView={() => openDetail(row)}
-                        onEdit={() => router.push(`/finance/invoices/${row.id}/edit`)}
+                        onEdit={() =>
+                          router.push(`/finance/invoices/${row.id}/edit`)
+                        }
                         onDelete={() => handleDelete(row.id)}
+                        canEdit={!isImportedFinanceDoc(row)}
                       />
                     </td>
                   </tr>

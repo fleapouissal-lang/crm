@@ -61,6 +61,11 @@ export interface QuoteRecord {
   templateId: string | null;
   notes: string;
   items: FinanceLineItem[];
+  /** Uploaded external file — content is read-only. */
+  isImported?: boolean;
+  importFileName?: string | null;
+  importFileMime?: string | null;
+  importStoragePath?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,8 +84,19 @@ export interface InvoiceRecord {
   quoteId: string | null;
   notes: string;
   items: FinanceLineItem[];
+  /** Uploaded external file — content is read-only. */
+  isImported?: boolean;
+  importFileName?: string | null;
+  importFileMime?: string | null;
+  importStoragePath?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export function isImportedFinanceDoc(
+  doc: Pick<QuoteRecord | InvoiceRecord, "isImported" | "importStoragePath">
+): boolean {
+  return Boolean(doc.isImported || doc.importStoragePath);
 }
 
 export const QUOTE_STATUS_BADGE: Record<QuoteStatus, string> = {

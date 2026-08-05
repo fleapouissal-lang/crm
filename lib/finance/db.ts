@@ -36,6 +36,10 @@ export type QuoteRow = {
   template_id: string | null;
   notes: string;
   items: FinanceLineItem[] | string;
+  is_imported?: boolean | null;
+  import_file_name?: string | null;
+  import_file_mime?: string | null;
+  import_storage_path?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -56,6 +60,10 @@ export type InvoiceRow = {
   quote_id: string | null;
   notes: string;
   items: FinanceLineItem[] | string;
+  is_imported?: boolean | null;
+  import_file_name?: string | null;
+  import_file_mime?: string | null;
+  import_storage_path?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -147,6 +155,10 @@ export function rowToQuote(row: QuoteRow): QuoteRecord {
     templateId: row.template_id,
     notes: row.notes ?? "",
     items: parseItems(row.items),
+    isImported: Boolean(row.is_imported),
+    importFileName: row.import_file_name ?? null,
+    importFileMime: row.import_file_mime ?? null,
+    importStoragePath: row.import_storage_path ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -174,6 +186,10 @@ export function quoteToRow(
     template_id: normalized.templateId,
     notes: normalized.notes,
     items: normalized.items,
+    is_imported: Boolean(normalized.isImported),
+    import_file_name: normalized.importFileName ?? null,
+    import_file_mime: normalized.importFileMime ?? null,
+    import_storage_path: normalized.importStoragePath ?? null,
     created_at: normalized.createdAt,
     updated_at: normalized.updatedAt,
   };
@@ -194,6 +210,10 @@ export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
     quoteId: row.quote_id,
     notes: row.notes ?? "",
     items: parseItems(row.items),
+    isImported: Boolean(row.is_imported),
+    importFileName: row.import_file_name ?? null,
+    importFileMime: row.import_file_mime ?? null,
+    importStoragePath: row.import_storage_path ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -221,6 +241,10 @@ export function invoiceToRow(
     quote_id: normalized.quoteId,
     notes: normalized.notes,
     items: normalized.items,
+    is_imported: Boolean(normalized.isImported),
+    import_file_name: normalized.importFileName ?? null,
+    import_file_mime: normalized.importFileMime ?? null,
+    import_storage_path: normalized.importStoragePath ?? null,
     created_at: normalized.createdAt,
     updated_at: normalized.updatedAt,
   };

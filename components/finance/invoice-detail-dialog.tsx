@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useDict } from "@/components/shared/i18n-provider";
 import { InvoicePdfExportButton } from "@/components/finance/pdf-export-button";
 import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
+import { FinanceImportedFileViewer } from "@/components/finance/finance-imported-file-viewer";
 import {
   INVOICE_STATUS_BADGE,
+  isImportedFinanceDoc,
   type DocumentTemplate,
   type InvoiceRecord,
   type QuoteRecord,
@@ -49,6 +51,7 @@ export function InvoiceDetailDialog({
   const inv = dict.fusion.invoices;
   if (!invoice) return null;
 
+  const imported = isImportedFinanceDoc(invoice);
   const badge = INVOICE_STATUS_BADGE[invoice.status];
   const items =
     invoice.items?.length
@@ -64,24 +67,33 @@ export function InvoiceDetailDialog({
           <DialogTitle>{inv.detailTitle}</DialogTitle>
         </DialogHeader>
         <div className="fl-dialog-body max-h-[min(78vh,880px)] overflow-y-auto px-4 py-3 sm:px-5">
-          <div className="fl-fin-editor">
-            <div className="fl-fin-editor__stage">
-              <FinanceDocumentPreview
-                kind="invoice"
-                number={invoice.number}
-                statusLabel={statusLabel(invoice, inv)}
-                statusBadge={badge}
-                isPaid={invoice.status === "paid"}
-                clientName={invoice.clientName}
-                clientDetails={invoice.clientDetails}
-                amount={invoice.amount}
-                currency={invoice.currency}
-                issuedAt={invoice.createdAt}
-                lineItems={items}
-                notes={invoice.notes}
-              />
+          {imported ? (
+            <FinanceImportedFileViewer
+              kind="invoice"
+              id={invoice.id}
+              fileName={invoice.importFileName}
+              mime={invoice.importFileMime}
+            />
+          ) : (
+            <div className="fl-fin-editor">
+              <div className="fl-fin-editor__stage">
+                <FinanceDocumentPreview
+                  kind="invoice"
+                  number={invoice.number}
+                  statusLabel={statusLabel(invoice, inv)}
+                  statusBadge={badge}
+                  isPaid={invoice.status === "paid"}
+                  clientName={invoice.clientName}
+                  clientDetails={invoice.clientDetails}
+                  amount={invoice.amount}
+                  currency={invoice.currency}
+                  issuedAt={invoice.createdAt}
+                  lineItems={items}
+                  notes={invoice.notes}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <DialogFooter className="fl-dialog-footer flex-wrap gap-2">
           <button
@@ -91,33 +103,37 @@ export function InvoiceDetailDialog({
           >
             {dict.common.cancel}
           </button>
-          {onViewPdf ? (
+          {!imported && onViewPdf ? (
             <button type="button" className="fl-btn sm ghost" onClick={onViewPdf}>
               <ExternalLink className="size-4" />
               {inv.viewPdf}
             </button>
           ) : null}
-          <InvoicePdfExportButton
-            invoice={invoice}
-            template={template}
-            linkedQuote={linkedQuote}
-            variant="ghost"
-          />
-          <button
-            type="button"
-            className="fl-btn sm primary"
-            onClick={() => {
-              onOpenChange(false);
-              if (onEdit) {
-                onEdit();
-                return;
-              }
-              router.push(`/finance/invoices/${invoice.id}/edit`);
-            }}
-          >
-            <Pencil className="size-4" />
-            {dict.common.edit}
-          </button>
+          {!imported ? (
+            <InvoicePdfExportButton
+              invoice={invoice}
+              template={template}
+              linkedQuote={linkedQuote}
+              variant="ghost"
+            />
+          ) : null}
+          {!imported ? (
+            <button
+              type="button"
+              className="fl-btn sm primary"
+              onClick={() => {
+                onOpenChange(false);
+                if (onEdit) {
+                  onEdit();
+                  return;
+                }
+                router.push(`/finance/invoices/${invoice.id}/edit`);
+              }}
+            >
+              <Pencil className="size-4" />
+              {dict.common.edit}
+            </button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

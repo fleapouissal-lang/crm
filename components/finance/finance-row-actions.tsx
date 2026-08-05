@@ -14,6 +14,7 @@ export function FinanceRowActions({
   onConvert,
   convertLabel,
   viewLoading,
+  canEdit = true,
 }: {
   label: string;
   onView: () => void;
@@ -22,6 +23,8 @@ export function FinanceRowActions({
   onConvert?: () => void;
   convertLabel?: string;
   viewLoading?: boolean;
+  /** Imported docs: view / status / delete only. */
+  canEdit?: boolean;
 }) {
   const dict = useDict();
   const f = dict.fusion.financeDocs;
@@ -34,12 +37,16 @@ export function FinanceRowActions({
       onClick: onView,
       disabled: viewLoading,
     },
-    {
-      label: dict.common.edit,
-      icon: <Pencil className="size-4" />,
-      onClick: onEdit,
-    },
-    ...(onConvert
+    ...(canEdit
+      ? [
+          {
+            label: dict.common.edit,
+            icon: <Pencil className="size-4" />,
+            onClick: onEdit,
+          } satisfies RowActionItem,
+        ]
+      : []),
+    ...(canEdit && onConvert
       ? [
           {
             label: convertLabel ?? dict.fusion.quotes.convertToInvoice,

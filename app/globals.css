@@ -8204,20 +8204,34 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   color: var(--fr-ink);
 }
 
-/* ── Masthead: company left, bill-to right ───────────── */
+/* ── Masthead: logo left, document name right ────────── */
 .fl-fr-doc__masthead {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
+}
+.fl-fr-doc__logo {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.fl-fr-doc__logo img {
+  max-height: 52px;
+  max-width: 140px;
+  object-fit: contain;
 }
 .fl-fr-doc__co {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.85rem;
   min-width: 0;
   flex: 1;
+}
+.fl-fr-doc__co--stack {
+  flex-direction: column;
+  gap: 0.2rem;
 }
 .fl-fr-doc__co img {
   max-height: 46px;
@@ -8260,6 +8274,17 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   text-align: start;
   flex-shrink: 0;
 }
+.fl-fr-doc__title-block--top {
+  text-align: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+.fl-fr-doc__title-block--top .fl-fr-doc__number,
+.fl-fr-doc__title-block--top .fl-fr-doc__inp--meta {
+  text-align: end;
+}
 .fl-fr-doc__title-block--inline {
   display: flex;
   flex-direction: column;
@@ -8298,12 +8323,12 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   flex-shrink: 0;
 }
 
-/* ── Info: document title left, meta right ───────────── */
+/* ── Info: company left, bill-to right ───────────────── */
 .fl-fr-doc__info {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 1rem 2rem;
-  align-items: end;
+  align-items: start;
   margin-bottom: 1.25rem;
 }
 .fl-fr-doc__billto-label {
@@ -8375,6 +8400,27 @@ a.marketing-contact-panel__row:hover .marketing-contact-panel__value {
   width: 11.5rem;
   flex-shrink: 0;
   padding-top: 0.15rem;
+}
+.fl-fr-doc__meta--under {
+  width: 100%;
+  max-width: 14rem;
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--fr-line);
+}
+.fl-fr-doc__meta--left {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+.fl-fr-doc__meta--left .fl-fr-doc__meta-row {
+  grid-template-columns: auto 1fr;
+}
+.fl-fr-doc__meta--left .fl-fr-doc__meta-row > span:first-child {
+  text-align: start;
+}
+.fl-fr-doc__meta--left .fl-fr-doc__meta-row > span:last-child,
+.fl-fr-doc__meta--left .fl-fr-doc__meta-row > div:last-child {
+  text-align: start;
 }
 .fl-fr-doc__meta-row {
   display: grid;

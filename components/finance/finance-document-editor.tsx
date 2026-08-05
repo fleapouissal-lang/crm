@@ -166,18 +166,99 @@ export function FinanceDocumentEditor({
                   {isFirst ? (
                     <>
                       <header className="fl-fr-doc__masthead">
-                        <div className="fl-fr-doc__co">
+                        <div className="fl-fr-doc__logo">
                           {issuer.logoUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={issuer.logoUrl} alt="" />
-                          ) : null}
-                          <div>
+                          ) : (
                             <p className="fl-fr-doc__co-name">{issuer.name}</p>
-                            <div className="fl-fr-doc__co-lines">
-                              {headerLines.map((line) => (
-                                <p key={line}>{line}</p>
-                              ))}
+                          )}
+                        </div>
+                        <div className="fl-fr-doc__title-block fl-fr-doc__title-block--top">
+                          <h1 className="fl-fr-doc__title">
+                            {kindLabel.toUpperCase()}
+                          </h1>
+                          {onNumberChange ? (
+                            <input
+                              id="fin-doc-number"
+                              className="fl-fr-doc__inp fl-fr-doc__inp--meta fl-fr-doc__number"
+                              value={number}
+                              onChange={(e) => onNumberChange(e.target.value)}
+                              aria-invalid={Boolean(numberError)}
+                            />
+                          ) : (
+                            <p className="fl-fr-doc__number fl-mono">
+                              {number}
+                            </p>
+                          )}
+                          <p className="fl-fr-doc__status-line">
+                            {statusLabel}
+                          </p>
+                          {numberError ? (
+                            <p className="fl-fr-doc__error">{numberError}</p>
+                          ) : null}
+                        </div>
+                      </header>
+
+                      <div className="fl-fr-doc__rule" />
+
+                      <section className="fl-fr-doc__info">
+                        <div className="fl-fr-doc__co fl-fr-doc__co--stack">
+                          <p className="fl-fr-doc__co-name">{issuer.name}</p>
+                          <div className="fl-fr-doc__co-lines">
+                            {headerLines.map((line) => (
+                              <p key={line}>{line}</p>
+                            ))}
+                          </div>
+                          <div className="fl-fr-doc__meta fl-fr-doc__meta--under fl-fr-doc__meta--left">
+                            <div className="fl-fr-doc__meta-row">
+                              <span>{f.previewDate}</span>
+                              <span>{issueDate}</span>
                             </div>
+                            {metaFields.map((field) => (
+                              <div
+                                key={field.key}
+                                className="fl-fr-doc__meta-row"
+                              >
+                                <span>{field.label}</span>
+                                <div>
+                                  {field.kind === "select" ? (
+                                    <select
+                                      className="fl-fr-doc__inp fl-fr-doc__inp--meta"
+                                      value={field.value}
+                                      onChange={(e) =>
+                                        field.onChange(e.target.value)
+                                      }
+                                    >
+                                      {field.options.map((opt) => (
+                                        <option
+                                          key={opt.value}
+                                          value={opt.value}
+                                        >
+                                          {opt.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type={field.kind}
+                                      className="fl-fr-doc__inp fl-fr-doc__inp--meta"
+                                      value={field.value}
+                                      min={field.min}
+                                      max={field.max}
+                                      onChange={(e) =>
+                                        field.onChange(e.target.value)
+                                      }
+                                    />
+                                  )}
+                                  {"error" in field && field.error ? (
+                                    <p className="fl-fr-doc__error">
+                                      {field.error}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                         <div className="fl-fr-doc__billto fl-fr-doc__billto--right">
@@ -239,85 +320,6 @@ export function FinanceDocumentEditor({
                               </div>
                             </div>
                           ) : null}
-                        </div>
-                      </header>
-
-                      <div className="fl-fr-doc__rule" />
-
-                      <section className="fl-fr-doc__info">
-                        <div className="fl-fr-doc__title-block fl-fr-doc__title-block--inline">
-                          <h1 className="fl-fr-doc__title">
-                            {kindLabel.toUpperCase()}
-                          </h1>
-                          {onNumberChange ? (
-                            <input
-                              id="fin-doc-number"
-                              className="fl-fr-doc__inp fl-fr-doc__inp--meta fl-fr-doc__number"
-                              value={number}
-                              onChange={(e) => onNumberChange(e.target.value)}
-                              aria-invalid={Boolean(numberError)}
-                            />
-                          ) : (
-                            <p className="fl-fr-doc__number fl-mono">
-                              {number}
-                            </p>
-                          )}
-                          <p className="fl-fr-doc__status-line">
-                            {statusLabel}
-                          </p>
-                          {numberError ? (
-                            <p className="fl-fr-doc__error">{numberError}</p>
-                          ) : null}
-                        </div>
-                        <div className="fl-fr-doc__meta">
-                          <div className="fl-fr-doc__meta-row">
-                            <span>{f.previewDate}</span>
-                            <span>{issueDate}</span>
-                          </div>
-                          {metaFields.map((field) => (
-                            <div
-                              key={field.key}
-                              className="fl-fr-doc__meta-row"
-                            >
-                              <span>{field.label}</span>
-                              <div>
-                                {field.kind === "select" ? (
-                                  <select
-                                    className="fl-fr-doc__inp fl-fr-doc__inp--meta"
-                                    value={field.value}
-                                    onChange={(e) =>
-                                      field.onChange(e.target.value)
-                                    }
-                                  >
-                                    {field.options.map((opt) => (
-                                      <option
-                                        key={opt.value}
-                                        value={opt.value}
-                                      >
-                                        {opt.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <input
-                                    type={field.kind}
-                                    className="fl-fr-doc__inp fl-fr-doc__inp--meta"
-                                    value={field.value}
-                                    min={field.min}
-                                    max={field.max}
-                                    onChange={(e) =>
-                                      field.onChange(e.target.value)
-                                    }
-                                  />
-                                )}
-                                {"error" in field && field.error ? (
-                                  <p className="fl-fr-doc__error">
-                                    {field.error}
-                                  </p>
-                                ) : null}
-                              </div>
-                            </div>
-                          ))}
                         </div>
                       </section>
                     </>

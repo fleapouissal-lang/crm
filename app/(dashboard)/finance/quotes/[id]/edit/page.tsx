@@ -3,6 +3,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { EditQuotePageClient } from "@/components/finance/edit-quote-page-client";
 import { getCurrentProfile } from "@/lib/actions/auth";
 import { getQuoteById } from "@/lib/actions/finance-docs";
+import { isImportedFinanceDoc } from "@/lib/finance/types";
 import { canViewFinanceDocumentsForRole } from "@/lib/permissions";
 
 export default async function EditQuotePage({
@@ -17,6 +18,7 @@ export default async function EditQuotePage({
   const { id } = await params;
   const quote = await getQuoteById(id);
   if (!quote) notFound();
+  if (isImportedFinanceDoc(quote)) redirect("/finance/quotes");
 
   return (
     <PageTransition>

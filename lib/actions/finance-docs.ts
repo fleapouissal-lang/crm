@@ -23,7 +23,39 @@ import type {
   InvoiceRecord,
   QuoteRecord,
 } from "@/lib/finance/types";
+import {
+  createEmptyLineItem,
+  isImportedFinanceDoc,
+  nextInvoiceNumber,
+  nextQuoteNumber,
+} from "@/lib/finance/types";
 import type { ActionResult } from "@/types/database";
+
+const FINANCE_IMPORT_BUCKET = "finance-imports";
+const FINANCE_IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+const FINANCE_IMPORT_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+
+function stripImportColumns<T extends Record<string, unknown>>(row: T): Partial<T> {
+  const {
+    is_imported: _i,
+    import_file_name: _n,
+    import_file_mime: _m,
+    import_storage_path: _p,
+    ...rest
+  } = row as T & {
+    is_imported?: unknown;
+    import_file_name?: unknown;
+    import_file_mime?: unknown;
+    import_storage_path?: unknown;
+  };
+  return rest as Partial<T>;
+}
 
 function isUuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -193,7 +225,17 @@ export async function upsertQuote(
   };
 
   if (isUuid(input.id)) {
-    const row = quoteToRow(payload, orgId);
+    const existing = await getQuoteById(input.id);
+    const locked: QuoteRecord =
+      existing && isImportedFinanceDoc(existing)
+        ? {
+            ...existing,
+            status: input.status,
+            updatedAt: now,
+          }
+        : payload;
+
+    const row = quoteToRow(locked, orgId);
     const { id: _id, organization_id: _o, created_at: _c, ...update } = row;
     let { data, error } = await supabase
       .from("quotes")
@@ -202,12 +244,17 @@ export async function upsertQuote(
       .eq("organization_id", orgId)
       .select("*")
       .single();
-    if (error && error.message.includes("client_details")) {
-      // Migration 025 not applied yet — retry without the new column.
-      const { client_details: _cd, ...legacy } = update;
+    if (error && /client_details|is_imported|import_/.test(error.message)) {
+      const legacy = stripImportColumns(update as Record<string, unknown>);
+      const { client_details: _cd, ...withoutDetails } = legacy as Record<
+        string,
+        unknown
+      > & { client_details?: unknown };
       ({ data, error } = await supabase
         .from("quotes")
-        .update(legacy)
+        .update(
+          error.message.includes("client_details") ? withoutDetails : legacy
+        )
         .eq("id", input.id)
         .eq("organization_id", orgId)
         .select("*")
@@ -245,12 +292,18 @@ export async function deleteQuote(id: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) return { success: false, error: "Not authenticated" };
   const supabase = await createClient();
+  const existing = await getQuoteById(id);
   const { error } = await supabase
     .from("quotes")
     .delete()
     .eq("id", id)
     .eq("organization_id", profile.organization_id);
   if (error) return { success: false, error: error.message };
+  if (existing?.importStoragePath) {
+    await supabase.storage
+      .from(FINANCE_IMPORT_BUCKET)
+      .remove([existing.importStoragePath]);
+  }
   revalidateFinance();
   return { success: true, data: undefined };
 }
@@ -311,7 +364,17 @@ export async function upsertInvoice(
   };
 
   if (isUuid(input.id)) {
-    const row = invoiceToRow(safePayload, orgId);
+    const existing = await getInvoiceById(input.id);
+    const locked: InvoiceRecord =
+      existing && isImportedFinanceDoc(existing)
+        ? {
+            ...existing,
+            status: input.status,
+            updatedAt: now,
+          }
+        : safePayload;
+
+    const row = invoiceToRow(locked, orgId);
     const { id: _id, organization_id: _o, created_at: _c, ...update } = row;
     let { data, error } = await supabase
       .from("invoices")
@@ -320,12 +383,17 @@ export async function upsertInvoice(
       .eq("organization_id", orgId)
       .select("*")
       .single();
-    if (error && error.message.includes("client_details")) {
-      // Migration 025 not applied yet — retry without the new column.
-      const { client_details: _cd, ...legacy } = update;
+    if (error && /client_details|is_imported|import_/.test(error.message)) {
+      const legacy = stripImportColumns(update as Record<string, unknown>);
+      const { client_details: _cd, ...withoutDetails } = legacy as Record<
+        string,
+        unknown
+      > & { client_details?: unknown };
       ({ data, error } = await supabase
         .from("invoices")
-        .update(legacy)
+        .update(
+          error.message.includes("client_details") ? withoutDetails : legacy
+        )
         .eq("id", input.id)
         .eq("organization_id", orgId)
         .select("*")
@@ -363,12 +431,18 @@ export async function deleteInvoice(id: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) return { success: false, error: "Not authenticated" };
   const supabase = await createClient();
+  const existing = await getInvoiceById(id);
   const { error } = await supabase
     .from("invoices")
     .delete()
     .eq("id", id)
     .eq("organization_id", profile.organization_id);
   if (error) return { success: false, error: error.message };
+  if (existing?.importStoragePath) {
+    await supabase.storage
+      .from(FINANCE_IMPORT_BUCKET)
+      .remove([existing.importStoragePath]);
+  }
   revalidateFinance();
   return { success: true, data: undefined };
 }
@@ -487,4 +561,194 @@ export async function bulkInsertExpenses(
   if (error) return { success: false, error: error.message };
   revalidateFinance();
   return { success: true, data: { count: data?.length ?? 0 } };
+}
+
+// —— Imports (external files, content locked) ——
+
+function safeImportFileName(name: string): string {
+  return name.replace(/[^\w.\-() ]+/g, "_").slice(0, 120) || "document.pdf";
+}
+
+function labelFromFileName(name: string): string {
+  return name.replace(/\.[^.]+$/, "").trim() || name;
+}
+
+export async function importFinanceDocuments(
+  kind: "quote" | "invoice",
+  formData: FormData
+): Promise<ActionResult<{ count: number; ids: string[] }>> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "Not authenticated" };
+  }
+  const orgId = profile.organization_id;
+  const files = formData
+    .getAll("files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+
+  if (!files.length) {
+    return { success: false, error: "No files" };
+  }
+
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const existingQuotes =
+    kind === "quote" ? await getQuotes() : ([] as QuoteRecord[]);
+  const existingInvoices =
+    kind === "invoice" ? await getInvoices() : ([] as InvoiceRecord[]);
+
+  const createdIds: string[] = [];
+  let quotePool = [...existingQuotes];
+  let invoicePool = [...existingInvoices];
+
+  for (const file of files) {
+    if (file.size > FINANCE_IMPORT_MAX_BYTES) {
+      return {
+        success: false,
+        error: `File too large (max 10 MB): ${file.name}`,
+      };
+    }
+    const mime = (file.type || "application/pdf").toLowerCase();
+    if (!FINANCE_IMPORT_MIME.has(mime)) {
+      return {
+        success: false,
+        error: `Unsupported file type: ${file.name}`,
+      };
+    }
+
+    const docId = crypto.randomUUID();
+    const safeName = safeImportFileName(file.name);
+    const storagePath = `${orgId}/${kind}/${docId}-${safeName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from(FINANCE_IMPORT_BUCKET)
+      .upload(storagePath, bytes, {
+        contentType: mime,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("[finance-import] upload", uploadError);
+      return { success: false, error: uploadError.message };
+    }
+
+    const label = labelFromFileName(safeName);
+
+    if (kind === "quote") {
+      const record: QuoteRecord = {
+        id: docId,
+        number: nextQuoteNumber(quotePool),
+        clientName: label,
+        clientType: "pro",
+        clientDetails: {},
+        service: label,
+        amount: 0,
+        currency: "MAD",
+        validityDays: 30,
+        status: "draft",
+        templateId: null,
+        notes: "",
+        items: [
+          createEmptyLineItem({
+            description: label,
+            quantity: 1,
+            unitPriceTtc: 0,
+          }),
+        ],
+        isImported: true,
+        importFileName: safeName,
+        importFileMime: mime,
+        importStoragePath: storagePath,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const row = quoteToRow(record, orgId);
+      const { id: _ignore, ...insert } = row;
+      const { data, error } = await supabase
+        .from("quotes")
+        .insert(insert)
+        .select("*")
+        .single();
+      if (error) {
+        await supabase.storage.from(FINANCE_IMPORT_BUCKET).remove([storagePath]);
+        return { success: false, error: error.message };
+      }
+      const saved = rowToQuote(data as QuoteRow);
+      quotePool = [saved, ...quotePool];
+      createdIds.push(saved.id);
+    } else {
+      const due = new Date();
+      due.setDate(due.getDate() + 30);
+      const record: InvoiceRecord = {
+        id: docId,
+        number: nextInvoiceNumber(invoicePool),
+        clientName: label,
+        clientType: "pro",
+        clientDetails: {},
+        amount: 0,
+        currency: "MAD",
+        dueDate: due.toISOString().slice(0, 10),
+        status: "pending",
+        templateId: null,
+        quoteId: null,
+        notes: "",
+        items: [
+          createEmptyLineItem({
+            description: label,
+            quantity: 1,
+            unitPriceTtc: 0,
+          }),
+        ],
+        isImported: true,
+        importFileName: safeName,
+        importFileMime: mime,
+        importStoragePath: storagePath,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const row = invoiceToRow(record, orgId);
+      const { id: _ignore, ...insert } = row;
+      const { data, error } = await supabase
+        .from("invoices")
+        .insert(insert)
+        .select("*")
+        .single();
+      if (error) {
+        await supabase.storage.from(FINANCE_IMPORT_BUCKET).remove([storagePath]);
+        return { success: false, error: error.message };
+      }
+      const saved = rowToInvoice(data as InvoiceRow);
+      invoicePool = [saved, ...invoicePool];
+      createdIds.push(saved.id);
+    }
+  }
+
+  revalidateFinance();
+  return { success: true, data: { count: createdIds.length, ids: createdIds } };
+}
+
+export async function getFinanceImportSignedUrl(
+  kind: "quote" | "invoice",
+  id: string
+): Promise<ActionResult<string>> {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const doc =
+    kind === "quote" ? await getQuoteById(id) : await getInvoiceById(id);
+  if (!doc?.importStoragePath) {
+    return { success: false, error: "No imported file" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from(FINANCE_IMPORT_BUCKET)
+    .createSignedUrl(doc.importStoragePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return { success: false, error: error?.message ?? "Signed URL failed" };
+  }
+  return { success: true, data: data.signedUrl };
 }

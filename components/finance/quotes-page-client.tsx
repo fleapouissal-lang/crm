@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/shared/page-header";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
+import { FinanceImportButton } from "@/components/finance/finance-import-button";
 import { QuoteDetailDialog } from "@/components/finance/quote-detail-dialog";
 import { FinancePdfDialog } from "@/components/finance/finance-pdf-dialog";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import {
   QUOTE_STATUS_BADGE,
   formatMoney,
+  isImportedFinanceDoc,
   isQuoteExpiringSoon,
   isQuotePastExpiry,
   nextInvoiceNumber,
@@ -338,6 +340,10 @@ export function QuotesPageClient({
                   <span className="hidden sm:inline">{q.clearFilters}</span>
                 </button>
               ) : null}
+              <FinanceImportButton
+                kind="quote"
+                onImported={() => router.refresh()}
+              />
               <Link
                 href="/finance/quotes/new"
                 className="fl-btn primary sm fl-toolbar-create shrink-0"
@@ -396,7 +402,14 @@ export function QuotesPageClient({
                           className="text-left underline-offset-2 hover:underline"
                           onClick={() => openDetail(row)}
                         >
-                          {row.number}
+                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                            {row.number}
+                            {isImportedFinanceDoc(row) ? (
+                              <span className="fl-badge b-gray text-[10px]">
+                                {f.importedFile}
+                              </span>
+                            ) : null}
+                          </span>
                         </button>
                       </td>
                       <td>
@@ -463,8 +476,10 @@ export function QuotesPageClient({
                           onView={() => openDetail(row)}
                           onEdit={() => openEdit(row)}
                           onDelete={() => handleDelete(row.id)}
+                          canEdit={!isImportedFinanceDoc(row)}
                           onConvert={
-                            row.status === "accepted" || row.status === "sent"
+                            !isImportedFinanceDoc(row) &&
+                            (row.status === "accepted" || row.status === "sent")
                               ? () => convertToInvoice(row)
                               : undefined
                           }

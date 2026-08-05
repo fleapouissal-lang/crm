@@ -376,13 +376,12 @@ function renderFinanceDocumentPdf(options: {
     let y = PAGE_H - PAD_T;
 
     if (isFirst) {
-      /* Masthead: logo + company left, bill-to right */
+      /* Top: logo left, document name right */
       const mastTop = y;
-      let coX = CONTENT_LEFT;
-      let coBottom = mastTop - 12;
+      let logoBottom = mastTop - 12;
       if (logo) {
-        const maxW = 78;
-        const maxH = 32;
+        const maxW = 90;
+        const maxH = 40;
         const scale = Math.min(maxW / logo.width, maxH / logo.height, 1);
         const w = logo.width * scale;
         const h = logo.height * scale;
@@ -392,19 +391,65 @@ function renderFinanceDocumentPdf(options: {
           width: w,
           height: h,
         });
-        coX = CONTENT_LEFT + w + 10;
+        logoBottom = mastTop - h;
+      } else {
+        page.drawText(t(issuer.name), {
+          x: CONTENT_LEFT,
+          y: mastTop - 10,
+          size: 11.5,
+          font: fonts.bold,
+          color: INK,
+        });
+        logoBottom = mastTop - 14;
       }
+
+      drawSpacedText(page, t(docTitle).toUpperCase(), {
+        x: CONTENT_RIGHT,
+        y: mastTop - 8,
+        size: 16,
+        font: fonts.bold,
+        color: INK,
+        spacing: 2.4,
+        align: "right",
+      });
+      drawAlignedText(page, docNumber, {
+        x: CONTENT_RIGHT,
+        y: mastTop - 22,
+        size: 9,
+        font: fonts.bold,
+        color: INK,
+        align: "right",
+      });
+      let titleBottom = mastTop - 22;
+      if (statusLabel) {
+        drawSpacedText(page, t(statusLabel).toUpperCase(), {
+          x: CONTENT_RIGHT,
+          y: mastTop - 34,
+          size: 6,
+          font: fonts.bold,
+          color: MUTED,
+          spacing: 1.2,
+          align: "right",
+        });
+        titleBottom = mastTop - 34;
+      }
+
+      const ruleY = Math.min(logoBottom, titleBottom) - 12;
+      drawLine(page, CONTENT_LEFT, ruleY, CONTENT_RIGHT, ruleY, INK, 2.25);
+
+      /* Below rule: company left, bill-to right */
+      let infoY = ruleY - 18;
       page.drawText(t(issuer.name), {
-        x: coX,
-        y: mastTop - 9,
-        size: 11.5,
+        x: CONTENT_LEFT,
+        y: infoY,
+        size: 11,
         font: fonts.bold,
         color: INK,
       });
-      let coY = mastTop - 21;
+      let coY = infoY - 12;
       for (const line of issuerHeaderLinesPdf(issuer)) {
         page.drawText(t(line), {
-          x: coX,
+          x: CONTENT_LEFT,
           y: coY,
           size: 6.5,
           font: fonts.regular,
@@ -412,11 +457,10 @@ function renderFinanceDocumentPdf(options: {
         });
         coY -= 9;
       }
-      coBottom = coY;
 
       drawSpacedText(page, t(recipientLabel).toUpperCase(), {
         x: CONTENT_RIGHT,
-        y: mastTop - 6,
+        y: infoY,
         size: 6.5,
         font: fonts.bold,
         color: MUTED,
@@ -425,13 +469,13 @@ function renderFinanceDocumentPdf(options: {
       });
       drawAlignedText(page, clientName || "—", {
         x: CONTENT_RIGHT,
-        y: mastTop - 22,
+        y: infoY - 15,
         size: 12,
         font: fonts.bold,
         color: INK,
         align: "right",
       });
-      let clientY = mastTop - 34;
+      let clientY = infoY - 27;
       for (const line of clientLines) {
         drawAlignedText(page, line, {
           x: CONTENT_RIGHT,
@@ -444,65 +488,39 @@ function renderFinanceDocumentPdf(options: {
         clientY -= 9;
       }
 
-      /* Full-width rule */
-      const ruleY = Math.min(coBottom, clientY) - 10;
-      drawLine(page, CONTENT_LEFT, ruleY, CONTENT_RIGHT, ruleY, INK, 2.25);
-
-      /* Below rule: document title left, meta right */
-      let infoY = ruleY - 20;
-      drawSpacedText(page, t(docTitle).toUpperCase(), {
-        x: CONTENT_LEFT,
-        y: infoY,
-        size: 16,
-        font: fonts.bold,
-        color: INK,
-        spacing: 2.4,
-      });
-      page.drawText(t(docNumber), {
-        x: CONTENT_LEFT,
-        y: infoY - 14,
-        size: 9,
-        font: fonts.bold,
-        color: INK,
-      });
-      let titleBottom = infoY - 14;
-      if (statusLabel) {
-        drawSpacedText(page, t(statusLabel).toUpperCase(), {
-          x: CONTENT_LEFT,
-          y: infoY - 26,
-          size: 6,
-          font: fonts.bold,
-          color: MUTED,
-          spacing: 1.2,
-        });
-        titleBottom = infoY - 26;
+      /* Date / meta under company info (left) */
+      let metaY = coY - 8;
+      if (infoRows.length) {
+        drawLine(
+          page,
+          CONTENT_LEFT,
+          metaY + 8,
+          CONTENT_LEFT + 168,
+          metaY + 8,
+          HAIRLINE,
+          0.6
+        );
+        metaY -= 2;
       }
-
-      const metaW = 168;
-      const metaLeft = CONTENT_RIGHT - metaW;
-      const metaLabelRight = metaLeft + 58;
-      let metaY = infoY;
       for (const row of infoRows) {
-        drawAlignedText(page, row.label, {
-          x: metaLabelRight,
+        page.drawText(t(row.label), {
+          x: CONTENT_LEFT,
           y: metaY,
           size: 7.5,
           font: fonts.regular,
           color: MUTED,
-          align: "right",
         });
-        drawAlignedText(page, row.value, {
-          x: CONTENT_RIGHT,
+        page.drawText(t(row.value), {
+          x: CONTENT_LEFT + 52,
           y: metaY,
           size: 7.5,
           font: fonts.bold,
           color: INK,
-          align: "right",
         });
         metaY -= 13;
       }
 
-      y = Math.min(titleBottom, metaY) - 14;
+      y = Math.min(clientY, metaY) - 14;
     } else {
       drawAlignedText(
         page,
