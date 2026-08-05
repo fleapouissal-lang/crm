@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -15,10 +15,8 @@ import {
   INVOICE_STATUS_BADGE,
   createEmptyLineItem,
   documentAmountTtc,
-  nextInvoiceNumber,
   type ClientDetails,
   type ClientType,
-  type DocumentTemplate,
   type FinanceLineItem,
   type InvoiceRecord,
   type InvoiceStatus,
@@ -34,56 +32,63 @@ const schema = z.object({
   currency: z.string().min(1),
   dueDate: z.string().min(1),
   status: z.string(),
-  templateId: z.string().optional(),
   notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function defaultDueDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toISOString().slice(0, 10);
-}
-
-export function CreateInvoicePageClient({
-  initialInvoices = [],
-  initialTemplates = [],
-}: {
-  initialInvoices?: InvoiceRecord[];
-  initialTemplates?: DocumentTemplate[];
-}) {
+export function EditInvoicePageClient({ invoice }: { invoice: InvoiceRecord }) {
   const dict = useDict();
   const router = useRouter();
   const inv = dict.fusion.invoices;
   const f = dict.fusion.financeDocs;
-  const templates = useMemo(
-    () => initialTemplates.filter((t) => t.kind === "invoice"),
-    [initialTemplates]
+  const [items, setItems] = useState<FinanceLineItem[]>(
+    invoice.items?.length
+      ? invoice.items.map((row) => ({ ...row }))
+      : [createEmptyLineItem()]
   );
-  const [items, setItems] = useState<FinanceLineItem[]>([createEmptyLineItem()]);
   const [linesError, setLinesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [clientDetails, setClientDetails] = useState<ClientDetails>({});
+  const [clientDetails, setClientDetails] = useState<ClientDetails>(
+    invoice.clientDetails ?? {}
+  );
 
   const {
     handleSubmit,
+    reset,
     setValue,
     watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      number: nextInvoiceNumber(initialInvoices),
-      clientName: "",
-      clientType: "pro",
-      currency: "MAD",
-      dueDate: defaultDueDate(),
-      status: "pending",
-      templateId: templates[0]?.id ?? "",
-      notes: "",
+      number: invoice.number,
+      clientName: invoice.clientName,
+      clientType: invoice.clientType,
+      currency: invoice.currency,
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      notes: invoice.notes ?? "",
     },
   });
+
+  useEffect(() => {
+    reset({
+      number: invoice.number,
+      clientName: invoice.clientName,
+      clientType: invoice.clientType,
+      currency: invoice.currency,
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      notes: invoice.notes ?? "",
+    });
+    setItems(
+      invoice.items?.length
+        ? invoice.items.map((row) => ({ ...row }))
+        : [createEmptyLineItem()]
+    );
+    setClientDetails(invoice.clientDetails ?? {});
+  }, [invoice, reset]);
 
   const status = watch("status") as InvoiceStatus;
   const clientType = watch("clientType");
@@ -91,7 +96,7 @@ export function CreateInvoicePageClient({
   const clientName = watch("clientName") || "";
   const notes = watch("notes") || "";
   const number = watch("number") || "";
-  const dueDate = watch("dueDate") || defaultDueDate();
+  const dueDate = watch("dueDate") || invoice.dueDate;
 
   function statusLabel(key: string) {
     if (key === "overdue") return inv.overdueStatus;
@@ -120,8 +125,8 @@ export function CreateInvoicePageClient({
       unitPriceTtc: Number(row.unitPriceTtc) || 0,
     }));
 
-    const record: InvoiceRecord = {
-      id: `inv-${crypto.randomUUID().slice(0, 8)}`,
+    const result = await upsertInvoice({
+      ...invoice,
       number: values.number.trim(),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
@@ -130,21 +135,18 @@ export function CreateInvoicePageClient({
       currency: values.currency,
       dueDate: values.dueDate,
       status: values.status as InvoiceStatus,
-      templateId: values.templateId || null,
-      quoteId: null,
       notes: values.notes?.trim() ?? "",
       items: cleaned,
-      createdAt: now,
       updatedAt: now,
-    };
+    });
 
-    const result = await upsertInvoice(record);
     if (!result.success) {
       toast.error(result.error);
       setSaving(false);
       return;
     }
-    toast.success(f.invoiceCreated);
+
+    toast.success(f.invoiceUpdated);
     router.push("/finance/invoices");
     router.refresh();
   }
@@ -161,8 +163,8 @@ export function CreateInvoicePageClient({
               <Receipt className="size-5" strokeWidth={2} />
             </span>
             <div>
-              <h2 className="text-lg font-semibold">{inv.newInvoice}</h2>
-              <p className="mt-1 text-sm fl-faint">{inv.newInvoiceSub}</p>
+              <h2 className="text-lg font-semibold">{f.editInvoice}</h2>
+              <p className="mt-1 text-sm fl-faint fl-mono">{invoice.number}</p>
             </div>
           </div>
           <Link href="/finance/invoices" className="fl-btn sm ghost">
@@ -220,6 +222,7 @@ export function CreateInvoicePageClient({
           items={items}
           onItemsChange={setItems}
           linesError={linesError ?? undefined}
+          issuedAt={invoice.createdAt}
         />
 
         <div className="fl-card fl-pad flex flex-wrap items-center justify-end gap-2">
@@ -228,7 +231,7 @@ export function CreateInvoicePageClient({
           </Link>
           <button type="submit" className="fl-btn sm primary" disabled={saving}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-            {inv.createInvoice}
+            {dict.common.save}
           </button>
         </div>
       </form>

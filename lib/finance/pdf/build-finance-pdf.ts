@@ -10,14 +10,19 @@ import {
 import type { Locale } from "@/lib/i18n/types";
 import {
   financeIssuerFromOrganization,
-  issuerCompanyLines,
   type FinanceIssuer,
 } from "../company-info";
 import { formatDateFr, splitTtcAmount } from "../render-template";
-import type { ClientType, DocumentTemplate, InvoiceRecord, QuoteRecord } from "../types";
+import { paginateLineItems } from "../document-pagination";
+import type {
+  ClientDetails,
+  ClientType,
+  DocumentTemplate,
+  InvoiceRecord,
+  QuoteRecord,
+} from "../types";
 import { pdfSafe, formatAmountFr } from "./pdf-text";
 import {
-  clientTypeLabel,
   getPdfLabels,
   resolveClientType,
   type PdfLabels,
@@ -25,57 +30,21 @@ import {
 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const M = 52;
-const CONTENT_W = PAGE_W - M * 2;
-const LOGO_W = 128;
-const LOGO_H = 48;
-const HEADER_BOTTOM = PAGE_H - M - 108;
-const FOOTER_HEIGHT = 72;
-const CONTENT_BOTTOM = M + FOOTER_HEIGHT + 16;
+/** ~15 mm side margins — same left/right so the sheet looks centered. */
+const PAD_X = 42.5;
+const PAD_T = 40;
+const CONTENT_LEFT = PAD_X;
+const CONTENT_RIGHT = PAGE_W - PAD_X;
+const CONTENT_W = CONTENT_RIGHT - CONTENT_LEFT;
 
-/* Fusion Leap brand palette */
-const IRIS = rgb(0.48, 0.35, 0.95);
-const GOLD = rgb(0.94, 0.58, 0.28);
-const BLACK = rgb(0.04, 0.04, 0.04);
-const INK = rgb(0.12, 0.12, 0.14);
-const SLATE = rgb(0.35, 0.35, 0.38);
-const MUTED = rgb(0.52, 0.52, 0.56);
-const BORDER = rgb(0.86, 0.86, 0.88);
-const SURFACE = rgb(0.97, 0.97, 0.98);
+/* Professional monochrome palette */
+const INK = rgb(0.09, 0.09, 0.09);
+const MUTED = rgb(0.43, 0.43, 0.43);
+const HAIRLINE = rgb(0.87, 0.87, 0.87);
 const WHITE = rgb(1, 1, 1);
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 type DocMeta = { label: string; value: string };
-
-type PdfTheme = {
-  barPrimary: ReturnType<typeof rgb>;
-  barSecondary: ReturnType<typeof rgb>;
-  accent: ReturnType<typeof rgb>;
-  title: ReturnType<typeof rgb>;
-  tableHeader: ReturnType<typeof rgb>;
-  totalAccent: ReturnType<typeof rgb>;
-  totalsBar: ReturnType<typeof rgb>;
-};
-
-const BRAND_THEME: PdfTheme = {
-  barPrimary: IRIS,
-  barSecondary: GOLD,
-  accent: IRIS,
-  title: IRIS,
-  tableHeader: IRIS,
-  totalAccent: IRIS,
-  totalsBar: GOLD,
-};
-
-const MONO_THEME: PdfTheme = {
-  barPrimary: BLACK,
-  barSecondary: BLACK,
-  accent: BLACK,
-  title: BLACK,
-  tableHeader: BLACK,
-  totalAccent: BLACK,
-  totalsBar: BLACK,
-};
 
 const logoBytesCache = new Map<string, Uint8Array | null>();
 
@@ -191,7 +160,7 @@ function drawLine(
   y1: number,
   x2: number,
   y2: number,
-  color = BORDER,
+  color = HAIRLINE,
   thickness = 0.75
 ) {
   page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness, color });
@@ -206,626 +175,575 @@ function drawAlignedText(
     size: number;
     font: PDFFont;
     color: ReturnType<typeof rgb>;
-    align: "left" | "right";
+    align: "left" | "right" | "center";
   }
 ) {
   const safe = t(text);
   const w = opts.font.widthOfTextAtSize(safe, opts.size);
-  const x = opts.align === "right" ? opts.x - w : opts.x;
+  const x =
+    opts.align === "right"
+      ? opts.x - w
+      : opts.align === "center"
+        ? opts.x - w / 2
+        : opts.x;
   page.drawText(safe, { x, y: opts.y, size: opts.size, font: opts.font, color: opts.color });
 }
 
-function drawPageHeader(
+/** Draws text with extra letter spacing; returns total width. */
+function drawSpacedText(
   page: PDFPage,
-  fonts: Fonts,
-  labels: PdfLabels,
-  docTitle: string,
-  docNumber: string,
-  theme: PdfTheme,
-  issuer: FinanceIssuer,
-  logo?: PDFImage | null
-) {
-  const rtl = labels.rtl;
-  const textAnchor = rtl ? PAGE_W - M : M;
-  const textAlign: "left" | "right" = rtl ? "right" : "left";
-  const logoX = rtl ? M : PAGE_W - M - LOGO_W;
-
-  page.drawRectangle({ x: 0, y: PAGE_H - 5, width: PAGE_W / 2, height: 5, color: theme.barPrimary });
-  page.drawRectangle({
-    x: PAGE_W / 2,
-    y: PAGE_H - 5,
-    width: PAGE_W / 2,
-    height: 5,
-    color: theme.barSecondary,
-  });
-
-  if (logo) {
-    const aspect = logo.width / logo.height;
-    let drawW = LOGO_W;
-    let drawH = LOGO_H;
-    if (aspect > LOGO_W / LOGO_H) drawH = LOGO_W / aspect;
-    else drawW = LOGO_H * aspect;
-    page.drawImage(logo, {
-      x: logoX + (LOGO_W - drawW) / 2,
-      y: PAGE_H - M - LOGO_H + 2,
-      width: drawW,
-      height: drawH,
-    });
+  text: string,
+  opts: {
+    x: number;
+    y: number;
+    size: number;
+    font: PDFFont;
+    color: ReturnType<typeof rgb>;
+    spacing: number;
+    align?: "left" | "right";
   }
-
-  let y = PAGE_H - M - 4;
-  drawAlignedText(page, docTitle, {
-    x: textAnchor,
-    y,
-    size: 26,
-    font: fonts.bold,
-    color: theme.title,
-    align: textAlign,
-  });
-  y -= 20;
-  drawAlignedText(page, docNumber, {
-    x: textAnchor,
-    y,
-    size: 9,
-    font: fonts.regular,
-    color: SLATE,
-    align: textAlign,
-  });
-  y -= 18;
-
-  for (const line of issuerCompanyLines(issuer)) {
-    drawAlignedText(page, line, {
-      x: textAnchor,
-      y,
-      size: 7.5,
-      font: fonts.regular,
-      color: MUTED,
-      align: textAlign,
-    });
-    y -= 10;
+): number {
+  const safe = t(text);
+  const chars = [...safe];
+  const total =
+    chars.reduce((sum, c) => sum + opts.font.widthOfTextAtSize(c, opts.size), 0) +
+    opts.spacing * Math.max(0, chars.length - 1);
+  let x = opts.align === "right" ? opts.x - total : opts.x;
+  for (const c of chars) {
+    page.drawText(c, { x, y: opts.y, size: opts.size, font: opts.font, color: opts.color });
+    x += opts.font.widthOfTextAtSize(c, opts.size) + opts.spacing;
   }
-
-  drawLine(page, M, HEADER_BOTTOM, PAGE_W - M, HEADER_BOTTOM, theme.accent, 1.2);
+  return total;
 }
 
-function drawPageFooter(
-  page: PDFPage,
-  fonts: Fonts,
-  labels: PdfLabels,
-  pageIndex: number,
-  totalPages: number,
-  issuer: FinanceIssuer,
-  options: {
-    showBankDetails?: boolean;
-    footerNote?: string;
-    dueLabel?: string;
-    dueValue?: string;
-  } = {}
-) {
+function drawPaymentStamp(page: PDFPage, fonts: Fonts, labels: PdfLabels, paid: boolean) {
+  const label = paid ? labels.paid : labels.unpaid;
+  const size = 28;
+  const text = t(label);
+  const tw = fonts.bold.widthOfTextAtSize(text, size);
+  const padX = 14;
+  const padY = 10;
+  const boxW = tw + padX * 2;
+  const boxH = size + padY * 2;
+  const cx = PAGE_W / 2;
+  const cy = PAGE_H / 2 - 20;
+  const angle = degrees(-18);
+
+  page.drawRectangle({
+    x: cx - boxW / 2,
+    y: cy - boxH / 2,
+    width: boxW,
+    height: boxH,
+    borderColor: INK,
+    borderWidth: 2,
+    color: WHITE,
+    opacity: 0.35,
+    borderOpacity: 0.65,
+    rotate: angle,
+  });
+  page.drawText(text, {
+    x: cx - tw / 2,
+    y: cy - size * 0.32,
+    size,
+    font: fonts.bold,
+    color: INK,
+    rotate: angle,
+    opacity: 0.65,
+  });
+}
+
+function issuerHeaderLinesPdf(issuer: FinanceIssuer): string[] {
+  const address = [issuer.addressLine1, issuer.addressLine2, issuer.country]
+    .filter(Boolean)
+    .join(", ");
+  const contact = [issuer.phone, issuer.email, issuer.website]
+    .filter(Boolean)
+    .join("  -  ");
+  return [address, contact].filter((l) => l.trim().length > 0);
+}
+
+function issuerLegalLinesPdf(issuer: FinanceIssuer): string[] {
+  const identity = [issuer.name, issuer.legalForm].filter(Boolean).join(" - ");
+  const legal = [issuer.ice, issuer.rc, issuer.taxId, issuer.capital]
+    .filter(Boolean)
+    .join("  -  ");
+  const banking = [issuer.bank, issuer.iban].filter(Boolean).join("  -  ");
+  return [
+    [identity, legal].filter(Boolean).join("   |   "),
+    banking,
+  ].filter((l) => l.trim().length > 0);
+}
+
+function clientDetailLinesPdf(details?: ClientDetails | null): string[] {
+  if (!details) return [];
+  return [
+    details.ice?.trim() ? `ICE : ${details.ice.trim()}` : "",
+    details.rc?.trim() ? `RC : ${details.rc.trim()}` : "",
+    details.address?.trim() ?? "",
+  ].filter(Boolean);
+}
+
+function drawLegalFooter(page: PDFPage, fonts: Fonts, issuer: FinanceIssuer) {
+  const lines = issuerLegalLinesPdf(issuer);
+  if (!lines.length) return;
+  const topY = 30 + lines.length * 9;
+  drawLine(page, CONTENT_LEFT, topY, CONTENT_RIGHT, topY, HAIRLINE, 0.75);
+  let y = topY - 12;
+  for (const line of lines) {
+    drawAlignedText(page, line, {
+      x: PAGE_W / 2,
+      y,
+      size: 6,
+      font: fonts.regular,
+      color: MUTED,
+      align: "center",
+    });
+    y -= 9;
+  }
+}
+
+type TableItem = { description: string; quantity: number; unitPriceTtc: number };
+
+function renderFinanceDocumentPdf(options: {
+  doc: PDFDocument;
+  fonts: Fonts;
+  labels: PdfLabels;
+  issuer: FinanceIssuer;
+  logo: PDFImage | null;
+  documentKind: "quote" | "invoice";
+  docTitle: string;
+  statusLabel?: string;
+  metaRows: DocMeta[];
+  clientName: string;
+  clientType: ClientType;
+  clientDetails?: ClientDetails | null;
+  items: TableItem[];
+  amountTtc: number;
+  currency: string;
+  notes?: string | null;
+  showPayStamp?: boolean;
+  isPaid?: boolean;
+}) {
   const {
-    showBankDetails = false,
-    footerNote = "",
-    dueLabel,
-    dueValue,
+    doc,
+    fonts,
+    labels,
+    issuer,
+    logo,
+    documentKind,
+    docTitle,
+    statusLabel,
+    metaRows,
+    clientName,
+    clientDetails,
+    items,
+    amountTtc,
+    currency,
+    notes,
+    showPayStamp,
+    isPaid,
   } = options;
-  const rtl = labels.rtl;
-  const footerTop = M + FOOTER_HEIGHT;
-  const leftX = rtl ? PAGE_W - M : M;
-  const leftAlign: "left" | "right" = rtl ? "right" : "left";
-  const rightX = rtl ? M : PAGE_W - M;
-  const rightAlign: "left" | "right" = rtl ? "left" : "right";
 
-  drawLine(page, M, footerTop, PAGE_W - M, footerTop, BORDER, 0.5);
+  const recipientLabel =
+    documentKind === "quote" ? labels.clientTo : labels.billedTo;
+  const docNumber = metaRows[0]?.value ?? "";
+  const infoRows = metaRows.slice(1);
+  const clientLines = clientDetailLinesPdf(clientDetails);
 
-  if (showBankDetails) {
-    drawAlignedText(page, labels.bankDetails.toUpperCase(), {
-      x: leftX,
-      y: footerTop - 12,
+  const rows =
+    items.length > 0 ? items : [{ description: "—", quantity: 1, unitPriceTtc: 0 }];
+  const pages = paginateLineItems(rows);
+  const totalPages = pages.length;
+  const priceMode = issuer.priceMode;
+  const unitLabel = priceMode === "ht" ? labels.unitHt : labels.lineUnitTtc;
+  const { ht, tva, ttc } = splitTtcAmount(amountTtc, issuer.tvaRate);
+  const tvaPct = Math.round(issuer.tvaRate * 1000) / 10;
+
+  /* Balanced columns — designation ~48%, numeric cols share the rest evenly */
+  const colQty = 50;
+  const colUnit = 100;
+  const colAmt = 100;
+  const colDesc = CONTENT_W - colQty - colUnit - colAmt;
+  const colDescX = CONTENT_LEFT;
+  const colQtyRight = CONTENT_LEFT + colDesc + colQty;
+  const colUnitRight = colQtyRight + colUnit;
+  const colAmtRight = CONTENT_RIGHT;
+
+  pages.forEach((pageItems, pageIndex) => {
+    const page = doc.addPage([PAGE_W, PAGE_H]);
+    const isFirst = pageIndex === 0;
+    const isLast = pageIndex === totalPages - 1;
+    let y = PAGE_H - PAD_T;
+
+    if (isFirst) {
+      /* Masthead: logo + company left, bill-to right */
+      const mastTop = y;
+      let coX = CONTENT_LEFT;
+      let coBottom = mastTop - 12;
+      if (logo) {
+        const maxW = 78;
+        const maxH = 32;
+        const scale = Math.min(maxW / logo.width, maxH / logo.height, 1);
+        const w = logo.width * scale;
+        const h = logo.height * scale;
+        page.drawImage(logo, {
+          x: CONTENT_LEFT,
+          y: mastTop - h + 2,
+          width: w,
+          height: h,
+        });
+        coX = CONTENT_LEFT + w + 10;
+      }
+      page.drawText(t(issuer.name), {
+        x: coX,
+        y: mastTop - 9,
+        size: 11.5,
+        font: fonts.bold,
+        color: INK,
+      });
+      let coY = mastTop - 21;
+      for (const line of issuerHeaderLinesPdf(issuer)) {
+        page.drawText(t(line), {
+          x: coX,
+          y: coY,
+          size: 6.5,
+          font: fonts.regular,
+          color: MUTED,
+        });
+        coY -= 9;
+      }
+      coBottom = coY;
+
+      drawSpacedText(page, t(recipientLabel).toUpperCase(), {
+        x: CONTENT_RIGHT,
+        y: mastTop - 6,
+        size: 6.5,
+        font: fonts.bold,
+        color: MUTED,
+        spacing: 1.2,
+        align: "right",
+      });
+      drawAlignedText(page, clientName || "—", {
+        x: CONTENT_RIGHT,
+        y: mastTop - 22,
+        size: 12,
+        font: fonts.bold,
+        color: INK,
+        align: "right",
+      });
+      let clientY = mastTop - 34;
+      for (const line of clientLines) {
+        drawAlignedText(page, line, {
+          x: CONTENT_RIGHT,
+          y: clientY,
+          size: 7,
+          font: fonts.regular,
+          color: MUTED,
+          align: "right",
+        });
+        clientY -= 9;
+      }
+
+      /* Full-width rule */
+      const ruleY = Math.min(coBottom, clientY) - 10;
+      drawLine(page, CONTENT_LEFT, ruleY, CONTENT_RIGHT, ruleY, INK, 2.25);
+
+      /* Below rule: document title left, meta right */
+      let infoY = ruleY - 20;
+      drawSpacedText(page, t(docTitle).toUpperCase(), {
+        x: CONTENT_LEFT,
+        y: infoY,
+        size: 16,
+        font: fonts.bold,
+        color: INK,
+        spacing: 2.4,
+      });
+      page.drawText(t(docNumber), {
+        x: CONTENT_LEFT,
+        y: infoY - 14,
+        size: 9,
+        font: fonts.bold,
+        color: INK,
+      });
+      let titleBottom = infoY - 14;
+      if (statusLabel) {
+        drawSpacedText(page, t(statusLabel).toUpperCase(), {
+          x: CONTENT_LEFT,
+          y: infoY - 26,
+          size: 6,
+          font: fonts.bold,
+          color: MUTED,
+          spacing: 1.2,
+        });
+        titleBottom = infoY - 26;
+      }
+
+      const metaW = 168;
+      const metaLeft = CONTENT_RIGHT - metaW;
+      const metaLabelRight = metaLeft + 58;
+      let metaY = infoY;
+      for (const row of infoRows) {
+        drawAlignedText(page, row.label, {
+          x: metaLabelRight,
+          y: metaY,
+          size: 7.5,
+          font: fonts.regular,
+          color: MUTED,
+          align: "right",
+        });
+        drawAlignedText(page, row.value, {
+          x: CONTENT_RIGHT,
+          y: metaY,
+          size: 7.5,
+          font: fonts.bold,
+          color: INK,
+          align: "right",
+        });
+        metaY -= 13;
+      }
+
+      y = Math.min(titleBottom, metaY) - 14;
+    } else {
+      drawAlignedText(
+        page,
+        `${t(docTitle).toUpperCase()} — ${t(labels.documentContinuation).toUpperCase()}`,
+        {
+          x: CONTENT_LEFT,
+          y: y - 8,
+          size: 8,
+          font: fonts.bold,
+          color: INK,
+          align: "left",
+        }
+      );
+      drawAlignedText(page, docNumber, {
+        x: CONTENT_RIGHT,
+        y: y - 8,
+        size: 8,
+        font: fonts.bold,
+        color: INK,
+        align: "right",
+      });
+      drawLine(page, CONTENT_LEFT, y - 16, CONTENT_RIGHT, y - 16, INK, 2.25);
+      y -= 34;
+    }
+
+    /* Items table — headers share the same right edges as cell values */
+    const tableTop = y;
+    const headerBaseline = tableTop - 8;
+    page.drawText(t(labels.designation).toUpperCase(), {
+      x: colDescX,
+      y: headerBaseline,
       size: 6.5,
       font: fonts.bold,
-      color: SLATE,
-      align: leftAlign,
+      color: INK,
     });
-    const bankLine = [issuer.bank, issuer.iban ? `IBAN ${issuer.iban}` : ""]
-      .filter(Boolean)
-      .join("  ·  ");
-    if (bankLine) {
-      drawAlignedText(page, bankLine, {
-        x: leftX,
-        y: footerTop - 24,
-        size: 7.5,
-        font: fonts.regular,
-        color: INK,
-        align: leftAlign,
-      });
-    }
-
-    const legal = [issuer.name, issuer.legalForm, issuer.website]
-      .filter(Boolean)
-      .join("  ·  ");
-    if (legal) {
-      drawAlignedText(page, legal, {
-        x: leftX,
-        y: footerTop - 36,
-        size: 6.5,
-        font: fonts.regular,
-        color: MUTED,
-        align: leftAlign,
-      });
-    }
-
-    if (footerNote.trim()) {
-      const note = wrapLines(footerNote, fonts.regular, 6.5, CONTENT_W * 0.5)[0] ?? "";
-      drawAlignedText(page, note, {
-        x: leftX,
-        y: footerTop - 48,
-        size: 6.5,
-        font: fonts.regular,
-        color: MUTED,
-        align: leftAlign,
-      });
-    }
-  } else {
-    const legal = [issuer.name, issuer.legalForm, issuer.website]
-      .filter(Boolean)
-      .join("  ·  ");
-    if (legal) {
-      drawAlignedText(page, legal, {
-        x: leftX,
-        y: footerTop - 24,
-        size: 6.5,
-        font: fonts.regular,
-        color: MUTED,
-        align: leftAlign,
-      });
-    }
-  }
-
-  if (dueLabel && dueValue) {
-    drawAlignedText(page, dueLabel, {
-      x: rightX,
-      y: footerTop - 24,
-      size: 7.5,
-      font: fonts.regular,
-      color: MUTED,
-      align: rightAlign,
-    });
-    drawAlignedText(page, dueValue, {
-      x: rightX,
-      y: footerTop - 36,
-      size: 9,
+    drawAlignedText(page, t(labels.qty).toUpperCase(), {
+      x: colQtyRight,
+      y: headerBaseline,
+      size: 6.5,
       font: fonts.bold,
-      color: BLACK,
-      align: rightAlign,
-    });
-  }
-
-  drawAlignedText(page, `${labels.page} ${pageIndex} / ${totalPages}`, {
-    x: rightX,
-    y: M + 8,
-    size: 7,
-    font: fonts.regular,
-    color: MUTED,
-    align: rightAlign,
-  });
-}
-
-class PdfWriter {
-  private readonly pages: PDFPage[] = [];
-  private page!: PDFPage;
-  y = HEADER_BOTTOM - 20;
-  private readonly theme: PdfTheme;
-
-  constructor(
-    private readonly doc: PDFDocument,
-    private readonly fonts: Fonts,
-    private readonly labels: PdfLabels,
-    private readonly docTitle: string,
-    private readonly docNumber: string,
-    private readonly logo: PDFImage | null,
-    private readonly issuer: FinanceIssuer,
-    private readonly footer: {
-      showBankDetails?: boolean;
-      footerNote?: string;
-      dueLabel?: string;
-      dueValue?: string;
-    } = {},
-    blackAndWhite = true
-  ) {
-    this.theme = blackAndWhite ? MONO_THEME : BRAND_THEME;
-    this.newPage();
-  }
-
-  private newPage() {
-    this.page = this.doc.addPage([PAGE_W, PAGE_H]);
-    this.pages.push(this.page);
-    drawPageHeader(
-      this.page,
-      this.fonts,
-      this.labels,
-      this.docTitle,
-      this.docNumber,
-      this.theme,
-      this.issuer,
-      this.logo
-    );
-    this.y = HEADER_BOTTOM - 20;
-  }
-
-  private ensureSpace(height: number) {
-    if (this.y - height < CONTENT_BOTTOM) this.newPage();
-  }
-
-  finalize() {
-    const total = this.pages.length;
-    this.pages.forEach((page, index) => {
-      const last = index === total - 1;
-      drawPageFooter(page, this.fonts, this.labels, index + 1, total, this.issuer, {
-        showBankDetails: this.footer.showBankDetails,
-        footerNote: this.footer.footerNote,
-        dueLabel: last ? this.footer.dueLabel : undefined,
-        dueValue: last ? this.footer.dueValue : undefined,
-      });
-    });
-  }
-
-  /** Diagonal paid / unpaid stamp on the first page. */
-  drawPaymentStamp(paid: boolean) {
-    const page = this.pages[0];
-    if (!page) return;
-    const label = paid ? this.labels.paid : this.labels.unpaid;
-    const color = paid ? rgb(0.12, 0.55, 0.32) : rgb(0.72, 0.18, 0.22);
-    const size = 28;
-    const text = t(label);
-    const tw = this.fonts.bold.widthOfTextAtSize(text, size);
-    const x = PAGE_W / 2 - tw / 2 + 40;
-    const y = PAGE_H / 2 + 20;
-    page.drawText(text, {
-      x,
-      y,
-      size,
-      font: this.fonts.bold,
-      color,
-      rotate: degrees(-22),
-      opacity: 0.55,
-    });
-    // Border around stamp (approximate box via lines is noisy with rotation — text is enough)
-  }
-
-  /** Meta info strip — light gray background */
-  drawMetaStrip(rows: DocMeta[]) {
-    const stripH = 14 * rows.length + 16;
-    this.ensureSpace(stripH);
-
-    this.page.drawRectangle({
-      x: M,
-      y: this.y - stripH + 8,
-      width: CONTENT_W,
-      height: stripH,
-      color: SURFACE,
-      borderColor: BORDER,
-      borderWidth: 0.75,
-    });
-    this.page.drawRectangle({
-      x: M,
-      y: this.y - stripH + 8,
-      width: 4,
-      height: stripH,
-      color: this.theme.accent,
-    });
-
-    let cy = this.y - 6;
-    const rtl = this.labels.rtl;
-
-    for (const row of rows) {
-      if (rtl) {
-        drawAlignedText(this.page, t(row.value), {
-          x: M + 12,
-          y: cy,
-          size: 8.5,
-          font: this.fonts.bold,
-          color: INK,
-          align: "left",
-        });
-        drawAlignedText(this.page, t(row.label), {
-          x: PAGE_W - M - 12,
-          y: cy,
-          size: 8.5,
-          font: this.fonts.regular,
-          color: SLATE,
-          align: "right",
-        });
-      } else {
-        drawAlignedText(this.page, t(row.label), {
-          x: M + 12,
-          y: cy,
-          size: 8.5,
-          font: this.fonts.regular,
-          color: SLATE,
-          align: "left",
-        });
-        drawAlignedText(this.page, t(row.value), {
-          x: PAGE_W - M - 12,
-          y: cy,
-          size: 8.5,
-          font: this.fonts.bold,
-          color: INK,
-          align: "right",
-        });
-      }
-      cy -= 14;
-    }
-    this.y = this.y - stripH - 8;
-  }
-
-  /** Client card with left black accent bar */
-  drawClientBlock(clientName: string, clientType: ClientType) {
-    const blockH = 52;
-    this.ensureSpace(blockH);
-    const rtl = this.labels.rtl;
-    const typeLabel = clientTypeLabel(clientType, this.labels);
-    const typeW = this.fonts.bold.widthOfTextAtSize(t(typeLabel), 7.5) + 20;
-
-    this.page.drawRectangle({
-      x: M,
-      y: this.y - blockH + 6,
-      width: CONTENT_W,
-      height: blockH,
-      color: SURFACE,
-    });
-
-    /* Accent bar */
-    if (rtl) {
-      this.page.drawRectangle({
-        x: PAGE_W - M - 3,
-        y: this.y - blockH + 6,
-        width: 3,
-        height: blockH,
-        color: this.theme.barSecondary,
-      });
-    } else {
-      this.page.drawRectangle({
-        x: M,
-        y: this.y - blockH + 6,
-        width: 3,
-        height: blockH,
-        color: this.theme.accent,
-      });
-    }
-
-    const labelX = rtl ? PAGE_W - M - 14 : M + 14;
-    const labelAlign: "left" | "right" = rtl ? "right" : "left";
-    const badgeX = rtl ? M + 10 : PAGE_W - M - typeW - 10;
-
-    drawAlignedText(this.page, this.labels.client, {
-      x: labelX,
-      y: this.y - 8,
-      size: 7,
-      font: this.fonts.bold,
-      color: SLATE,
-      align: labelAlign,
-    });
-
-    this.page.drawRectangle({
-      x: badgeX,
-      y: this.y - 22,
-      width: typeW,
-      height: 15,
-      borderColor: this.theme.accent,
-      borderWidth: 0.75,
-      color: WHITE,
-    });
-    drawAlignedText(this.page, typeLabel, {
-      x: badgeX + typeW - 10,
-      y: this.y - 19,
-      size: 7.5,
-      font: this.fonts.bold,
-      color: this.theme.accent,
+      color: INK,
       align: "right",
     });
-
-    drawAlignedText(this.page, clientName, {
-      x: labelX,
-      y: this.y - 32,
-      size: 14,
-      font: this.fonts.bold,
-      color: BLACK,
-      align: labelAlign,
+    drawAlignedText(page, t(unitLabel).toUpperCase(), {
+      x: colUnitRight,
+      y: headerBaseline,
+      size: 6.5,
+      font: fonts.bold,
+      color: INK,
+      align: "right",
     });
+    drawAlignedText(page, t(labels.lineAmount).toUpperCase(), {
+      x: colAmtRight,
+      y: headerBaseline,
+      size: 6.5,
+      font: fonts.bold,
+      color: INK,
+      align: "right",
+    });
+    drawLine(page, CONTENT_LEFT, tableTop - 14, CONTENT_RIGHT, tableTop - 14, INK, 1.35);
 
-    this.y -= blockH + 12;
-  }
-
-  drawItemsTable(items: { description: string; quantity: number; unitPriceTtc: number }[], currency: string) {
-    const rows =
-      items.length > 0
-        ? items
-        : [{ description: "—", quantity: 1, unitPriceTtc: 0 }];
-    const colX = [M, M + 268, M + 318, M + 398, M + CONTENT_W];
-    const headerH = 24;
-    const baseRowH = 22;
-
-    const prepared = rows.map((row) => {
+    let cursorY = tableTop - 14;
+    const baseRowH = 21;
+    const prepared = pageItems.map((row) => {
       const lineTtc = Math.round(row.quantity * row.unitPriceTtc * 100) / 100;
-      const { ht } = splitTtcAmount(lineTtc, this.issuer.tvaRate);
+      const split = splitTtcAmount(lineTtc, issuer.tvaRate);
       const unitHt =
         row.quantity > 0
-          ? Math.round((ht / row.quantity) * 100) / 100
-          : ht;
-      const descLines = wrapLines(row.description || "—", this.fonts.regular, 9, 248);
-      const rowH = Math.max(baseRowH, descLines.length * 12 + 10);
-      return { descLines, quantity: row.quantity, unitHt, totalHt: ht, rowH };
+          ? Math.round((split.ht / row.quantity) * 100) / 100
+          : split.ht;
+      const unitDisplay = priceMode === "ht" ? unitHt : row.unitPriceTtc;
+      const totalDisplay = priceMode === "ht" ? split.ht : lineTtc;
+      const descLines = wrapLines(
+        row.description || "—",
+        fonts.regular,
+        8,
+        colDesc - 8
+      );
+      const rowH = Math.max(baseRowH, descLines.length * 10 + 11);
+      return { descLines, quantity: row.quantity, unitDisplay, totalDisplay, rowH };
     });
 
-    const bodyH = prepared.reduce((s, r) => s + r.rowH, 0);
-    this.ensureSpace(headerH + bodyH + 8);
-
-    const tableTop = this.y;
-
-    this.page.drawRectangle({
-      x: M,
-      y: tableTop - headerH,
-      width: CONTENT_W,
-      height: headerH,
-      color: this.theme.accent,
-    });
-
-    const headers = [this.labels.designation, this.labels.qty, this.labels.unitHt, this.labels.totalHt];
-    const headerX = [colX[0] + 10, colX[1] + 10, colX[2] + 10, colX[3] + 10];
-    headers.forEach((h, i) => {
-      this.page.drawText(t(h).toUpperCase(), {
-        x: headerX[i]!,
-        y: tableTop - headerH + 8,
-        size: 7,
-        font: this.fonts.bold,
-        color: WHITE,
-      });
-    });
-
-    let cursorY = tableTop - headerH;
-    prepared.forEach((row, index) => {
+    prepared.forEach((row) => {
       const rowTop = cursorY;
       cursorY -= row.rowH;
-      if (index % 2 === 1) {
-        this.page.drawRectangle({
-          x: M,
-          y: cursorY,
-          width: CONTENT_W,
-          height: row.rowH,
-          color: SURFACE,
-        });
-      }
-
-      let textY = rowTop - 14;
-      for (const line of row.descLines) {
-        this.page.drawText(line, {
-          x: colX[0] + 10,
-          y: textY,
-          size: 9,
-          font: this.fonts.regular,
-          color: INK,
-        });
-        textY -= 12;
-      }
 
       const valueY = rowTop - 14;
-      this.page.drawText(String(row.quantity), {
-        x: colX[1] + 10,
-        y: valueY,
-        size: 9,
-        font: this.fonts.regular,
-        color: INK,
-      });
-      this.page.drawText(t(formatMoneyPdf(row.unitHt, currency)), {
-        x: colX[2] + 10,
-        y: valueY,
-        size: 9,
-        font: this.fonts.regular,
-        color: INK,
-      });
-      this.page.drawText(t(formatMoneyPdf(row.totalHt, currency)), {
-        x: colX[3] + 10,
-        y: valueY,
-        size: 9,
-        font: this.fonts.bold,
-        color: BLACK,
-      });
-    });
-
-    const tableBottom = cursorY;
-    drawLine(this.page, M, tableTop, PAGE_W - M, tableTop, BLACK, 0.5);
-    drawLine(this.page, M, tableBottom, PAGE_W - M, tableBottom, BORDER, 0.5);
-    drawLine(this.page, M, tableTop, M, tableBottom, BORDER, 0.5);
-    drawLine(this.page, PAGE_W - M, tableTop, PAGE_W - M, tableBottom, BORDER, 0.5);
-
-    this.y = tableBottom - 24;
-  }
-
-  drawTotals(amountTtc: number, currency: string) {
-    const { ht, tva, ttc } = splitTtcAmount(amountTtc, this.issuer.tvaRate);
-    const rtl = this.labels.rtl;
-    const boxW = 220;
-    const boxX = rtl ? M : PAGE_W - M - boxW;
-    const boxH = 72;
-    this.ensureSpace(boxH + 8);
-
-    this.page.drawRectangle({
-      x: boxX,
-      y: this.y - boxH,
-      width: boxW,
-      height: boxH,
-      color: SURFACE,
-      borderColor: BORDER,
-      borderWidth: 0.75,
-    });
-    this.page.drawRectangle({ x: boxX, y: this.y - 4, width: boxW, height: 4, color: this.theme.totalsBar });
-    drawLine(this.page, boxX, this.y, boxX + boxW, this.y, this.theme.accent, 0.5);
-
-    const labelX = rtl ? boxX + 12 : boxX + 12;
-    const valueX = rtl ? boxX + boxW - 12 : boxX + boxW - 12;
-    const labelAlign: "left" | "right" = "left";
-    const valueAlign: "left" | "right" = "right";
-
-    let cy = this.y - 16;
-    const rows = [
-      { label: this.labels.totalHtLabel, value: formatMoneyPdf(ht, currency), bold: false },
-      {
-        label: `${this.labels.tva} (${Math.round(this.issuer.tvaRate * 100)} %)`,
-        value: formatMoneyPdf(tva, currency),
-        bold: false,
-      },
-      { label: this.labels.totalTtc, value: formatMoneyPdf(ttc, currency), bold: true },
-    ];
-
-    for (const row of rows) {
-      const font = row.bold ? this.fonts.bold : this.fonts.regular;
-      const size = row.bold ? 11 : 8.5;
-      drawAlignedText(this.page, row.label, {
-        x: labelX,
-        y: cy,
-        size,
-        font,
-        color: row.bold ? BLACK : SLATE,
-        align: labelAlign,
-      });
-      drawAlignedText(this.page, row.value, {
-        x: valueX,
-        y: cy,
-        size,
-        font,
-        color: row.bold ? this.theme.totalAccent : BLACK,
-        align: valueAlign,
-      });
-      cy -= row.bold ? 22 : 16;
-    }
-
-    this.y = this.y - boxH - 16;
-  }
-
-  drawBodyFlow(body: string) {
-    if (!body.trim()) return;
-
-    this.ensureSpace(24);
-    drawLine(this.page, M, this.y, PAGE_W - M, this.y, BORDER, 0.5);
-    this.y -= 20;
-
-    const lines = wrapLines(body, this.fonts.regular, 8.5, CONTENT_W);
-    for (const line of lines) {
-      if (!line.trim()) {
-        this.y -= 6;
-        continue;
+      let textY = valueY;
+      for (const line of row.descLines) {
+        page.drawText(line, {
+          x: colDescX,
+          y: textY,
+          size: 8,
+          font: fonts.regular,
+          color: INK,
+        });
+        textY -= 10;
       }
-      this.ensureSpace(12);
-      this.page.drawText(line, {
-        x: M,
-        y: this.y,
-        size: 8.5,
-        font: this.fonts.regular,
-        color: SLATE,
+      drawAlignedText(page, String(row.quantity), {
+        x: colQtyRight,
+        y: valueY,
+        size: 8,
+        font: fonts.regular,
+        color: INK,
+        align: "right",
       });
-      this.y -= 12;
+      drawAlignedText(page, formatMoneyPdf(row.unitDisplay, currency), {
+        x: colUnitRight,
+        y: valueY,
+        size: 8,
+        font: fonts.regular,
+        color: INK,
+        align: "right",
+      });
+      drawAlignedText(page, formatMoneyPdf(row.totalDisplay, currency), {
+        x: colAmtRight,
+        y: valueY,
+        size: 8,
+        font: fonts.bold,
+        color: INK,
+        align: "right",
+      });
+      drawLine(page, CONTENT_LEFT, cursorY, CONTENT_RIGHT, cursorY, HAIRLINE, 0.6);
+    });
+
+    if (isLast) {
+      /* Totals: same right edge as amount column, width = unit + amount */
+      const sumsW = colUnit + colAmt;
+      const sumsX = CONTENT_RIGHT - sumsW;
+      const sumRowH = 17;
+      let sumsY = cursorY - 10;
+
+      const sumRows = [
+        { label: labels.subtotal, value: formatMoneyPdf(ht, currency) },
+        {
+          label: `${labels.tva} (${tvaPct} %)`,
+          value: formatMoneyPdf(tva, currency),
+        },
+      ];
+      for (const sumRow of sumRows) {
+        page.drawText(t(sumRow.label), {
+          x: sumsX,
+          y: sumsY - 11,
+          size: 7.5,
+          font: fonts.regular,
+          color: MUTED,
+        });
+        drawAlignedText(page, sumRow.value, {
+          x: CONTENT_RIGHT,
+          y: sumsY - 11,
+          size: 7.5,
+          font: fonts.bold,
+          color: INK,
+          align: "right",
+        });
+        drawLine(
+          page,
+          sumsX,
+          sumsY - sumRowH,
+          CONTENT_RIGHT,
+          sumsY - sumRowH,
+          HAIRLINE,
+          0.6
+        );
+        sumsY -= sumRowH;
+      }
+
+      sumsY -= 4;
+      drawLine(page, sumsX, sumsY, CONTENT_RIGHT, sumsY, INK, 2);
+      drawSpacedText(page, t(labels.totalToPay).toUpperCase(), {
+        x: sumsX,
+        y: sumsY - 15,
+        size: 7.5,
+        font: fonts.bold,
+        color: INK,
+        spacing: 1,
+      });
+      drawAlignedText(page, formatMoneyPdf(ttc, currency), {
+        x: CONTENT_RIGHT,
+        y: sumsY - 16,
+        size: 11.5,
+        font: fonts.bold,
+        color: INK,
+        align: "right",
+      });
+
+      /* Bottom: terms left + signature right, above the legal footer */
+      const bottomTop = Math.max(sumsY - 58, 128);
+
+      if (notes?.trim()) {
+        drawSpacedText(page, t(labels.terms).toUpperCase(), {
+          x: CONTENT_LEFT,
+          y: bottomTop,
+          size: 6.5,
+          font: fonts.bold,
+          color: INK,
+          spacing: 1.2,
+        });
+        const termLines = wrapLines(notes, fonts.regular, 7, CONTENT_W * 0.5);
+        let lineY = bottomTop - 11;
+        for (const line of termLines.slice(0, 5)) {
+          page.drawText(line, {
+            x: CONTENT_LEFT,
+            y: lineY,
+            size: 7,
+            font: fonts.regular,
+            color: MUTED,
+          });
+          lineY -= 9;
+        }
+      }
+
+      const sigW = sumsW * 0.72;
+      const sigRight = CONTENT_RIGHT;
+      const sigLeft = sigRight - sigW;
+      const sigMid = (sigLeft + sigRight) / 2;
+      drawLine(page, sigLeft, bottomTop - 18, sigRight, bottomTop - 18, INK, 0.9);
+      drawAlignedText(page, issuer.name, {
+        x: sigMid,
+        y: bottomTop - 29,
+        size: 8,
+        font: fonts.bold,
+        color: INK,
+        align: "center",
+      });
+      drawAlignedText(page, t(labels.signature).toUpperCase(), {
+        x: sigMid,
+        y: bottomTop - 39,
+        size: 6,
+        font: fonts.regular,
+        color: MUTED,
+        align: "center",
+      });
     }
-  }
+
+    drawLegalFooter(page, fonts, issuer);
+
+    if (isFirst && showPayStamp && typeof isPaid === "boolean") {
+      drawPaymentStamp(page, fonts, labels, isPaid);
+    }
+  });
 }
 
 async function createFonts(doc: PDFDocument): Promise<Fonts> {
@@ -875,45 +793,45 @@ export async function buildQuotePdfBytes(
   const issuer = resolveIssuer(issuerInput);
   const doc = await PDFDocument.create();
   const fontSet = await createFonts(doc);
-  const logo = await embedLogo(doc, issuer);
   const labels = getPdfLabels(locale);
+  const logo = await embedLogo(doc, issuer);
 
   const issueDate = formatDateFr(quote.createdAt);
   const validUntil = formatDateFr(
     new Date(new Date(quote.createdAt).getTime() + quote.validityDays * 86400000).toISOString()
   );
-  const clientType = resolveClientType(quote.clientType);
 
-  const writer = new PdfWriter(
+  renderFinanceDocumentPdf({
     doc,
-    fontSet,
+    fonts: fontSet,
     labels,
-    labels.docQuote,
-    quote.number,
-    logo,
     issuer,
-    { showBankDetails: false },
-    true
-  );
+    logo,
+    documentKind: "quote",
+    docTitle: labels.docQuote,
+    metaRows: [
+      { label: labels.docNumber, value: quote.number },
+      { label: labels.date, value: issueDate },
+      {
+        label: labels.validity,
+        value: `${quote.validityDays} ${labels.days} - ${validUntil}`,
+      },
+    ],
+    clientDetails: quote.clientDetails,
+    clientName: quote.clientName,
+    clientType: resolveClientType(quote.clientType),
+    items: quote.items ?? [],
+    amountTtc: quote.amount,
+    currency: quote.currency,
+    notes: quote.notes,
+  });
 
-  writer.drawMetaStrip([
-    { label: labels.date, value: issueDate },
-    {
-      label: labels.validity,
-      value: `${quote.validityDays} ${labels.days} (${labels.until} ${validUntil})`,
-    },
-  ]);
-  writer.drawClientBlock(quote.clientName, clientType);
-  writer.drawItemsTable(quote.items ?? [], quote.currency);
-  writer.drawTotals(quote.amount, quote.currency);
-
-  writer.finalize();
   return doc.save();
 }
 
 export async function buildInvoicePdfBytes(
   invoice: InvoiceRecord,
-  template?: DocumentTemplate,
+  _template?: DocumentTemplate,
   linkedQuote?: QuoteRecord,
   locale: Locale = "fr",
   issuerInput?: FinanceIssuer | null
@@ -921,12 +839,10 @@ export async function buildInvoicePdfBytes(
   const issuer = resolveIssuer(issuerInput);
   const doc = await PDFDocument.create();
   const fontSet = await createFonts(doc);
-  const logo = await embedLogo(doc, issuer);
   const labels = getPdfLabels(locale);
+  const logo = await embedLogo(doc, issuer);
 
   const service = linkedQuote?.service || invoice.notes || "Prestation";
-  const footerNote = template?.footerNote ?? "Merci pour votre confiance";
-  const clientType = resolveClientType(invoice.clientType ?? linkedQuote?.clientType);
   const items =
     invoice.items?.length
       ? invoice.items
@@ -940,36 +856,33 @@ export async function buildInvoicePdfBytes(
             },
           ];
 
-  const writer = new PdfWriter(
-    doc,
-    fontSet,
-    labels,
-    labels.docInvoice,
-    invoice.number,
-    logo,
-    issuer,
-    {
-      showBankDetails: true,
-      footerNote,
-    },
-    true
-  );
-
+  const issueDate = formatDateFr(invoice.createdAt);
   const isPaid = invoice.status === "paid";
+  const metaRows: DocMeta[] = [
+    { label: labels.docNumber, value: invoice.number },
+    { label: labels.date, value: issueDate },
+  ];
 
-  writer.drawMetaStrip([
-    { label: labels.date, value: formatDateFr(invoice.createdAt) },
-    {
-      label: labels.paymentStatus,
-      value: isPaid ? labels.paid : labels.unpaid,
-    },
-  ]);
-  writer.drawClientBlock(invoice.clientName, clientType);
-  writer.drawItemsTable(items, invoice.currency);
-  writer.drawTotals(invoice.amount, invoice.currency);
-  writer.drawPaymentStamp(isPaid);
+  renderFinanceDocumentPdf({
+    doc,
+    fonts: fontSet,
+    labels,
+    issuer,
+    logo,
+    documentKind: "invoice",
+    docTitle: labels.docInvoice,
+    metaRows,
+    clientDetails: invoice.clientDetails,
+    clientName: invoice.clientName,
+    clientType: resolveClientType(invoice.clientType ?? linkedQuote?.clientType),
+    items,
+    amountTtc: invoice.amount,
+    currency: invoice.currency,
+    notes: invoice.notes,
+    showPayStamp: true,
+    isPaid,
+  });
 
-  writer.finalize();
   return doc.save();
 }
 

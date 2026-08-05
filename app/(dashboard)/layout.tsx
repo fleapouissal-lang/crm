@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { FusionShell } from "@/components/layout/fusion-shell";
 import { getCurrentProfile } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
-import { isPlatformAdmin } from "@/lib/permissions";
+import { isPlatformAdmin, isLeadership } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export default async function DashboardLayout({
         .in("stage", ["proposal", "negotiation"]),
       supabase
         .from("organizations")
-        .select("id, name, logo_url, activity_domain, rc, country, city, phone, email_domain")
+        .select("id, name, logo_url, activity_domain, rc, country, city, phone, email_domain, finance_price_mode, finance_tva_rate")
         .eq("id", profile.organization_id)
         .single(),
     ]);
@@ -62,9 +62,12 @@ export default async function DashboardLayout({
               city: orgRes.data.city,
               phone: orgRes.data.phone,
               email_domain: orgRes.data.email_domain,
+              finance_price_mode: orgRes.data.finance_price_mode,
+              finance_tva_rate: orgRes.data.finance_tva_rate,
             }
           : null
       }
+      canManageFinanceSettings={isLeadership(profile)}
       organizationName={orgRes.data?.name ?? null}
       organizationLogoUrl={orgRes.data?.logo_url ?? null}
       activityDomain={orgRes.data?.activity_domain ?? null}

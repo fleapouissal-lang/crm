@@ -11,8 +11,8 @@ import { EmptyState } from "@/components/shared/page-header";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
-import { InvoiceFormDialog } from "@/components/finance/invoice-form-dialog";
 import { FinancePdfDialog } from "@/components/finance/finance-pdf-dialog";
+import { InvoiceDetailDialog } from "@/components/finance/invoice-detail-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -63,8 +63,8 @@ export function InvoicesPageClient({
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
   const [quotes, setQuotes] = useState<QuoteRecord[]>(initialQuotes);
   const [templates, setTemplates] = useState(initialTemplates);
-  const [formOpen, setFormOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [active, setActive] = useState<InvoiceRecord | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">(
@@ -140,28 +140,6 @@ export function InvoicesPageClient({
     return inv[key] as string;
   }
 
-  async function handleSave(record: InvoiceRecord) {
-    const exists = invoices.some((x) => x.id === record.id);
-    const result = await upsertInvoice(record);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
-    setInvoices((prev) => {
-      const idx = prev.findIndex(
-        (x) => x.id === result.data.id || x.id === record.id
-      );
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = result.data;
-        return next;
-      }
-      return [result.data, ...prev];
-    });
-    toast.success(exists ? f.invoiceUpdated : f.invoiceCreated);
-    router.refresh();
-  }
-
   async function handleStatusChange(row: InvoiceRecord, status: InvoiceStatus) {
     if (row.status === status) return;
     const next = {
@@ -194,8 +172,14 @@ export function InvoicesPageClient({
     router.refresh();
   }
 
+  function openDetail(row: InvoiceRecord) {
+    setActive(row);
+    setDetailOpen(true);
+  }
+
   function viewInvoicePdf(row: InvoiceRecord) {
     setActive(row);
+    setDetailOpen(false);
     setPdfOpen(true);
   }
 
@@ -374,11 +358,8 @@ export function InvoicesPageClient({
                     <td>
                       <FinanceRowActions
                         label={row.number}
-                        onView={() => viewInvoicePdf(row)}
-                        onEdit={() => {
-                          setActive(row);
-                          setFormOpen(true);
-                        }}
+                        onView={() => openDetail(row)}
+                        onEdit={() => router.push(`/finance/invoices/${row.id}/edit`)}
                         onDelete={() => handleDelete(row.id)}
                       />
                     </td>
@@ -397,13 +378,22 @@ export function InvoicesPageClient({
         />
       </div>
 
-      <InvoiceFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        invoice={active && formOpen ? active : null}
-        templates={templates}
-        existingInvoices={invoices}
-        onSave={handleSave}
+      <InvoiceDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        invoice={active}
+        template={
+          active?.templateId
+            ? templatesById.get(active.templateId)
+            : undefined
+        }
+        linkedQuote={
+          active?.quoteId ? quotesById.get(active.quoteId) : undefined
+        }
+        onEdit={() =>
+          active && router.push(`/finance/invoices/${active.id}/edit`)
+        }
+        onViewPdf={() => active && viewInvoicePdf(active)}
       />
 
       <FinancePdfDialog

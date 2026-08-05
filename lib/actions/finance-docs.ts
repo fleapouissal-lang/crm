@@ -39,6 +39,34 @@ function revalidateFinance() {
   revalidatePath("/finance/templates");
 }
 
+export async function getQuoteById(id: string): Promise<QuoteRecord | null> {
+  const supabase = await createClient();
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) return null;
+  const { data, error } = await supabase
+    .from("quotes")
+    .select("*")
+    .eq("id", id)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToQuote(data as QuoteRow);
+}
+
+export async function getInvoiceById(id: string): Promise<InvoiceRecord | null> {
+  const supabase = await createClient();
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id) return null;
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToInvoice(data as InvoiceRow);
+}
+
 // —— Templates ——
 
 export async function getTemplates(): Promise<DocumentTemplate[]> {
@@ -167,13 +195,24 @@ export async function upsertQuote(
   if (isUuid(input.id)) {
     const row = quoteToRow(payload, orgId);
     const { id: _id, organization_id: _o, created_at: _c, ...update } = row;
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("quotes")
       .update(update)
       .eq("id", input.id)
       .eq("organization_id", orgId)
       .select("*")
       .single();
+    if (error && error.message.includes("client_details")) {
+      // Migration 025 not applied yet — retry without the new column.
+      const { client_details: _cd, ...legacy } = update;
+      ({ data, error } = await supabase
+        .from("quotes")
+        .update(legacy)
+        .eq("id", input.id)
+        .eq("organization_id", orgId)
+        .select("*")
+        .single());
+    }
     if (error) return { success: false, error: error.message };
     revalidateFinance();
     return { success: true, data: rowToQuote(data as QuoteRow) };
@@ -184,11 +223,19 @@ export async function upsertQuote(
     orgId
   );
   const { id: _ignore, ...insert } = row;
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("quotes")
     .insert(insert)
     .select("*")
     .single();
+  if (error && error.message.includes("client_details")) {
+    const { client_details: _cd, ...legacy } = insert;
+    ({ data, error } = await supabase
+      .from("quotes")
+      .insert(legacy)
+      .select("*")
+      .single());
+  }
   if (error) return { success: false, error: error.message };
   revalidateFinance();
   return { success: true, data: rowToQuote(data as QuoteRow) };
@@ -266,13 +313,24 @@ export async function upsertInvoice(
   if (isUuid(input.id)) {
     const row = invoiceToRow(safePayload, orgId);
     const { id: _id, organization_id: _o, created_at: _c, ...update } = row;
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("invoices")
       .update(update)
       .eq("id", input.id)
       .eq("organization_id", orgId)
       .select("*")
       .single();
+    if (error && error.message.includes("client_details")) {
+      // Migration 025 not applied yet — retry without the new column.
+      const { client_details: _cd, ...legacy } = update;
+      ({ data, error } = await supabase
+        .from("invoices")
+        .update(legacy)
+        .eq("id", input.id)
+        .eq("organization_id", orgId)
+        .select("*")
+        .single());
+    }
     if (error) return { success: false, error: error.message };
     revalidateFinance();
     return { success: true, data: rowToInvoice(data as InvoiceRow) };
@@ -283,11 +341,19 @@ export async function upsertInvoice(
     orgId
   );
   const { id: _ignore, ...insert } = row;
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("invoices")
     .insert(insert)
     .select("*")
     .single();
+  if (error && error.message.includes("client_details")) {
+    const { client_details: _cd, ...legacy } = insert;
+    ({ data, error } = await supabase
+      .from("invoices")
+      .insert(legacy)
+      .select("*")
+      .single());
+  }
   if (error) return { success: false, error: error.message };
   revalidateFinance();
   return { success: true, data: rowToInvoice(data as InvoiceRow) };

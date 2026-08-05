@@ -18,6 +18,15 @@ export type ExpenseCategory =
 
 export type ClientType = "particulier" | "pro";
 
+/** Extra client identity shown on documents (mostly for pro clients). */
+export interface ClientDetails {
+  ice?: string;
+  rc?: string;
+  address?: string;
+}
+
+export type PriceMode = "ht" | "ttc";
+
 export interface DocumentTemplate {
   id: string;
   name: string;
@@ -41,6 +50,7 @@ export interface QuoteRecord {
   number: string;
   clientName: string;
   clientType: ClientType;
+  clientDetails?: ClientDetails;
   /** Summary of line descriptions (search / templates). */
   service: string;
   /** Sum of line totals TTC. */
@@ -60,6 +70,7 @@ export interface InvoiceRecord {
   number: string;
   clientName: string;
   clientType: ClientType;
+  clientDetails?: ClientDetails;
   amount: number;
   currency: string;
   dueDate: string;

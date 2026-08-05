@@ -1,5 +1,5 @@
 import { FUSION_COMPANY } from "./company-info";
-import type { InvoiceRecord, QuoteRecord } from "./types";
+import type { InvoiceRecord, QuoteRecord, PriceMode } from "./types";
 
 export function renderQuoteTemplate(content: string, quote: QuoteRecord): string {
   return content
@@ -46,4 +46,44 @@ export function splitTtcAmount(ttc: number, rate: number = FUSION_COMPANY.tvaRat
   const ht = Math.round((ttc / (1 + rate)) * 100) / 100;
   const tva = Math.round((ttc - ht) * 100) / 100;
   return { ht, tva, ttc };
+}
+
+export function splitHtAmount(ht: number, rate: number = FUSION_COMPANY.tvaRate) {
+  const tva = Math.round(ht * rate * 100) / 100;
+  const ttc = Math.round((ht + tva) * 100) / 100;
+  return { ht, tva, ttc };
+}
+
+export function splitAmount(
+  amount: number,
+  mode: PriceMode,
+  rate: number = FUSION_COMPANY.tvaRate
+) {
+  return mode === "ttc" ? splitTtcAmount(amount, rate) : splitHtAmount(amount, rate);
+}
+
+export function htFromTtc(ttc: number, rate: number = FUSION_COMPANY.tvaRate): number {
+  return splitTtcAmount(ttc, rate).ht;
+}
+
+export function ttcFromHt(ht: number, rate: number = FUSION_COMPANY.tvaRate): number {
+  return splitHtAmount(ht, rate).ttc;
+}
+
+export function unitPriceDisplay(
+  unitPriceTtc: number,
+  mode: PriceMode,
+  rate: number = FUSION_COMPANY.tvaRate
+): number {
+  if (mode === "ttc") return unitPriceTtc;
+  return htFromTtc(unitPriceTtc, rate);
+}
+
+export function unitPriceToStored(
+  display: number,
+  mode: PriceMode,
+  rate: number = FUSION_COMPANY.tvaRate
+): number {
+  if (mode === "ttc") return display;
+  return ttcFromHt(display, rate);
 }

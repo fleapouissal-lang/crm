@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/shared/page-header";
 import { DataPagination } from "@/components/shared/data-pagination";
 import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
 import { FinanceRowActions } from "@/components/finance/finance-row-actions";
-import { QuoteFormDialog } from "@/components/finance/quote-form-dialog";
 import { QuoteDetailDialog } from "@/components/finance/quote-detail-dialog";
 import { FinancePdfDialog } from "@/components/finance/finance-pdf-dialog";
 import { Input } from "@/components/ui/input";
@@ -52,6 +51,14 @@ const STATUS_FILTERS: Array<QuoteStatus | "all"> = [
   "refused",
 ];
 
+const QUOTE_STATUSES: QuoteStatus[] = [
+  "draft",
+  "sent",
+  "accepted",
+  "expired",
+  "refused",
+];
+
 export function QuotesPageClient({
   initialQuotes = [],
   initialTemplates = [],
@@ -70,7 +77,6 @@ export function QuotesPageClient({
   const [quotes, setQuotes] = useState<QuoteRecord[]>(initialQuotes);
   const [templates, setTemplates] = useState(initialTemplates);
   const [invoices, setInvoices] = useState(initialInvoices);
-  const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [active, setActive] = useState<QuoteRecord | null>(null);
@@ -140,26 +146,31 @@ export function QuotesPageClient({
     [templates]
   );
 
-  async function handleSave(record: QuoteRecord) {
-    const exists = quotes.some((x) => x.id === record.id);
-    const result = await upsertQuote(record);
+  function statusLabel(row: QuoteRecord): string {
+    return q[row.status];
+  }
+
+  async function handleStatusChange(row: QuoteRecord, status: QuoteStatus) {
+    if (row.status === status) return;
+    const next = {
+      ...row,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    const result = await upsertQuote(next);
     if (!result.success) {
       toast.error(result.error);
       return;
     }
-    setQuotes((prev) => {
-      const idx = prev.findIndex(
-        (x) => x.id === result.data.id || x.id === record.id
-      );
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = result.data;
-        return next;
-      }
-      return [result.data, ...prev];
-    });
-    setActive(result.data);
-    toast.success(exists ? f.quoteUpdated : f.quoteCreated);
+    setQuotes((prev) =>
+      prev.map((x) =>
+        x.id === result.data.id || x.id === row.id ? result.data : x
+      )
+    );
+    if (active?.id === row.id) {
+      setActive(result.data);
+    }
+    toast.success(f.quoteUpdated);
     router.refresh();
   }
 
@@ -184,9 +195,7 @@ export function QuotesPageClient({
   }
 
   function openEdit(row: QuoteRecord) {
-    setActive(row);
-    setDetailOpen(false);
-    setFormOpen(true);
+    router.push(`/finance/quotes/${row.id}/edit`);
   }
 
   function viewQuotePdf(row: QuoteRecord) {
@@ -419,16 +428,39 @@ export function QuotesPageClient({
                         </div>
                       </td>
                       <td>
-                        <span
-                          className={`fl-badge ${QUOTE_STATUS_BADGE[row.status]}`}
+                        <Select
+                          value={row.status}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            void handleStatusChange(row, v as QuoteStatus);
+                          }}
                         >
-                          {q[row.status]}
-                        </span>
+                          <SelectTrigger
+                            className={cn(
+                              "fl-status-select",
+                              `fl-badge ${QUOTE_STATUS_BADGE[row.status]}`
+                            )}
+                            aria-label={q.status}
+                          >
+                            <SelectValue>{statusLabel(row)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent
+                            className="fl-select-panel fl-status-select-panel"
+                            align="start"
+                            alignItemWithTrigger={false}
+                          >
+                            {QUOTE_STATUSES.map((key) => (
+                              <SelectItem key={key} value={key}>
+                                {q[key]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td>
                         <FinanceRowActions
                           label={row.number}
-                          onView={() => viewQuotePdf(row)}
+                          onView={() => openDetail(row)}
                           onEdit={() => openEdit(row)}
                           onDelete={() => handleDelete(row.id)}
                           onConvert={
@@ -454,15 +486,6 @@ export function QuotesPageClient({
           onPageChange={pagination.setPage}
         />
       </div>
-
-      <QuoteFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        quote={active && formOpen ? active : null}
-        templates={templates}
-        existingQuotes={quotes}
-        onSave={handleSave}
-      />
 
       <QuoteDetailDialog
         open={detailOpen}

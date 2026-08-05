@@ -1,4 +1,6 @@
 /** Fallback used only when no tenant organization is available (platform tools). */
+import type { PriceMode } from "./types";
+
 export const FUSION_COMPANY = {
   name: "Fusion Leap",
   legalForm: "SARL AU",
@@ -36,6 +38,8 @@ export type FinanceIssuer = {
   iban: string;
   bank: string;
   tvaRate: number;
+  /** Whether line prices are entered/displayed HT or TTC. */
+  priceMode: PriceMode;
   /** Preferred logo URL for PDF / preview (same-origin proxy when possible). */
   logoUrl: string | null;
   /** Original stored logo URL (often Supabase public object). */
@@ -51,7 +55,19 @@ export type FinanceOrgInput = {
   city?: string | null;
   phone?: string | null;
   email_domain?: string | null;
+  finance_price_mode?: PriceMode | null;
+  finance_tva_rate?: number | string | null;
 };
+
+function resolvePriceMode(value: string | null | undefined): PriceMode {
+  return value === "ht" ? "ht" : "ttc";
+}
+
+export function resolveTvaRate(value: number | string | null | undefined): number {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (n == null || Number.isNaN(n)) return FUSION_COMPANY.tvaRate;
+  return Math.min(1, Math.max(0, Math.round(n * 10000) / 10000));
+}
 
 export function financeIssuerFromOrganization(
   org: FinanceOrgInput | null | undefined
@@ -74,6 +90,7 @@ export function financeIssuerFromOrganization(
       iban: FUSION_COMPANY.iban,
       bank: FUSION_COMPANY.bank,
       tvaRate: FUSION_COMPANY.tvaRate,
+      priceMode: "ttc",
       logoUrl: FUSION_COMPANY.logoPath,
       storedLogoUrl: FUSION_COMPANY.logoPath,
     };
@@ -104,7 +121,8 @@ export function financeIssuerFromOrganization(
     website: domain ? `www.${domain}` : "",
     iban: "",
     bank: "",
-    tvaRate: FUSION_COMPANY.tvaRate,
+    tvaRate: resolveTvaRate(org.finance_tva_rate),
+    priceMode: resolvePriceMode(org.finance_price_mode),
     logoUrl: storedLogoUrl
       ? `/api/org-logos/${org.id}${cacheKey ? `?v=${cacheKey}` : ""}`
       : null,

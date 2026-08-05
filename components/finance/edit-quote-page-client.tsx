@@ -1,102 +1,111 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Receipt } from "lucide-react";
+import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 import { FinanceDocumentEditor } from "@/components/finance/finance-document-editor";
 import { FinanceDocumentOptions } from "@/components/finance/finance-document-options";
 import {
-  INVOICE_STATUS_BADGE,
+  QUOTE_STATUS_BADGE,
   createEmptyLineItem,
   documentAmountTtc,
-  nextInvoiceNumber,
+  summarizeService,
   type ClientDetails,
   type ClientType,
-  type DocumentTemplate,
   type FinanceLineItem,
-  type InvoiceRecord,
-  type InvoiceStatus,
+  type QuoteRecord,
+  type QuoteStatus,
 } from "@/lib/finance/types";
-import { upsertInvoice } from "@/lib/actions/finance-docs";
+import { upsertQuote } from "@/lib/actions/finance-docs";
 
-const STATUSES: InvoiceStatus[] = ["draft", "pending", "paid", "overdue"];
+const STATUSES: QuoteStatus[] = [
+  "draft",
+  "sent",
+  "accepted",
+  "expired",
+  "refused",
+];
 
 const schema = z.object({
-  number: z.string().min(1),
   clientName: z.string().min(1),
   clientType: z.enum(["pro", "particulier"]),
   currency: z.string().min(1),
-  dueDate: z.string().min(1),
+  validityDays: z
+    .string()
+    .min(1)
+    .refine((v) => {
+      const n = Number(v);
+      return Number.isInteger(n) && n >= 1 && n <= 365;
+    }),
   status: z.string(),
-  templateId: z.string().optional(),
   notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function defaultDueDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toISOString().slice(0, 10);
-}
-
-export function CreateInvoicePageClient({
-  initialInvoices = [],
-  initialTemplates = [],
-}: {
-  initialInvoices?: InvoiceRecord[];
-  initialTemplates?: DocumentTemplate[];
-}) {
+export function EditQuotePageClient({ quote }: { quote: QuoteRecord }) {
   const dict = useDict();
   const router = useRouter();
-  const inv = dict.fusion.invoices;
+  const q = dict.fusion.quotes;
   const f = dict.fusion.financeDocs;
-  const templates = useMemo(
-    () => initialTemplates.filter((t) => t.kind === "invoice"),
-    [initialTemplates]
+  const [items, setItems] = useState<FinanceLineItem[]>(
+    quote.items?.length
+      ? quote.items.map((row) => ({ ...row }))
+      : [createEmptyLineItem()]
   );
-  const [items, setItems] = useState<FinanceLineItem[]>([createEmptyLineItem()]);
   const [linesError, setLinesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [clientDetails, setClientDetails] = useState<ClientDetails>({});
+  const [clientDetails, setClientDetails] = useState<ClientDetails>(
+    quote.clientDetails ?? {}
+  );
 
   const {
     handleSubmit,
+    reset,
     setValue,
     watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      number: nextInvoiceNumber(initialInvoices),
-      clientName: "",
-      clientType: "pro",
-      currency: "MAD",
-      dueDate: defaultDueDate(),
-      status: "pending",
-      templateId: templates[0]?.id ?? "",
-      notes: "",
+      clientName: quote.clientName,
+      clientType: quote.clientType,
+      currency: quote.currency,
+      validityDays: String(quote.validityDays),
+      status: quote.status,
+      notes: quote.notes ?? "",
     },
   });
 
-  const status = watch("status") as InvoiceStatus;
+  useEffect(() => {
+    reset({
+      clientName: quote.clientName,
+      clientType: quote.clientType,
+      currency: quote.currency,
+      validityDays: String(quote.validityDays),
+      status: quote.status,
+      notes: quote.notes ?? "",
+    });
+    setItems(
+      quote.items?.length
+        ? quote.items.map((row) => ({ ...row }))
+        : [createEmptyLineItem()]
+    );
+    setClientDetails(quote.clientDetails ?? {});
+  }, [quote, reset]);
+
+  const status = watch("status") as QuoteStatus;
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
   const clientName = watch("clientName") || "";
+  const validityDays = watch("validityDays") || String(quote.validityDays);
   const notes = watch("notes") || "";
-  const number = watch("number") || "";
-  const dueDate = watch("dueDate") || defaultDueDate();
-
-  function statusLabel(key: string) {
-    if (key === "overdue") return inv.overdueStatus;
-    return inv[key as keyof typeof inv] as string;
-  }
 
   async function onSubmit(values: FormValues) {
     const validItems = items.filter(
@@ -120,32 +129,29 @@ export function CreateInvoicePageClient({
       unitPriceTtc: Number(row.unitPriceTtc) || 0,
     }));
 
-    const record: InvoiceRecord = {
-      id: `inv-${crypto.randomUUID().slice(0, 8)}`,
-      number: values.number.trim(),
+    const result = await upsertQuote({
+      ...quote,
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
       clientDetails,
+      service: summarizeService(cleaned),
       amount: documentAmountTtc(cleaned),
       currency: values.currency,
-      dueDate: values.dueDate,
-      status: values.status as InvoiceStatus,
-      templateId: values.templateId || null,
-      quoteId: null,
+      validityDays: Number(values.validityDays),
+      status: values.status as QuoteStatus,
       notes: values.notes?.trim() ?? "",
       items: cleaned,
-      createdAt: now,
       updatedAt: now,
-    };
+    });
 
-    const result = await upsertInvoice(record);
     if (!result.success) {
       toast.error(result.error);
       setSaving(false);
       return;
     }
-    toast.success(f.invoiceCreated);
-    router.push("/finance/invoices");
+
+    toast.success(f.quoteUpdated);
+    router.push("/finance/quotes");
     router.refresh();
   }
 
@@ -158,27 +164,27 @@ export function CreateInvoicePageClient({
               className="grid size-11 place-items-center rounded-xl text-white"
               style={{ background: "var(--grad-brand)" }}
             >
-              <Receipt className="size-5" strokeWidth={2} />
+              <FileText className="size-5" strokeWidth={2} />
             </span>
             <div>
-              <h2 className="text-lg font-semibold">{inv.newInvoice}</h2>
-              <p className="mt-1 text-sm fl-faint">{inv.newInvoiceSub}</p>
+              <h2 className="text-lg font-semibold">{f.editQuote}</h2>
+              <p className="mt-1 text-sm fl-faint fl-mono">{quote.number}</p>
             </div>
           </div>
-          <Link href="/finance/invoices" className="fl-btn sm ghost">
+          <Link href="/finance/quotes" className="fl-btn sm ghost">
             <ArrowLeft className="size-4" />
-            {inv.backToInvoices}
+            {q.backToQuotes}
           </Link>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-[18px]">
         <FinanceDocumentOptions
-          statusFieldLabel={inv.status}
+          statusFieldLabel={q.status}
           status={status}
           statusOptions={STATUSES.map((s) => ({
             value: s,
-            label: statusLabel(s),
+            label: q[s],
           }))}
           onStatusChange={(v) => setValue("status", v, { shouldValidate: true })}
           currency={currency}
@@ -189,26 +195,17 @@ export function CreateInvoicePageClient({
           }
           notes={notes}
           onNotesChange={(v) => setValue("notes", v)}
-          dueDateLabel={inv.dueDate}
-          dueDate={dueDate}
-          onDueDateChange={(v) =>
-            setValue("dueDate", v, { shouldValidate: true })
-          }
-          dueDateError={errors.dueDate ? inv.dueDate : undefined}
         />
         <FinanceDocumentEditor
-          kind="invoice"
-          number={number}
-          onNumberChange={(v) => setValue("number", v, { shouldValidate: true })}
-          numberError={errors.number ? inv.number : undefined}
-          statusLabel={statusLabel(status)}
-          statusBadge={INVOICE_STATUS_BADGE[status] ?? "b-gray"}
-          isPaid={status === "paid"}
+          kind="quote"
+          number={quote.number}
+          statusLabel={q[status]}
+          statusBadge={QUOTE_STATUS_BADGE[status] ?? "b-gray"}
           clientName={clientName}
           onClientNameChange={(v) =>
             setValue("clientName", v, { shouldValidate: true })
           }
-          clientNameError={errors.clientName ? f.previewClient : undefined}
+          clientNameError={errors.clientName ? q.client : undefined}
           clientType={clientType}
           onClientTypeChange={(v) =>
             setValue("clientType", v, { shouldValidate: true })
@@ -216,19 +213,34 @@ export function CreateInvoicePageClient({
           clientDetails={clientDetails}
           onClientDetailsChange={setClientDetails}
           currency={currency}
-          metaFields={[]}
+          metaFields={[
+            {
+              key: "validity",
+              label: q.validity,
+              kind: "number",
+              value: validityDays,
+              min: 1,
+              max: 365,
+              onChange: (v) =>
+                setValue("validityDays", v, { shouldValidate: true }),
+              error: errors.validityDays
+                ? q.validityDaysUnit.replace("{n}", "1–365")
+                : undefined,
+            },
+          ]}
           items={items}
           onItemsChange={setItems}
           linesError={linesError ?? undefined}
+          issuedAt={quote.createdAt}
         />
 
         <div className="fl-card fl-pad flex flex-wrap items-center justify-end gap-2">
-          <Link href="/finance/invoices" className="fl-btn sm ghost">
+          <Link href="/finance/quotes" className="fl-btn sm ghost">
             {dict.common.cancel}
           </Link>
           <button type="submit" className="fl-btn sm primary" disabled={saving}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-            {inv.createInvoice}
+            {dict.common.save}
           </button>
         </div>
       </form>

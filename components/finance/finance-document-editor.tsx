@@ -1,29 +1,32 @@
 "use client";
 
 import { format } from "date-fns";
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
-import { useOrgIssuer } from "@/components/finance/org-issuer-provider";
-import { OrgLogo } from "@/components/shared/org-logo";
-import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
-import { issuerCompanyLines } from "@/lib/finance/company-info";
-import { splitTtcAmount } from "@/lib/finance/render-template";
+import {
+  useFinanceSettings,
+  useOrgIssuer,
+} from "@/components/finance/org-issuer-provider";
+import {
+  issuerHeaderLines,
+  issuerLegalLines,
+} from "@/components/finance/finance-document-preview";
+import { paginateLineItems } from "@/lib/finance/document-pagination";
+import {
+  splitTtcAmount,
+  unitPriceDisplay,
+  unitPriceToStored,
+} from "@/lib/finance/render-template";
 import {
   createEmptyLineItem,
   documentAmountTtc,
   formatMoney,
   lineItemTotalTtc,
+  type ClientDetails,
   type ClientType,
   type FinanceLineItem,
 } from "@/lib/finance/types";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { getDateFnsLocale } from "@/lib/i18n/locale-utils";
 import { cn } from "@/lib/utils";
 
 type MetaField =
@@ -51,64 +54,78 @@ export function FinanceDocumentEditor({
   number,
   onNumberChange,
   numberError,
-  statusFieldLabel,
-  statusOptions,
-  status,
-  onStatusChange,
+  statusLabel,
+  metaFields,
   clientName,
   onClientNameChange,
   clientNameError,
   clientType,
   onClientTypeChange,
+  clientDetails,
+  onClientDetailsChange,
   currency,
-  onCurrencyChange,
-  metaFields,
   items,
   onItemsChange,
-  notes,
-  onNotesChange,
   linesError,
+  issuedAt,
+  isPaid,
 }: {
   kind: "quote" | "invoice";
   number: string;
   onNumberChange?: (value: string) => void;
   numberError?: string;
-  statusFieldLabel: string;
+  statusLabel: string;
   statusBadge?: string;
-  status: string;
-  statusOptions: Array<{ value: string; label: string }>;
-  onStatusChange: (value: string) => void;
+  metaFields: MetaField[];
   clientName: string;
   onClientNameChange: (value: string) => void;
   clientNameError?: string;
   clientType: ClientType;
   onClientTypeChange: (value: ClientType) => void;
+  clientDetails?: ClientDetails;
+  onClientDetailsChange?: (details: ClientDetails) => void;
   currency: string;
-  onCurrencyChange: (value: string) => void;
-  metaFields: MetaField[];
   items: FinanceLineItem[];
   onItemsChange: (items: FinanceLineItem[]) => void;
-  notes: string;
-  onNotesChange: (value: string) => void;
   linesError?: string;
+  issuedAt?: string | null;
+  isPaid?: boolean;
 }) {
   const dict = useDict();
   const { locale } = useI18n();
   const issuer = useOrgIssuer();
+  const { priceMode, tvaRate } = useFinanceSettings();
   const dateLocale = getDateFnsLocale(locale);
   const f = dict.fusion.financeDocs;
-  const today = format(new Date(), "dd MMM yyyy", { locale: dateLocale });
-  const companyLines = issuerCompanyLines(issuer);
+  const issueDate = issuedAt
+    ? format(new Date(issuedAt), "dd/MM/yyyy", { locale: dateLocale })
+    : format(new Date(), "dd/MM/yyyy", { locale: dateLocale });
   const kindLabel = kind === "quote" ? f.kindQuote : f.kindInvoice;
   const totalTtc = documentAmountTtc(items);
-  const { ht, tva, ttc } = splitTtcAmount(totalTtc, issuer.tvaRate);
-  const tvaPct = Math.round(issuer.tvaRate * 100);
+  const { ht, tva, ttc } = splitTtcAmount(totalTtc, tvaRate);
+  const tvaPct = Math.round(tvaRate * 1000) / 10;
   const cur = currency || "MAD";
+  const unitColLabel = priceMode === "ht" ? f.unitPriceHt : f.unitPriceTtc;
+  const pages = paginateLineItems(items);
+  const totalPages = pages.length;
+  const headerLines = issuerHeaderLines(issuer);
+  const legalLines = issuerLegalLines(issuer);
+  const details = clientDetails ?? {};
+
+  function updateDetails(patch: Partial<ClientDetails>) {
+    onClientDetailsChange?.({ ...details, ...patch });
+  }
 
   function updateItem(id: string, patch: Partial<FinanceLineItem>) {
     onItemsChange(
       items.map((row) => (row.id === id ? { ...row, ...patch } : row))
     );
+  }
+
+  function updateUnitPrice(id: string, displayValue: number) {
+    updateItem(id, {
+      unitPriceTtc: unitPriceToStored(displayValue, priceMode, tvaRate),
+    });
   }
 
   function removeItem(id: string) {
@@ -123,302 +140,352 @@ export function FinanceDocumentEditor({
     onItemsChange([...items, createEmptyLineItem()]);
   }
 
-  const statusOptionLabel =
-    statusOptions.find((opt) => opt.value === status)?.label ?? status;
-
   return (
     <div className="fl-fin-editor">
-      <section className="fl-form-section">
-        <div className="fl-form-section__head">
-          <SlidersHorizontal
-            className="size-3.5 text-[var(--iris)]"
-            strokeWidth={1.75}
-          />
-          <h4>{f.optionsPanel}</h4>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="fl-field">
-            <label className="fl-field-label">{statusFieldLabel}</label>
-            <Select
-              value={status}
-              onValueChange={(v) => v && onStatusChange(v)}
-            >
-              <SelectTrigger className="fl-select-trigger fl-input w-full">
-                <SelectValue>{statusOptionLabel}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="fl-select-panel">
-                {statusOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="fl-field">
-            <label className="fl-field-label" htmlFor="fin-doc-currency">
-              {f.currency}
-            </label>
-            <Input
-              id="fin-doc-currency"
-              className="fl-input"
-              value={currency}
-              onChange={(e) => onCurrencyChange(e.target.value)}
-            />
-          </div>
-        </div>
-      </section>
-
       <div className="fl-fin-editor__stage">
-        <article className="fl-fin-sheet">
-          <div className="fl-fin-sheet__bar" aria-hidden />
+        <div className="fl-fr-doc-stack">
+          {pages.map((pageItems, pageIndex) => {
+            const isFirst = pageIndex === 0;
+            const isLast = pageIndex === totalPages - 1;
 
-          {kind === "invoice" ? (
-            <div
-              className={cn(
-                "fl-fin-sheet__pay-stamp",
-                status === "paid"
-                  ? "fl-fin-sheet__pay-stamp--paid"
-                  : "fl-fin-sheet__pay-stamp--unpaid"
-              )}
-              aria-hidden
-            >
-              {status === "paid" ? f.stampPaid : f.stampUnpaid}
-            </div>
-          ) : null}
-
-          <div className="fl-fin-sheet__page">
-            <header className="fl-fin-sheet__header">
-              <div className="fl-fin-sheet__header-main">
-                <h2 className="fl-fin-sheet__doc-kind">{kindLabel}</h2>
-                {onNumberChange ? (
-                  <div className="fl-fin-sheet__doc-no-field">
-                    <label className="fl-field-label" htmlFor="fin-doc-number">
-                      {kind === "invoice"
-                        ? dict.fusion.invoices.number
-                        : dict.fusion.quotes.reference}
-                    </label>
-                    <Input
-                      id="fin-doc-number"
-                      className="fl-input fl-fin-sheet__doc-no-input"
-                      value={number}
-                      onChange={(e) => onNumberChange(e.target.value)}
-                      aria-invalid={Boolean(numberError)}
-                    />
-                    {numberError ? (
-                      <p className="text-xs text-destructive">{numberError}</p>
-                    ) : null}
+            return (
+              <article
+                key={pageIndex}
+                className={cn(
+                  "fl-fr-doc fl-fr-doc--sheet fl-fr-doc--editor",
+                  kind === "quote" ? "fl-fr-doc--quote" : "fl-fr-doc--invoice"
+                )}
+              >
+                {kind === "invoice" && isFirst && typeof isPaid === "boolean" ? (
+                  <div className="fl-fr-doc__pay-stamp" aria-hidden>
+                    {isPaid ? f.stampPaid : f.stampUnpaid}
                   </div>
-                ) : (
-                  <p className="fl-fin-sheet__doc-no">{number}</p>
-                )}
-                <div className="fl-fin-sheet__company-lines">
-                  {companyLines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                </div>
-              </div>
-              <div className="fl-fin-sheet__logo-wrap">
-                {issuer.logoUrl || issuer.storedLogoUrl ? (
-                  <OrgLogo
-                    organizationId={issuer.organizationId}
-                    logoUrl={issuer.storedLogoUrl ?? issuer.logoUrl}
-                    size="lg"
-                    className="fl-fin-sheet__logo"
-                    alt={issuer.name}
-                  />
-                ) : (
-                  <span className="fl-fin-sheet__logo-fallback" aria-hidden>
-                    {issuer.name.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-              </div>
-            </header>
+                ) : null}
 
-            <div className="fl-fin-sheet__rule" aria-hidden />
+                <div className="fl-fr-doc__page">
+                  {isFirst ? (
+                    <>
+                      <header className="fl-fr-doc__masthead">
+                        <div className="fl-fr-doc__co">
+                          {issuer.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={issuer.logoUrl} alt="" />
+                          ) : null}
+                          <div>
+                            <p className="fl-fr-doc__co-name">{issuer.name}</p>
+                            <div className="fl-fr-doc__co-lines">
+                              {headerLines.map((line) => (
+                                <p key={line}>{line}</p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="fl-fr-doc__billto fl-fr-doc__billto--right">
+                          <p className="fl-fr-doc__billto-label">
+                            {kind === "quote" ? f.previewClient : f.billedTo}
+                          </p>
+                          <input
+                            className="fl-fr-doc__inp fl-fr-doc__inp--client"
+                            value={clientName}
+                            onChange={(e) =>
+                              onClientNameChange(e.target.value)
+                            }
+                            placeholder={f.previewClient}
+                            aria-invalid={Boolean(clientNameError)}
+                          />
+                          {clientNameError ? (
+                            <p className="fl-fr-doc__error">
+                              {clientNameError}
+                            </p>
+                          ) : null}
+                          {onClientDetailsChange ? (
+                            <div className="fl-fr-doc__billto-fields">
+                              {clientType === "pro" ? (
+                                <>
+                                  <div className="fl-fr-doc__billto-field">
+                                    <span>ICE</span>
+                                    <input
+                                      className="fl-fr-doc__inp fl-fr-doc__inp--detail"
+                                      value={details.ice ?? ""}
+                                      placeholder="—"
+                                      onChange={(e) =>
+                                        updateDetails({ ice: e.target.value })
+                                      }
+                                    />
+                                  </div>
+                                  <div className="fl-fr-doc__billto-field">
+                                    <span>RC</span>
+                                    <input
+                                      className="fl-fr-doc__inp fl-fr-doc__inp--detail"
+                                      value={details.rc ?? ""}
+                                      placeholder="—"
+                                      onChange={(e) =>
+                                        updateDetails({ rc: e.target.value })
+                                      }
+                                    />
+                                  </div>
+                                </>
+                              ) : null}
+                              <div className="fl-fr-doc__billto-field">
+                                <span>{f.clientAddress}</span>
+                                <input
+                                  className="fl-fr-doc__inp fl-fr-doc__inp--detail"
+                                  value={details.address ?? ""}
+                                  placeholder="—"
+                                  onChange={(e) =>
+                                    updateDetails({ address: e.target.value })
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </header>
 
-            <section className="fl-fin-sheet__meta">
-              <div className="fl-fin-sheet__meta-row">
-                <span>{f.previewDate}</span>
-                <strong>{today}</strong>
-              </div>
-              {metaFields.map((field) => (
-                <div key={field.key} className="fl-fin-sheet__meta-row">
-                  <span>{field.label}</span>
-                  {field.kind === "select" ? (
-                    <select
-                      className="fl-fin-sheet__inp fl-fin-sheet__inp--meta"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    >
-                      {field.options.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                      <div className="fl-fr-doc__rule" />
+
+                      <section className="fl-fr-doc__info">
+                        <div className="fl-fr-doc__title-block fl-fr-doc__title-block--inline">
+                          <h1 className="fl-fr-doc__title">
+                            {kindLabel.toUpperCase()}
+                          </h1>
+                          {onNumberChange ? (
+                            <input
+                              id="fin-doc-number"
+                              className="fl-fr-doc__inp fl-fr-doc__inp--meta fl-fr-doc__number"
+                              value={number}
+                              onChange={(e) => onNumberChange(e.target.value)}
+                              aria-invalid={Boolean(numberError)}
+                            />
+                          ) : (
+                            <p className="fl-fr-doc__number fl-mono">
+                              {number}
+                            </p>
+                          )}
+                          <p className="fl-fr-doc__status-line">
+                            {statusLabel}
+                          </p>
+                          {numberError ? (
+                            <p className="fl-fr-doc__error">{numberError}</p>
+                          ) : null}
+                        </div>
+                        <div className="fl-fr-doc__meta">
+                          <div className="fl-fr-doc__meta-row">
+                            <span>{f.previewDate}</span>
+                            <span>{issueDate}</span>
+                          </div>
+                          {metaFields.map((field) => (
+                            <div
+                              key={field.key}
+                              className="fl-fr-doc__meta-row"
+                            >
+                              <span>{field.label}</span>
+                              <div>
+                                {field.kind === "select" ? (
+                                  <select
+                                    className="fl-fr-doc__inp fl-fr-doc__inp--meta"
+                                    value={field.value}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.value)
+                                    }
+                                  >
+                                    {field.options.map((opt) => (
+                                      <option
+                                        key={opt.value}
+                                        value={opt.value}
+                                      >
+                                        {opt.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type={field.kind}
+                                    className="fl-fr-doc__inp fl-fr-doc__inp--meta"
+                                    value={field.value}
+                                    min={field.min}
+                                    max={field.max}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.value)
+                                    }
+                                  />
+                                )}
+                                {"error" in field && field.error ? (
+                                  <p className="fl-fr-doc__error">
+                                    {field.error}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </>
                   ) : (
-                    <input
-                      type={field.kind}
-                      className="fl-fin-sheet__inp fl-fin-sheet__inp--meta"
-                      value={field.value}
-                      min={field.min}
-                      max={field.max}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
+                    <div className="fl-fr-doc__continuation">
+                      <strong>
+                        {kindLabel.toUpperCase()} — {f.documentContinuation}
+                      </strong>
+                      <span className="fl-mono">{number}</span>
+                    </div>
                   )}
-                  {"error" in field && field.error ? (
-                    <p className="fl-fin-sheet__error fl-fin-sheet__error--meta">
-                      {field.error}
-                    </p>
+
+                  <div className="fl-fr-doc__table-area">
+                    <table className="fl-fr-doc__table">
+                      <thead>
+                        <tr>
+                          <th>{f.designation}</th>
+                          <th className="fl-fr-doc__col-qty">
+                            {f.lineQtyShort}
+                          </th>
+                          <th className="fl-fr-doc__col-unit">
+                            {unitColLabel}
+                          </th>
+                          <th className="fl-fr-doc__col-amt">
+                            {f.lineAmount}
+                          </th>
+                          <th className="fl-fr-doc__col-act" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageItems.map((item) => {
+                          const lineTtc = lineItemTotalTtc(item);
+                          const lineDisplay =
+                            priceMode === "ht"
+                              ? splitTtcAmount(lineTtc, tvaRate).ht
+                              : lineTtc;
+                          return (
+                            <tr key={item.id}>
+                              <td>
+                                <input
+                                  className="fl-fr-doc__inp fl-fr-doc__inp--desc"
+                                  value={item.description}
+                                  placeholder={f.lineDescriptionPlaceholder}
+                                  onChange={(e) =>
+                                    updateItem(item.id, {
+                                      description: e.target.value,
+                                    })
+                                  }
+                                />
+                              </td>
+                              <td className="fl-fr-doc__col-qty">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  className="fl-fr-doc__inp fl-fr-doc__inp--num"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    updateItem(item.id, {
+                                      quantity: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                />
+                              </td>
+                              <td className="fl-fr-doc__col-unit">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  className="fl-fr-doc__inp fl-fr-doc__inp--num"
+                                  value={unitPriceDisplay(
+                                    item.unitPriceTtc,
+                                    priceMode,
+                                    tvaRate
+                                  )}
+                                  onChange={(e) =>
+                                    updateUnitPrice(
+                                      item.id,
+                                      Number(e.target.value) || 0
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td className="fl-fr-doc__col-amt">
+                                {formatMoney(lineDisplay, cur)}
+                              </td>
+                              <td className="fl-fr-doc__col-act">
+                                <button
+                                  type="button"
+                                  className="fl-fr-doc__icon-btn"
+                                  onClick={() => removeItem(item.id)}
+                                  aria-label={f.removeLine}
+                                  title={f.removeLine}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {isLast ? (
+                          <tr className="fl-fr-doc__add-row">
+                            <td colSpan={5}>
+                              <button type="button" onClick={addItem}>
+                                <Plus className="size-3.5" strokeWidth={2} />
+                                {f.addLine}
+                              </button>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {isLast ? (
+                    <>
+                      <section className="fl-fr-doc__totals">
+                        <div className="fl-fr-doc__sums">
+                          <div className="fl-fr-doc__sum-row">
+                            <span>{f.subtotal}</span>
+                            <span className="fl-mono">
+                              {formatMoney(ht, cur)}
+                            </span>
+                          </div>
+                          <div className="fl-fr-doc__sum-row">
+                            <span>TVA ({tvaPct} %)</span>
+                            <span className="fl-mono">
+                              {formatMoney(tva, cur)}
+                            </span>
+                          </div>
+                          <div className="fl-fr-doc__sum-row fl-fr-doc__sum-row--total">
+                            <span>{f.totalToPay}</span>
+                            <span className="fl-mono">
+                              {formatMoney(ttc, cur)}
+                            </span>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="fl-fr-doc__bottom">
+                        <div className="fl-fr-doc__terms" />
+                        <div className="fl-fr-doc__sig">
+                          <div className="fl-fr-doc__sig-line" />
+                          <b>{issuer.name}</b>
+                          <span>{f.signature}</span>
+                        </div>
+                      </section>
+                    </>
+                  ) : null}
+
+                  {legalLines.length ? (
+                    <footer className="fl-fr-doc__legal">
+                      {legalLines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                    </footer>
                   ) : null}
                 </div>
-              ))}
-            </section>
+              </article>
+            );
+          })}
+        </div>
 
-            <section className="fl-fin-sheet__client">
-              <div className="fl-fin-sheet__client-top">
-                <p className="fl-fin-sheet__label">{f.previewClient}</p>
-                <select
-                  className="fl-fin-sheet__type-badge"
-                  value={clientType}
-                  onChange={(e) =>
-                    onClientTypeChange(e.target.value as ClientType)
-                  }
-                >
-                  <option value="pro">{f.clientPro}</option>
-                  <option value="particulier">{f.clientParticulier}</option>
-                </select>
-              </div>
-              <input
-                className="fl-fin-sheet__inp fl-fin-sheet__inp--client"
-                value={clientName}
-                onChange={(e) => onClientNameChange(e.target.value)}
-                placeholder={f.previewClient}
-                aria-invalid={Boolean(clientNameError)}
-              />
-              {clientNameError ? (
-                <p className="fl-fin-sheet__error">{clientNameError}</p>
-              ) : null}
-            </section>
-
-            <div className="fl-fin-sheet__table-wrap">
-              <table className="fl-fin-sheet__table">
-                <thead>
-                  <tr>
-                    <th>{f.previewLines}</th>
-                    <th className="fl-fin-sheet__col-qty">{f.lineQtyShort}</th>
-                    <th className="fl-fin-sheet__col-unit">{f.unitPrice}</th>
-                    <th className="fl-fin-sheet__col-amt">{f.amountTotal}</th>
-                    <th className="fl-fin-sheet__col-act" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <input
-                          className="fl-fin-sheet__inp fl-fin-sheet__inp--desc"
-                          value={item.description}
-                          placeholder={f.lineDescriptionPlaceholder}
-                          onChange={(e) =>
-                            updateItem(item.id, {
-                              description: e.target.value,
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="fl-fin-sheet__col-qty">
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          className="fl-fin-sheet__inp fl-fin-sheet__inp--num"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateItem(item.id, {
-                              quantity: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="fl-fin-sheet__col-unit">
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          className="fl-fin-sheet__inp fl-fin-sheet__inp--num"
-                          value={item.unitPriceTtc}
-                          onChange={(e) =>
-                            updateItem(item.id, {
-                              unitPriceTtc: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="fl-fin-sheet__col-amt">
-                        {formatMoney(lineItemTotalTtc(item), cur)}
-                      </td>
-                      <td className="fl-fin-sheet__col-act">
-                        <button
-                          type="button"
-                          className="fl-fin-sheet__icon-btn"
-                          onClick={() => removeItem(item.id)}
-                          aria-label={f.removeLine}
-                          title={f.removeLine}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="fl-fin-sheet__table-foot">
-                <button
-                  type="button"
-                  className="fl-fin-sheet__add-line"
-                  onClick={addItem}
-                >
-                  <Plus className="size-3.5" strokeWidth={2} />
-                  {f.addLine}
-                </button>
-                {linesError ? (
-                  <p className="fl-fin-sheet__error">{linesError}</p>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="fl-fin-sheet__bottom">
-              <div className="fl-fin-sheet__notes">
-                <p className="fl-fin-sheet__label">{dict.common.notes}</p>
-                <textarea
-                  className="fl-fin-sheet__inp fl-fin-sheet__inp--notes"
-                  value={notes}
-                  onChange={(e) => onNotesChange(e.target.value)}
-                  rows={3}
-                  placeholder={dict.common.notes}
-                />
-              </div>
-
-              <aside className="fl-fin-sheet__totals">
-                <div className="fl-fin-sheet__totals-bar" aria-hidden />
-                <div className="fl-fin-sheet__totals-row">
-                  <span>Total HT</span>
-                  <strong>{formatMoney(ht, cur)}</strong>
-                </div>
-                <div className="fl-fin-sheet__totals-row">
-                  <span>TVA ({tvaPct} %)</span>
-                  <strong>{formatMoney(tva, cur)}</strong>
-                </div>
-                <div className="fl-fin-sheet__totals-row fl-fin-sheet__totals-row--ttc">
-                  <span>Total TTC</span>
-                  <strong>{formatMoney(ttc, cur)}</strong>
-                </div>
-              </aside>
-            </div>
+        {linesError ? (
+          <div className="fl-fr-doc__table-foot">
+            <p className="fl-fr-doc__error">{linesError}</p>
           </div>
-        </article>
+        ) : null}
       </div>
     </div>
   );

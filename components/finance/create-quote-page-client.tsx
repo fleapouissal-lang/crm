@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -9,21 +9,15 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
-import { LineItemsEditor } from "@/components/finance/line-items-editor";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FinanceDocumentEditor } from "@/components/finance/finance-document-editor";
+import { FinanceDocumentOptions } from "@/components/finance/finance-document-options";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
+  QUOTE_STATUS_BADGE,
   createEmptyLineItem,
   documentAmountTtc,
   nextQuoteNumber,
   summarizeService,
+  type ClientDetails,
   type ClientType,
   type DocumentTemplate,
   type FinanceLineItem,
@@ -31,10 +25,8 @@ import {
   type QuoteStatus,
 } from "@/lib/finance/types";
 import { upsertQuote } from "@/lib/actions/finance-docs";
-import { cn } from "@/lib/utils";
 
 const STATUSES: QuoteStatus[] = ["draft", "sent", "accepted", "expired", "refused"];
-const CLIENT_TYPES: ClientType[] = ["pro", "particulier"];
 
 const schema = z.object({
   clientName: z.string().min(1),
@@ -54,30 +46,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function Field({
-  label,
-  htmlFor,
-  error,
-  children,
-  className,
-}: {
-  label: string;
-  htmlFor?: string;
-  error?: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("fl-field", className)}>
-      <label className="fl-field-label" htmlFor={htmlFor}>
-        {label}
-      </label>
-      {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
-    </div>
-  );
-}
-
 export function CreateQuotePageClient({
   initialQuotes = [],
   initialTemplates = [],
@@ -93,14 +61,16 @@ export function CreateQuotePageClient({
     () => initialTemplates.filter((t) => t.kind === "quote"),
     [initialTemplates]
   );
-  const [items, setItems] = useState<FinanceLineItem[]>([
-    createEmptyLineItem(),
-  ]);
+  const draftNumber = useMemo(
+    () => nextQuoteNumber(initialQuotes),
+    [initialQuotes]
+  );
+  const [items, setItems] = useState<FinanceLineItem[]>([createEmptyLineItem()]);
   const [linesError, setLinesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [clientDetails, setClientDetails] = useState<ClientDetails>({});
 
   const {
-    register,
     handleSubmit,
     setValue,
     watch,
@@ -118,13 +88,19 @@ export function CreateQuotePageClient({
     },
   });
 
-  const status = watch("status");
+  const status = watch("status") as QuoteStatus;
   const clientType = watch("clientType");
   const currency = watch("currency") || "MAD";
+  const clientName = watch("clientName") || "";
+  const validityDays = watch("validityDays") || "30";
+  const notes = watch("notes") || "";
 
   async function onSubmit(values: FormValues) {
     const validItems = items.filter(
-      (row) => row.description.trim() && lineItemHasAmount(row)
+      (row) =>
+        row.description.trim() &&
+        (Number(row.quantity) || 0) > 0 &&
+        (Number(row.unitPriceTtc) || 0) > 0
     );
     if (validItems.length === 0) {
       setLinesError(f.linesRequired);
@@ -143,9 +119,10 @@ export function CreateQuotePageClient({
 
     const record: QuoteRecord = {
       id: `q-${crypto.randomUUID().slice(0, 8)}`,
-      number: nextQuoteNumber(initialQuotes),
+      number: draftNumber,
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
+      clientDetails,
       service: summarizeService(cleaned),
       amount: documentAmountTtc(cleaned),
       currency: values.currency,
@@ -182,7 +159,7 @@ export function CreateQuotePageClient({
             </span>
             <div>
               <h2 className="text-lg font-semibold">{q.newQuote}</h2>
-              <p className="mt-1 text-sm fl-faint">{q.newQuoteSub}</p>
+              <p className="mt-1 text-sm fl-faint fl-mono">{draftNumber}</p>
             </div>
           </div>
           <Link href="/finance/quotes" className="fl-btn sm ghost">
@@ -193,114 +170,59 @@ export function CreateQuotePageClient({
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-[18px]">
-        <section className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{q.client}</h3>
-              <div className="ch-sub">{q.recentQuotesSub}</div>
-            </div>
-          </div>
-          <div className="fl-pad space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label={q.client}
-                htmlFor="cq-client"
-                error={errors.clientName?.message}
-              >
-                <Input id="cq-client" className="fl-inp" {...register("clientName")} />
-              </Field>
-              <Field label={f.clientType}>
-                <Select
-                  value={clientType}
-                  onValueChange={(v) =>
-                    v && setValue("clientType", v as ClientType)
-                  }
-                >
-                  <SelectTrigger className="fl-inp h-auto w-full">
-                    <SelectValue>
-                      {
-                        f[
-                          clientType === "pro"
-                            ? "clientPro"
-                            : "clientParticulier"
-                        ]
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLIENT_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {f[type === "pro" ? "clientPro" : "clientParticulier"]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label={f.currency} htmlFor="cq-currency">
-                <Input id="cq-currency" className="fl-inp" {...register("currency")} />
-              </Field>
-              <Field
-                label={q.validity}
-                htmlFor="cq-validity"
-                error={errors.validityDays?.message}
-              >
-                <Input
-                  id="cq-validity"
-                  type="number"
-                  min={1}
-                  max={365}
-                  className="fl-inp"
-                  {...register("validityDays")}
-                />
-              </Field>
-              <Field label={q.status}>
-                <Select
-                  value={status}
-                  onValueChange={(v) => v && setValue("status", v)}
-                >
-                  <SelectTrigger className="fl-inp h-auto w-full">
-                    <SelectValue>
-                      {q[status as QuoteStatus] ?? status}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {q[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <Field label={dict.common.notes} htmlFor="cq-notes">
-              <Textarea
-                id="cq-notes"
-                className="fl-inp min-h-[80px]"
-                {...register("notes")}
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="fl-card">
-          <div className="fl-card-head">
-            <div>
-              <h3>{f.lineItems}</h3>
-              <div className="ch-sub">{f.lineItemsHint}</div>
-            </div>
-          </div>
-          <div className="fl-pad">
-            <LineItemsEditor
-              items={items}
-              currency={currency}
-              onChange={setItems}
-              error={linesError ?? undefined}
-            />
-          </div>
-        </section>
+        <FinanceDocumentOptions
+          statusFieldLabel={q.status}
+          status={status}
+          statusOptions={STATUSES.map((s) => ({
+            value: s,
+            label: q[s],
+          }))}
+          onStatusChange={(v) => setValue("status", v, { shouldValidate: true })}
+          currency={currency}
+          onCurrencyChange={(v) => setValue("currency", v, { shouldValidate: true })}
+          clientType={clientType}
+          onClientTypeChange={(v) =>
+            setValue("clientType", v, { shouldValidate: true })
+          }
+          notes={notes}
+          onNotesChange={(v) => setValue("notes", v)}
+        />
+        <FinanceDocumentEditor
+          kind="quote"
+          number={draftNumber}
+          statusLabel={q[status]}
+          statusBadge={QUOTE_STATUS_BADGE[status] ?? "b-gray"}
+          clientName={clientName}
+          onClientNameChange={(v) =>
+            setValue("clientName", v, { shouldValidate: true })
+          }
+          clientNameError={errors.clientName ? q.client : undefined}
+          clientType={clientType}
+          onClientTypeChange={(v) =>
+            setValue("clientType", v, { shouldValidate: true })
+          }
+          clientDetails={clientDetails}
+          onClientDetailsChange={setClientDetails}
+          currency={currency}
+          metaFields={[
+            {
+              key: "validity",
+              label: q.validity,
+              kind: "number",
+              value: validityDays,
+              min: 1,
+              max: 365,
+              onChange: (v) =>
+                setValue("validityDays", v, { shouldValidate: true }),
+              error: errors.validityDays
+                ? q.validityDaysUnit.replace("{n}", "1–365")
+                : undefined,
+            },
+          ]}
+          items={items}
+          onItemsChange={setItems}
+          linesError={linesError ?? undefined}
+        />
 
         <div className="fl-card fl-pad flex flex-wrap items-center justify-end gap-2">
           <Link href="/finance/quotes" className="fl-btn sm ghost">
@@ -314,8 +236,4 @@ export function CreateQuotePageClient({
       </form>
     </div>
   );
-}
-
-function lineItemHasAmount(row: FinanceLineItem): boolean {
-  return (Number(row.quantity) || 0) > 0 && (Number(row.unitPriceTtc) || 0) > 0;
 }

@@ -1,4 +1,5 @@
 import type {
+  ClientDetails,
   DocumentTemplate,
   ExpenseRecord,
   FinanceLineItem,
@@ -26,6 +27,7 @@ export type QuoteRow = {
   client_id: string | null;
   client_name: string;
   client_type: string;
+  client_details?: ClientDetails | string | null;
   service: string;
   amount: number | string;
   currency: string;
@@ -45,6 +47,7 @@ export type InvoiceRow = {
   client_id: string | null;
   client_name: string;
   client_type: string;
+  client_details?: ClientDetails | string | null;
   amount: number | string;
   currency: string;
   due_date: string | null;
@@ -72,6 +75,19 @@ export type ExpenseRow = {
   created_at: string;
   updated_at: string;
 };
+
+function parseClientDetails(
+  raw: ClientDetails | string | null | undefined
+): ClientDetails {
+  if (!raw) return {};
+  if (typeof raw !== "string") return raw;
+  try {
+    const parsed = JSON.parse(raw) as ClientDetails;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 function parseItems(raw: FinanceLineItem[] | string): FinanceLineItem[] {
   if (Array.isArray(raw)) return raw;
@@ -122,6 +138,7 @@ export function rowToQuote(row: QuoteRow): QuoteRecord {
     number: row.number,
     clientName: row.client_name ?? "",
     clientType: (row.client_type as QuoteRecord["clientType"]) ?? "pro",
+    clientDetails: parseClientDetails(row.client_details),
     service: row.service ?? "",
     amount: Number(row.amount) || 0,
     currency: row.currency ?? "MAD",
@@ -148,6 +165,7 @@ export function quoteToRow(
     client_id: clientId,
     client_name: normalized.clientName,
     client_type: normalized.clientType,
+    client_details: normalized.clientDetails ?? {},
     service: normalized.service,
     amount: normalized.amount,
     currency: normalized.currency,
@@ -167,6 +185,7 @@ export function rowToInvoice(row: InvoiceRow): InvoiceRecord {
     number: row.number,
     clientName: row.client_name ?? "",
     clientType: (row.client_type as InvoiceRecord["clientType"]) ?? "pro",
+    clientDetails: parseClientDetails(row.client_details),
     amount: Number(row.amount) || 0,
     currency: row.currency ?? "MAD",
     dueDate: row.due_date ?? "",
@@ -193,6 +212,7 @@ export function invoiceToRow(
     client_id: clientId,
     client_name: normalized.clientName,
     client_type: normalized.clientType,
+    client_details: normalized.clientDetails ?? {},
     amount: normalized.amount,
     currency: normalized.currency,
     due_date: normalized.dueDate || null,

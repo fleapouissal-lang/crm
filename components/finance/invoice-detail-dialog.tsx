@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Pencil } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useDict } from "@/components/shared/i18n-provider";
 import { InvoicePdfExportButton } from "@/components/finance/pdf-export-button";
 import { FinanceDocumentPreview } from "@/components/finance/finance-document-preview";
@@ -40,14 +41,14 @@ export function InvoiceDetailDialog({
   invoice: InvoiceRecord | null;
   template?: DocumentTemplate;
   linkedQuote?: QuoteRecord;
-  onEdit: () => void;
+  onEdit?: () => void;
   onViewPdf?: () => void;
 }) {
   const dict = useDict();
+  const router = useRouter();
   const inv = dict.fusion.invoices;
   if (!invoice) return null;
 
-  const service = linkedQuote?.service || invoice.notes || "—";
   const badge = INVOICE_STATUS_BADGE[invoice.status];
   const items =
     invoice.items?.length
@@ -58,29 +59,29 @@ export function InvoiceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content ring-0 sm:max-w-2xl">
+      <DialogContent className="fl-dialog-content fl-dialog-content--doc ring-0 max-h-[96vh]">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{inv.detailTitle}</DialogTitle>
         </DialogHeader>
-        <div className="fl-dialog-body space-y-3">
-          <FinanceDocumentPreview
-            kind="invoice"
-            number={invoice.number}
-            statusLabel={statusLabel(invoice, inv)}
-            statusBadge={badge}
-            isPaid={invoice.status === "paid"}
-            clientName={invoice.clientName}
-            amount={invoice.amount}
-            currency={invoice.currency}
-            tertiaryLabel={dict.fusion.quotes.service}
-            tertiaryValue={service}
-            lineItems={items}
-            templateName={template?.name}
-          />
-
-          {invoice.notes ? (
-            <p className="fl-lux-doc-notes">{invoice.notes}</p>
-          ) : null}
+        <div className="fl-dialog-body max-h-[min(78vh,880px)] overflow-y-auto px-4 py-3 sm:px-5">
+          <div className="fl-fin-editor">
+            <div className="fl-fin-editor__stage">
+              <FinanceDocumentPreview
+                kind="invoice"
+                number={invoice.number}
+                statusLabel={statusLabel(invoice, inv)}
+                statusBadge={badge}
+                isPaid={invoice.status === "paid"}
+                clientName={invoice.clientName}
+                clientDetails={invoice.clientDetails}
+                amount={invoice.amount}
+                currency={invoice.currency}
+                issuedAt={invoice.createdAt}
+                lineItems={items}
+                notes={invoice.notes}
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter className="fl-dialog-footer flex-wrap gap-2">
           <button
@@ -102,7 +103,18 @@ export function InvoiceDetailDialog({
             linkedQuote={linkedQuote}
             variant="ghost"
           />
-          <button type="button" className="fl-btn sm primary" onClick={onEdit}>
+          <button
+            type="button"
+            className="fl-btn sm primary"
+            onClick={() => {
+              onOpenChange(false);
+              if (onEdit) {
+                onEdit();
+                return;
+              }
+              router.push(`/finance/invoices/${invoice.id}/edit`);
+            }}
+          >
             <Pencil className="size-4" />
             {dict.common.edit}
           </button>

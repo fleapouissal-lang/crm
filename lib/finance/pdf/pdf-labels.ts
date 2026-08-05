@@ -14,7 +14,9 @@ export type PdfLabels = {
   designation: string;
   qty: string;
   unitHt: string;
+  lineUnitTtc: string;
   totalHt: string;
+  lineTotalTtc: string;
   totalHtLabel: string;
   tva: string;
   totalTtc: string;
@@ -25,7 +27,16 @@ export type PdfLabels = {
   until: string;
   paid: string;
   unpaid: string;
-  paymentStatus: string;
+  subtotal: string;
+  totalToPay: string;
+  sender: string;
+  billedTo: string;
+  clientTo: string;
+  docNumber: string;
+  signature: string;
+  documentContinuation: string;
+  lineAmount: string;
+  terms: string;
 };
 
 const LABELS: Record<Locale, PdfLabels> = {
@@ -42,7 +53,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     designation: "Designation",
     qty: "Qte",
     unitHt: "PU HT",
+    lineUnitTtc: "PU TTC",
     totalHt: "Total HT",
+    lineTotalTtc: "Total TTC",
     totalHtLabel: "Total HT",
     tva: "TVA",
     totalTtc: "Total TTC",
@@ -53,7 +66,16 @@ const LABELS: Record<Locale, PdfLabels> = {
     until: "jusqu'au",
     paid: "PAYEE",
     unpaid: "NON PAYEE",
-    paymentStatus: "Paiement",
+    subtotal: "Sous-total",
+    totalToPay: "Total a payer",
+    sender: "Expediteur",
+    billedTo: "Facture a",
+    clientTo: "Client",
+    docNumber: "N° de document",
+    signature: "Signature",
+    documentContinuation: "Suite",
+    lineAmount: "Montant",
+    terms: "Termes & conditions",
   },
   en: {
     rtl: false,
@@ -68,7 +90,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     designation: "Description",
     qty: "Qty",
     unitHt: "Unit excl.",
+    lineUnitTtc: "Unit incl.",
     totalHt: "Total excl.",
+    lineTotalTtc: "Total incl.",
     totalHtLabel: "Subtotal excl.",
     tva: "VAT",
     totalTtc: "Total incl.",
@@ -79,7 +103,16 @@ const LABELS: Record<Locale, PdfLabels> = {
     until: "until",
     paid: "PAID",
     unpaid: "UNPAID",
-    paymentStatus: "Payment",
+    subtotal: "Subtotal",
+    totalToPay: "Total due",
+    sender: "Sender",
+    billedTo: "Bill to",
+    clientTo: "Client",
+    docNumber: "Document no.",
+    signature: "Signature",
+    documentContinuation: "Continued",
+    lineAmount: "Amount",
+    terms: "Terms & conditions",
   },
   ar: {
     rtl: true,
@@ -94,7 +127,9 @@ const LABELS: Record<Locale, PdfLabels> = {
     designation: "Designation",
     qty: "Qte",
     unitHt: "PU HT",
+    lineUnitTtc: "PU TTC",
     totalHt: "Total HT",
+    lineTotalTtc: "Total TTC",
     totalHtLabel: "Total HT",
     tva: "TVA",
     totalTtc: "Total TTC",
@@ -105,7 +140,16 @@ const LABELS: Record<Locale, PdfLabels> = {
     until: "jusqu'au",
     paid: "PAYEE",
     unpaid: "NON PAYEE",
-    paymentStatus: "Paiement",
+    subtotal: "Sous-total",
+    totalToPay: "Total a payer",
+    sender: "Expediteur",
+    billedTo: "Facture a",
+    clientTo: "Client",
+    docNumber: "N° de document",
+    signature: "Signature",
+    documentContinuation: "Suite",
+    lineAmount: "Montant",
+    terms: "Termes & conditions",
   },
 };
 

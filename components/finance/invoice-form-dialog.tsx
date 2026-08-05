@@ -7,7 +7,9 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 import { FinanceDocumentEditor } from "@/components/finance/finance-document-editor";
+import { FinanceDocumentOptions } from "@/components/finance/finance-document-options";
 import type {
+  ClientDetails,
   ClientType,
   DocumentTemplate,
   FinanceLineItem,
@@ -64,6 +66,7 @@ export function InvoiceFormDialog({
   const isEdit = Boolean(invoice?.id);
   const [items, setItems] = useState<FinanceLineItem[]>([createEmptyLineItem()]);
   const [linesError, setLinesError] = useState<string | null>(null);
+  const [clientDetails, setClientDetails] = useState<ClientDetails>({});
 
   const invoiceTemplates = useMemo(
     () => templates.filter((t) => t.kind === "invoice"),
@@ -122,6 +125,7 @@ export function InvoiceFormDialog({
             }),
           ]
     );
+    setClientDetails(invoice?.clientDetails ?? {});
     setLinesError(null);
   }, [open, invoice, reset, invoiceTemplates, existingInvoices]);
 
@@ -157,6 +161,7 @@ export function InvoiceFormDialog({
       number: values.number.trim(),
       clientName: values.clientName.trim(),
       clientType: values.clientType as ClientType,
+      clientDetails,
       amount: documentAmountTtc(cleaned),
       currency: values.currency,
       dueDate: values.dueDate,
@@ -173,21 +178,14 @@ export function InvoiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fl-dialog-content fl-dialog-content--doc ring-0 max-h-[96vh]">
+      <DialogContent className="fl-dialog-content fl-dialog-content--doc ring-0 max-h-[96vh] sm:max-w-4xl">
         <DialogHeader className="fl-dialog-header">
           <DialogTitle>{isEdit ? f.editInvoice : inv.newInvoice}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="fl-dialog-body max-h-[min(78vh,880px)] space-y-0 overflow-y-auto px-4 py-3 sm:px-5">
-            <FinanceDocumentEditor
-              kind="invoice"
-              number={number}
-              onNumberChange={(v) =>
-                setValue("number", v, { shouldValidate: true })
-              }
-              numberError={errors.number ? inv.number : undefined}
+          <div className="fl-dialog-body max-h-[min(78vh,880px)] space-y-3 overflow-y-auto px-4 py-3 sm:px-5">
+            <FinanceDocumentOptions
               statusFieldLabel={inv.status}
-              statusBadge={INVOICE_STATUS_BADGE[status] ?? "b-gray"}
               status={status}
               statusOptions={STATUSES.map((s) => ({
                 value: s,
@@ -196,6 +194,33 @@ export function InvoiceFormDialog({
               onStatusChange={(v) =>
                 setValue("status", v, { shouldValidate: true })
               }
+              currency={currency}
+              onCurrencyChange={(v) =>
+                setValue("currency", v, { shouldValidate: true })
+              }
+              clientType={clientType}
+              onClientTypeChange={(v) =>
+                setValue("clientType", v, { shouldValidate: true })
+              }
+              notes={notes}
+              onNotesChange={(v) => setValue("notes", v)}
+              dueDateLabel={inv.dueDate}
+              dueDate={watch("dueDate") || ""}
+              onDueDateChange={(v) =>
+                setValue("dueDate", v, { shouldValidate: true })
+              }
+              dueDateError={errors.dueDate ? inv.dueDate : undefined}
+            />
+            <FinanceDocumentEditor
+              kind="invoice"
+              number={number}
+              onNumberChange={(v) =>
+                setValue("number", v, { shouldValidate: true })
+              }
+              numberError={errors.number ? inv.number : undefined}
+              statusLabel={statusLabel(status)}
+              statusBadge={INVOICE_STATUS_BADGE[status] ?? "b-gray"}
+              isPaid={status === "paid"}
               clientName={clientName}
               onClientNameChange={(v) =>
                 setValue("clientName", v, { shouldValidate: true })
@@ -207,16 +232,14 @@ export function InvoiceFormDialog({
               onClientTypeChange={(v) =>
                 setValue("clientType", v, { shouldValidate: true })
               }
+              clientDetails={clientDetails}
+              onClientDetailsChange={setClientDetails}
               currency={currency}
-              onCurrencyChange={(v) =>
-                setValue("currency", v, { shouldValidate: true })
-              }
               metaFields={[]}
               items={items}
               onItemsChange={setItems}
-              notes={notes}
-              onNotesChange={(v) => setValue("notes", v)}
               linesError={linesError ?? undefined}
+              issuedAt={invoice?.createdAt}
             />
           </div>
 

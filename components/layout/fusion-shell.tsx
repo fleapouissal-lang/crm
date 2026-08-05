@@ -62,6 +62,9 @@ function SidebarWithUnread({
 export function FusionShell({
   profile,
   organization,
+  canManageFinanceSettings = false,
+  /** @deprecated use canManageFinanceSettings */
+  canManagePriceMode = false,
   organizationName,
   organizationLogoUrl,
   activityDomain,
@@ -72,6 +75,9 @@ export function FusionShell({
 }: {
   profile: Profile;
   organization?: FinanceOrgInput | null;
+  canManageFinanceSettings?: boolean;
+  /** @deprecated use canManageFinanceSettings */
+  canManagePriceMode?: boolean;
   organizationName?: string | null;
   organizationLogoUrl?: string | null;
   activityDomain?: string | null;
@@ -114,7 +120,10 @@ export function FusionShell({
   }, []);
 
   return (
-    <OrgIssuerProvider organization={organization}>
+    <OrgIssuerProvider
+      organization={organization}
+      canManageFinanceSettings={canManageFinanceSettings || canManagePriceMode}
+    >
       <NotificationsProvider
         userId={profile.id}
         organizationId={platformAdmin ? null : profile.organization_id}
