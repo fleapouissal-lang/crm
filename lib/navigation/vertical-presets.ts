@@ -26,6 +26,7 @@ export const ALWAYS_VISIBLE_NAV_IDS = [
   "invoices",
   "expenses",
   "hr",
+  "files",
   "notifications",
   "settings",
 ] as const;
@@ -46,6 +47,7 @@ export type VerticalNavId =
   | "expenses"
   | "hr"
   | "reports"
+  | "files"
   | "notifications"
   | "settings";
 
@@ -72,6 +74,7 @@ const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "expenses",
   "hr",
   "reports",
+  "files",
   "notifications",
   "settings",
 ];
@@ -226,6 +229,7 @@ export function pathnameToNavId(pathname: string): VerticalNavId | null {
   if (pathname.startsWith("/finance")) return "finance";
   if (pathname.startsWith("/hr")) return "hr";
   if (pathname.startsWith("/reports")) return "reports";
+  if (pathname.startsWith("/files")) return "files";
   if (pathname.startsWith("/notifications")) return "notifications";
   if (pathname.startsWith("/settings")) return "settings";
   return null;

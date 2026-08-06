@@ -3,6 +3,7 @@ export {
   canAccessCalendar,
   canAccessClients,
   canAccessExpenses,
+  canAccessFiles,
   canAccessFinanceHub,
   canAccessFullCrm,
   canAccessHr,
@@ -124,6 +125,7 @@ export const COMPANY_ONLY_PREFIXES = [
   "/finance",
   "/hr",
   "/reports",
+  "/files",
   "/notifications",
 ];
 

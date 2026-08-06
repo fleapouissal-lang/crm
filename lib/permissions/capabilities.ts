@@ -14,6 +14,7 @@ export type NavCapability =
   | "tasks"
   | "calendar"
   | "reports"
+  | "files"
   | "finance"
   | "quotes"
   | "invoices"
@@ -125,6 +126,11 @@ export function canAccessReports(profile: Profile): boolean {
   return stagiaireAllowsPage(profile, "reports") === true;
 }
 
+/** Files page — directeur & gérant only. */
+export function canAccessFiles(profile: Profile): boolean {
+  return isLeadership(profile);
+}
+
 export function canAccessFinanceHub(profile: Profile): boolean {
   if (isLeadership(profile)) return true;
   return stagiaireAllowsPage(profile, "finance") === true;
@@ -206,6 +212,7 @@ export function hasNavCapability(
   if (capability === "tasks") return canAccessTasks(profile);
   if (capability === "calendar") return canAccessCalendar(profile);
   if (capability === "reports") return canAccessReports(profile);
+  if (capability === "files") return canAccessFiles(profile);
   if (capability === "finance") return canAccessFinanceHub(profile);
   if (capability === "quotes") return canAccessQuotes(profile);
   if (capability === "invoices") return canAccessInvoices(profile);
@@ -236,6 +243,8 @@ export function canAccessNavItem(profile: Profile, itemId: string): boolean {
       return canAccessCalendar(profile);
     case "reports":
       return canAccessReports(profile);
+    case "files":
+      return canAccessFiles(profile);
     case "finance":
       return canAccessFinanceHub(profile);
     case "quotes":
