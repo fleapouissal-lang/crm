@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { todayKey } from "@/lib/tasks/due-filter";
 
 function FormField({
   label,
@@ -81,7 +82,7 @@ export function CreateTaskPageClient({
       description: "",
       status: "todo",
       priority: "medium",
-      due_date: defaultDueDate ?? "",
+      due_date: defaultDueDate || todayKey(),
       assigned_to: currentUserId,
       assignee_ids: [currentUserId],
       lead_id: "",

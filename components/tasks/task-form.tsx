@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { todayKey } from "@/lib/tasks/due-filter";
 
 function FormField({
   label,
@@ -96,7 +97,7 @@ export function TaskFormDialog({
       description: "",
       status: "todo",
       priority: "medium",
-      due_date: "",
+      due_date: todayKey(),
       assigned_to: "",
       assignee_ids: [],
       lead_id: "",
@@ -111,7 +112,7 @@ export function TaskFormDialog({
         description: task?.description ?? "",
         status: task?.status ?? "todo",
         priority: task?.priority ?? "medium",
-        due_date: task?.due_date ?? defaultDueDate ?? "",
+        due_date: task?.due_date ?? defaultDueDate ?? todayKey(),
         assigned_to: task?.assigned_to ?? "",
         assignee_ids: task ? getTaskAssigneeIds(task) : [],
         lead_id: "",
