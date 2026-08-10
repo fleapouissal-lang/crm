@@ -28,6 +28,7 @@ import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
 import { taskMatchesDueFilter, todayKey } from "@/lib/tasks/due-filter";
+import { taskMatchesAssigneeFilter } from "@/lib/tasks/assignee-filter";
 import { canDeleteTaskForProfile } from "@/lib/permissions";
 import { FlAva } from "@/components/fusion/primitives";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -51,6 +52,9 @@ const PRIORITY_DOT: Record<TaskPriority, string> = {
   urgent: "var(--rose)",
 };
 
+import { getTaskAssigneeIds } from "@/lib/tasks/assignee-filter";
+import { colorForMemberId, initialsFromName } from "@/lib/team/members";
+
 const AVATAR_COLORS = ["#52525b", "#3ecf8e", "#f5a623", "#71717a"];
 
 function assigneeMeta(profile?: Profile | null) {
@@ -63,6 +67,55 @@ function assigneeMeta(profile?: Profile | null) {
       : name.slice(0, 2).toUpperCase();
   const bg = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length] ?? "#52525b";
   return { initials, bg, name };
+}
+
+function AssigneeStack({
+  task,
+  profiles,
+}: {
+  task: Task;
+  profiles: Profile[];
+}) {
+  const ids = getTaskAssigneeIds(task);
+  if (ids.length === 0) {
+    const fallback = assigneeMeta(task.assigned_profile);
+    return (
+      <FlAva sm style={{ background: fallback.bg }}>
+        {fallback.initials}
+      </FlAva>
+    );
+  }
+
+  const shown = ids.slice(0, 3);
+  const extra = ids.length - shown.length;
+
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {shown.map((id) => {
+        const profile =
+          profiles.find((p) => p.id === id) ??
+          (task.assigned_to === id ? task.assigned_profile : null);
+        const name = profile?.full_name?.trim() || profile?.email || "";
+        return (
+          <FlAva
+            key={id}
+            sm
+            style={{
+              background: colorForMemberId(id),
+              boxShadow: "0 0 0 1.5px var(--glass-solid, #111)",
+            }}
+          >
+            {initialsFromName(name)}
+          </FlAva>
+        );
+      })}
+      {extra > 0 ? (
+        <span className="grid size-6 place-items-center rounded-full bg-[var(--glass-hi)] text-[9px] font-semibold fl-faint ring-1 ring-[var(--border)]">
+          +{extra}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function creatorLabel(task: Task, profiles: Profile[], fallback: string) {
@@ -104,7 +157,6 @@ function TaskCard({
   isDragging?: boolean;
 }) {
   const dict = useDict();
-  const assignee = assigneeMeta(task.assigned_profile);
   const creator = creatorLabel(task, profiles, "—");
   const isDone = task.status === "done";
 
@@ -174,9 +226,7 @@ function TaskCard({
             </span>
           )}
         </div>
-        <FlAva sm style={{ background: assignee.bg }}>
-          {assignee.initials}
-        </FlAva>
+        <AssigneeStack task={task} profiles={profiles} />
       </div>
     </div>
   );
@@ -284,6 +334,7 @@ export function TaskKanbanBoard({
   profiles,
   projects,
   projectFilter,
+  memberFilter = "all",
   searchQuery = "",
   dueFilter = todayKey(),
   profile,
@@ -293,6 +344,7 @@ export function TaskKanbanBoard({
   profiles: Profile[];
   projects: ProjectRecord[];
   projectFilter: string;
+  memberFilter?: string;
   searchQuery?: string;
   dueFilter?: string;
   profile: Profile;
@@ -360,6 +412,7 @@ export function TaskKanbanBoard({
       tasks.filter((t) => {
         if (t.status === "cancelled") return false;
         if (!taskMatchesProjectFilter(t, projectFilter)) return false;
+        if (!taskMatchesAssigneeFilter(t, memberFilter)) return false;
         if (!taskMatchesDueFilter(t, dueFilter, today)) return false;
         if (!query) return true;
         return (
@@ -369,7 +422,7 @@ export function TaskKanbanBoard({
           (t.assigned_profile?.full_name ?? "").toLowerCase().includes(query)
         );
       }),
-    [tasks, projectFilter, dueFilter, query, today]
+    [tasks, projectFilter, memberFilter, dueFilter, query, today]
   );
 
   const byStatus = useMemo(() => {

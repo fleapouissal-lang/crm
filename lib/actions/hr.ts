@@ -369,6 +369,8 @@ export async function uploadHrContractScanAction(
   const memberId = String(formData.get("memberId") ?? "");
   const file = formData.get("file");
   const label = String(formData.get("label") ?? "").trim();
+  const rawCategory = String(formData.get("category") ?? "contract").trim();
+  const category = rawCategory === "banque" ? "banque" : "contract";
 
   if (!memberId || !(file instanceof File)) {
     return { success: false, error: "Invalid upload" };
@@ -385,7 +387,8 @@ export async function uploadHrContractScanAction(
 
   const scanId = crypto.randomUUID();
   const safeName = file.name.replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
-  const storagePath = `${gate.orgId}/${memberId}/${scanId}-${safeName}`;
+  const folder = category === "banque" ? "banque" : "contracts";
+  const storagePath = `${gate.orgId}/${memberId}/${folder}/${scanId}-${safeName}`;
 
   const supabase = await createClient();
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -411,6 +414,7 @@ export async function uploadHrContractScanAction(
       mime_type: file.type,
       storage_path: storagePath,
       label: label || safeName || file.name,
+      category,
       uploaded_by: gate.profile.id,
     })
     .select("*")
@@ -437,6 +441,7 @@ export async function uploadHrContractScanAction(
       storagePath: row.storage_path,
       uploadedAt: row.uploaded_at,
       label: row.label ?? undefined,
+      category,
     },
   };
 }

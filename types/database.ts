@@ -178,6 +178,8 @@ export interface Task {
   priority: TaskPriority;
   due_date: string | null;
   assigned_to: string | null;
+  /** All assignees (may include assigned_to as first). */
+  assignee_ids?: string[];
   lead_id: string | null;
   project_id?: string | null;
   created_by: string | null;

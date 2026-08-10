@@ -2664,13 +2664,38 @@ a.fusion-user-card:hover .fusion-user-meta b {
 .fl-filter-field .fl-input {
   width: 100% !important;
 }
+
+/* Native date inputs often ignore toolbar height — force same size as selects/search */
+.fl-filter-bar input[type="date"],
+.fl-clients-toolbar input[type="date"],
+.fl-filter-field input[type="date"] {
+  height: var(--fl-toolbar-h) !important;
+  min-height: var(--fl-toolbar-h) !important;
+  max-height: var(--fl-toolbar-h) !important;
+  padding-block: 0 !important;
+  padding-inline: 0.75rem !important;
+  line-height: 1.2 !important;
+  font-size: 12.5px !important;
+  border-radius: 10px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.fl-filter-bar input[type="date"]::-webkit-calendar-picker-indicator,
+.fl-clients-toolbar input[type="date"]::-webkit-calendar-picker-indicator,
+.fl-filter-field input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-block: 0;
+  cursor: pointer;
+  opacity: 0.65;
+}
 .fl-toolbar-create {
   flex-shrink: 0;
   margin-inline-start: auto;
 }
 .fl-filter-bar__head > .fl-seg {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: max-content;
 }
 
 /* Mobile: stack toolbars so search / filters / CTA don't squeeze horizontally */

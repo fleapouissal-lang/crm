@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 import type { TeamMemberOption } from "@/lib/team/members";
 import { FlAva } from "@/components/fusion/primitives";
@@ -10,15 +10,20 @@ export function TeamMemberPicker({
   options,
   value,
   onChange,
+  lockedIds = [],
 }: {
   options: TeamMemberOption[];
   value: string[];
   onChange: (ids: string[]) => void;
+  /** Member ids that stay selected and cannot be deselected. */
+  lockedIds?: string[];
 }) {
   const dict = useDict();
   const p = dict.fusion.projects;
+  const locked = new Set(lockedIds);
 
   function toggle(id: string) {
+    if (locked.has(id) && value.includes(id)) return;
     if (value.includes(id)) {
       onChange(value.filter((x) => x !== id));
     } else {
@@ -37,14 +42,17 @@ export function TeamMemberPicker({
       <div className="flex flex-wrap gap-2">
         {options.map((member) => {
           const selected = value.includes(member.id);
+          const isLocked = locked.has(member.id) && selected;
           return (
             <button
               key={member.id}
               type="button"
               onClick={() => toggle(member.id)}
+              disabled={isLocked}
               className={cn(
                 "fl-team-pick",
-                selected && "fl-team-pick--on"
+                selected && "fl-team-pick--on",
+                isLocked && "opacity-90 cursor-default"
               )}
               aria-pressed={selected}
             >
@@ -69,8 +77,16 @@ export function TeamMemberPicker({
                   </span>
                 ) : null}
               </span>
-              {selected ? (
-                <Check className="size-3.5 shrink-0 text-[var(--emerald)]" strokeWidth={2.5} />
+              {isLocked ? (
+                <Lock
+                  className="size-3.5 shrink-0 text-[var(--text-faint)]"
+                  strokeWidth={2.25}
+                />
+              ) : selected ? (
+                <Check
+                  className="size-3.5 shrink-0 text-[var(--emerald)]"
+                  strokeWidth={2.5}
+                />
               ) : (
                 <span className="size-3.5 shrink-0" />
               )}

@@ -11,18 +11,19 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import type { Lead, Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
+import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
 import {
   canDeleteTaskForProfile,
   canModifyTask,
-  canViewAllTasks,
 } from "@/lib/permissions";
 import { deleteTask, updateTask } from "@/lib/actions/tasks";
 import type { TaskFormValues } from "@/lib/validations/task";
+import { getTaskAssigneeIds } from "@/lib/tasks/assignee-filter";
 import { buildTeamOptions } from "@/lib/team/members";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { TeamMemberPicker } from "@/components/projects/team-member-picker";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,13 +60,11 @@ function Field({
 export function TaskDetailClient({
   task: initialTask,
   profiles,
-  leads,
   projects = [],
   profile,
 }: {
   task: Task;
   profiles: Profile[];
-  leads: Lead[];
   projects?: ProjectRecord[];
   profile: Profile;
 }) {
@@ -80,12 +79,12 @@ export function TaskDetailClient({
   const [dueDate, setDueDate] = useState(initialTask.due_date ?? "");
   const [status, setStatus] = useState<TaskStatus>(initialTask.status);
   const [priority, setPriority] = useState<TaskPriority>(initialTask.priority);
-  const [assignedTo, setAssignedTo] = useState(initialTask.assigned_to ?? "");
-  const [leadId, setLeadId] = useState(initialTask.lead_id ?? "");
+  const [assigneeIds, setAssigneeIds] = useState(() =>
+    getTaskAssigneeIds(initialTask)
+  );
   const [projectId, setProjectId] = useState(initialTask.project_id ?? "");
 
   const canEdit = canModifyTask(profile, task);
-  const canAssignAnyone = canViewAllTasks(profile);
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
 
   useEffect(() => {
@@ -95,8 +94,7 @@ export function TaskDetailClient({
     setDueDate(initialTask.due_date ?? "");
     setStatus(initialTask.status);
     setPriority(initialTask.priority);
-    setAssignedTo(initialTask.assigned_to ?? "");
-    setLeadId(initialTask.lead_id ?? "");
+    setAssigneeIds(getTaskAssigneeIds(initialTask));
     setProjectId(initialTask.project_id ?? "");
   }, [initialTask]);
 
@@ -107,20 +105,12 @@ export function TaskDetailClient({
     status !== "done" &&
     status !== "cancelled";
 
-  const assigneeLabel =
-    profiles.find((p) => p.id === assignedTo)?.full_name ??
-    profiles.find((p) => p.id === assignedTo)?.email ??
-    c.unassigned;
-
   const creatorLabel =
     task.created_profile?.full_name?.trim() ||
     task.created_profile?.email ||
     profiles.find((p) => p.id === task.created_by)?.full_name?.trim() ||
     profiles.find((p) => p.id === task.created_by)?.email ||
     "—";
-
-  const leadLabel =
-    leads.find((l) => l.id === leadId)?.title ?? c.none;
 
   const projectLabel =
     projects.find((p) => p.id === projectId)?.title ??
@@ -133,8 +123,9 @@ export function TaskDetailClient({
       status,
       priority,
       due_date: dueDate,
-      assigned_to: assignedTo,
-      lead_id: leadId,
+      assigned_to: assigneeIds[0] ?? "",
+      assignee_ids: assigneeIds,
+      lead_id: "",
       project_id: projectId || null,
       ...patch,
     };
@@ -158,14 +149,12 @@ export function TaskDetailClient({
           ...task,
           ...result.data,
           assigned_profile:
-            values.assigned_to
-              ? profiles.find((p) => p.id === values.assigned_to) ??
+            values.assignee_ids?.[0]
+              ? profiles.find((p) => p.id === values.assignee_ids![0]) ??
                 task.assigned_profile
               : null,
-          lead: values.lead_id
-            ? leads.find((l) => l.id === values.lead_id) ?? task.lead
-            : null,
         });
+        setAssigneeIds(getTaskAssigneeIds(result.data));
         setProjectId(result.data.project_id ?? "");
       }
       toast.success(td.updatedTask);
@@ -331,27 +320,33 @@ export function TaskDetailClient({
             </Field>
 
             <Field label={c.assignedTo}>
-              <Select
-                value={assignedTo || "unassigned"}
-                disabled={!canEdit || pending || !canAssignAnyone}
-                onValueChange={(v) => {
-                  const next = !v || v === "unassigned" ? "" : v;
-                  setAssignedTo(next);
-                  save({ assigned_to: next });
-                }}
-              >
-                <SelectTrigger className="fl-select-trigger fl-inp w-full">
-                  <SelectValue>{assigneeLabel}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="start">
-                  <SelectItem value="unassigned">{c.unassigned}</SelectItem>
-                  {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name ?? p.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canEdit ? (
+                <TeamMemberPicker
+                  options={teamOptions}
+                  value={assigneeIds}
+                  onChange={(ids) => {
+                    if (pending) return;
+                    setAssigneeIds(ids);
+                    save({
+                      assignee_ids: ids,
+                      assigned_to: ids[0] ?? "",
+                    });
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-[var(--text-dim)]">
+                  {assigneeIds.length === 0
+                    ? c.unassigned
+                    : assigneeIds
+                        .map(
+                          (id) =>
+                            profiles.find((p) => p.id === id)?.full_name ??
+                            profiles.find((p) => p.id === id)?.email ??
+                            id
+                        )
+                        .join(", ")}
+                </p>
+              )}
             </Field>
 
             <Field label={c.dueDate} htmlFor="task-detail-due">
@@ -393,30 +388,6 @@ export function TaskDetailClient({
                   {projects.map((proj) => (
                     <SelectItem key={proj.id} value={proj.id}>
                       {proj.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field label={c.linkedLead}>
-              <Select
-                value={leadId || "none"}
-                disabled={!canEdit || pending}
-                onValueChange={(v) => {
-                  const next = !v || v === "none" ? "" : v;
-                  setLeadId(next);
-                  save({ lead_id: next });
-                }}
-              >
-                <SelectTrigger className="fl-select-trigger fl-inp w-full">
-                  <SelectValue>{leadLabel}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="fl-select-panel" align="start">
-                  <SelectItem value="none">{c.none}</SelectItem>
-                  {leads.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.title}
                     </SelectItem>
                   ))}
                 </SelectContent>

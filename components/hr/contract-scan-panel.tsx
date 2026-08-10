@@ -96,10 +96,12 @@ function ContractCameraDialog({
   open,
   onOpenChange,
   onCapture,
+  hint,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCapture: (file: CapturedFile) => void;
+  hint?: string;
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
@@ -209,7 +211,9 @@ function ContractCameraDialog({
               />
             </div>
           )}
-          <p className="fl-tny fl-faint text-center">{h.cameraScannerHint}</p>
+          <p className="fl-tny fl-faint text-center">
+            {hint ?? h.cameraScannerHint}
+          </p>
         </div>
         <DialogFooter className="fl-dialog-footer gap-2 sm:gap-0">
           <button
@@ -238,6 +242,7 @@ export type HrScanUploadInput = {
   memberId: string;
   file: File;
   label?: string;
+  category?: "contract" | "banque";
 };
 
 function ContractDropzone({
@@ -369,11 +374,13 @@ export function ContractScanPanel({
   onUpload,
   onDelete,
   readOnly = false,
+  variant = "contract",
 }: {
   profile: EmployeeProfile;
   onUpload?: (input: HrScanUploadInput) => Promise<HrContractScan | null>;
   onDelete?: (scanId: string) => void;
   readOnly?: boolean;
+  variant?: "contract" | "banque";
 }) {
   const dict = useDict();
   const h = dict.fusion.hr;
@@ -382,7 +389,16 @@ export function ContractScanPanel({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [docLabel, setDocLabel] = useState("");
 
-  const scans = profile.contractScans ?? [];
+  const isBanque = variant === "banque";
+  const scans = isBanque
+    ? (profile.banqueScans ?? [])
+    : (profile.contractScans ?? []);
+  const emptyTitle = isBanque ? h.noBanqueScans : h.noContractScans;
+  const emptyHint = isBanque ? h.banqueScansHint : h.contractScansHint;
+  const uploadLabel = isBanque ? h.uploadBanque : h.uploadContract;
+  const dropHint = isBanque ? h.banqueDropHint : h.contractDropHint;
+  const labelPlaceholder = isBanque ? h.banqueDocLabel : h.contractDocLabel;
+  const cameraHint = isBanque ? h.banqueCameraHint : h.cameraScannerHint;
 
   async function persistCaptured(captured: CapturedFile) {
     if (!onUpload) return;
@@ -390,6 +406,7 @@ export function ContractScanPanel({
       memberId: profile.memberId,
       file: captured.file,
       label: docLabel.trim() || captured.label,
+      category: variant,
     });
     if (scan) {
       setDocLabel("");
@@ -428,32 +445,34 @@ export function ContractScanPanel({
 
   return (
     <div className="space-y-5">
-      <dl className="grid gap-2 text-sm sm:grid-cols-2">
-        <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-          <dt className="fl-muted">{l.contract}</dt>
-          <dd className="font-medium">{h.contracts[profile.contractType]}</dd>
-        </div>
-        <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-          <dt className="fl-muted">{dict.common.status}</dt>
-          <dd className="font-medium">{h.statuses[profile.status]}</dd>
-        </div>
-        {profile.contractStart ? (
+      {!isBanque ? (
+        <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-            <dt className="fl-muted">{h.contractStart}</dt>
-            <dd className="fl-mono text-[13px]">
-              {format(new Date(profile.contractStart + "T00:00:00"), "dd MMM yyyy")}
-            </dd>
+            <dt className="fl-muted">{l.contract}</dt>
+            <dd className="font-medium">{h.contracts[profile.contractType]}</dd>
           </div>
-        ) : null}
-        {profile.contractEnd ? (
           <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
-            <dt className="fl-muted">{h.contractEnd}</dt>
-            <dd className="fl-mono text-[13px]">
-              {format(new Date(profile.contractEnd + "T00:00:00"), "dd MMM yyyy")}
-            </dd>
+            <dt className="fl-muted">{dict.common.status}</dt>
+            <dd className="font-medium">{h.statuses[profile.status]}</dd>
           </div>
-        ) : null}
-      </dl>
+          {profile.contractStart ? (
+            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+              <dt className="fl-muted">{h.contractStart}</dt>
+              <dd className="fl-mono text-[13px]">
+                {format(new Date(profile.contractStart + "T00:00:00"), "dd MMM yyyy")}
+              </dd>
+            </div>
+          ) : null}
+          {profile.contractEnd ? (
+            <div className="flex justify-between gap-3 rounded-lg bg-[var(--glass-hi)] px-3 py-2.5">
+              <dt className="fl-muted">{h.contractEnd}</dt>
+              <dd className="fl-mono text-[13px]">
+                {format(new Date(profile.contractEnd + "T00:00:00"), "dd MMM yyyy")}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
 
       {!readOnly && onUpload ? (
         <ContractDropzone
@@ -463,9 +482,9 @@ export function ContractScanPanel({
           onPickFile={processFile}
           onDropFile={processFile}
           onOpenCamera={() => setCameraOpen(true)}
-          dropHint={h.contractDropHint}
-          labelPlaceholder={h.contractDocLabel}
-          uploadPdfLabel={h.uploadContract}
+          dropHint={dropHint}
+          labelPlaceholder={labelPlaceholder}
+          uploadPdfLabel={uploadLabel}
           takeScanLabel={h.takeScan}
         />
       ) : null}
@@ -473,8 +492,8 @@ export function ContractScanPanel({
       {scans.length === 0 ? (
         <HrEmptyMotif
           icon={FileText}
-          title={h.noContractScans}
-          description={h.contractScansHint}
+          title={emptyTitle}
+          description={emptyHint}
           size="md"
         />
       ) : (
@@ -498,6 +517,7 @@ export function ContractScanPanel({
         <ContractCameraDialog
           open={cameraOpen}
           onOpenChange={setCameraOpen}
+          hint={cameraHint}
           onCapture={(captured) => {
             startTransition(async () => {
               await persistCaptured(captured);

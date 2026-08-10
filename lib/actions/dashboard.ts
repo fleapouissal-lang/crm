@@ -62,7 +62,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const orgId = profile.organization_id;
   const today = new Date().toISOString().slice(0, 10);
   const memberScoped = !canViewAllTasks(profile);
-  const taskOwnerFilter = `assigned_to.eq.${profile.id},created_by.eq.${profile.id}`;
+  const taskOwnerFilter = `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`;
 
   let tasksTodayQ = supabase
     .from("tasks")

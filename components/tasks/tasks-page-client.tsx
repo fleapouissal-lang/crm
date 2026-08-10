@@ -1,11 +1,14 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Lead, Profile, Task } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { isIsoDateKey, todayKey } from "@/lib/tasks/due-filter";
+import { canViewAllTasks } from "@/lib/permissions/capabilities";
+import { buildTeamOptions } from "@/lib/team/members";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,9 +43,13 @@ export function TasksPageClient({
   const dueParam = searchParams.get("due");
   const dueFilter =
     dueParam && isIsoDateKey(dueParam) ? dueParam : todayKey();
-  const q = searchParams.get("q") ?? "";
   const viewParam = searchParams.get("view");
   const view: "board" | "list" = viewParam === "list" ? "list" : "board";
+  const showMemberFilter = canViewAllTasks(profile);
+  const memberFilter = showMemberFilter
+    ? (searchParams.get("assigned_to") ?? "all")
+    : "all";
+  const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
   const router = useRouter();
 
   function updateFilter(key: string, value: string) {
@@ -57,6 +64,7 @@ export function TasksPageClient({
       params.set(key, value);
     }
     params.delete("status");
+    params.delete("q");
     router.push(`/tasks?${params.toString()}`);
   }
 
@@ -64,6 +72,7 @@ export function TasksPageClient({
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", next);
     params.delete("status");
+    params.delete("q");
     router.push(`/tasks?${params.toString()}`);
   }
 
@@ -74,6 +83,14 @@ export function TasksPageClient({
         ? dict.fusion.kanban.noProject
         : (projects.find((p) => p.id === projectFilter)?.title ??
           dict.fusion.kanban.filterByProject);
+
+  const memberFilterLabel =
+    memberFilter === "all"
+      ? dict.fusion.projects.allMembers
+      : memberFilter === "unassigned"
+        ? dict.common.unassigned
+        : (teamOptions.find((m) => m.id === memberFilter)?.name ??
+          dict.fusion.projects.filterByMember);
 
   return (
     <div className="space-y-4">
@@ -98,29 +115,10 @@ export function TasksPageClient({
             </div>
 
             <div className="fl-clients-toolbar__actions">
-              <div className="fl-clients-search-wrap">
-                <Search strokeWidth={2} />
-                <Input
-                  placeholder={dict.tasks.searchPlaceholder}
-                  className="fl-clients-search"
-                  defaultValue={q}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateFilter("q", (e.target as HTMLInputElement).value);
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value !== q) {
-                      updateFilter("q", e.target.value);
-                    }
-                  }}
-                />
-              </div>
-
               <div className="fl-filter-field">
                 <Input
                   type="date"
-                  className="fl-input fl-select-trigger"
+                  className="fl-input"
                   value={dueFilter}
                   aria-label={dict.tasks.pickDueDate}
                   title={dict.tasks.pickDueDate}
@@ -154,6 +152,35 @@ export function TasksPageClient({
                 </Select>
               </div>
 
+              {showMemberFilter ? (
+                <div className="fl-filter-field fl-filter-field--lg">
+                  <Select
+                    value={memberFilter}
+                    onValueChange={(v) => v && updateFilter("assigned_to", v)}
+                  >
+                    <SelectTrigger
+                      className="fl-select-trigger"
+                      aria-label={dict.fusion.projects.filterByMember}
+                    >
+                      <SelectValue>{memberFilterLabel}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="fl-select-panel" align="end">
+                      <SelectItem value="all">
+                        {dict.fusion.projects.allMembers}
+                      </SelectItem>
+                      <SelectItem value="unassigned">
+                        {dict.common.unassigned}
+                      </SelectItem>
+                      {teamOptions.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
               <Link
                 href="/tasks/new"
                 className="fl-btn primary sm fl-toolbar-create shrink-0"
@@ -174,7 +201,7 @@ export function TasksPageClient({
             profiles={profiles}
             projects={projects}
             projectFilter={projectFilter}
-            searchQuery={q}
+            memberFilter={memberFilter}
             dueFilter={dueFilter}
             profile={profile}
           />
@@ -188,7 +215,7 @@ export function TasksPageClient({
               profile={profile}
               projects={projects}
               projectFilter={projectFilter}
-              searchQuery={q}
+              memberFilter={memberFilter}
               dueFilter={dueFilter}
             />
           </div>

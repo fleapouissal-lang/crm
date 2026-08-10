@@ -10,6 +10,7 @@ import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
 import { taskMatchesDueFilter, todayKey } from "@/lib/tasks/due-filter";
+import { taskMatchesAssigneeFilter } from "@/lib/tasks/assignee-filter";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
@@ -131,6 +132,7 @@ export function TaskList({
   profile,
   projects = [],
   projectFilter = "all",
+  memberFilter = "all",
   searchQuery = "",
   dueFilter = todayKey(),
 }: {
@@ -141,6 +143,7 @@ export function TaskList({
   profile: Profile;
   projects?: ProjectRecord[];
   projectFilter?: string;
+  memberFilter?: string;
   searchQuery?: string;
   dueFilter?: string;
 }) {
@@ -225,6 +228,7 @@ export function TaskList({
     () =>
       tasks.filter((t) => {
         if (!taskMatchesProjectFilter(t, projectFilter)) return false;
+        if (!taskMatchesAssigneeFilter(t, memberFilter)) return false;
         if (!taskMatchesDueFilter(t, dueFilter, today)) return false;
         const query = searchQuery.trim().toLowerCase();
         if (!query) return true;
@@ -238,7 +242,7 @@ export function TaskList({
           (t.assigned_profile?.full_name ?? "").toLowerCase().includes(query)
         );
       }),
-    [tasks, projectFilter, searchQuery, dueFilter, profiles, today]
+    [tasks, projectFilter, memberFilter, searchQuery, dueFilter, profiles, today]
   );
   const orderedTasks = useMemo(() => {
     const sectionRank = (task: Task) => {
@@ -251,7 +255,7 @@ export function TaskList({
   }, [filteredTasks, today]);
   const pagination = useAdaptivePagination(orderedTasks, {
     rowHeight: 61,
-    resetKey: `${projectFilter}|${searchQuery}|${dueFilter}`,
+    resetKey: `${projectFilter}|${memberFilter}|${searchQuery}|${dueFilter}`,
   });
 
   if (filteredTasks.length === 0) {
@@ -426,7 +430,6 @@ export function TaskList({
         }}
         task={editTask ?? undefined}
         profiles={profiles}
-        leads={leads}
         projects={projects}
       />
     </>

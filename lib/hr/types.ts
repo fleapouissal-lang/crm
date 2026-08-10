@@ -6,6 +6,8 @@ export type HrEntryType =
   | "leave"
   | "note";
 
+export type HrScanCategory = "contract" | "banque";
+
 export type HrContractType =
   | "founder"
   | "core"
@@ -47,6 +49,7 @@ export interface HrContractScan {
   storagePath?: string;
   uploadedAt: string;
   label?: string;
+  category?: HrScanCategory;
 }
 
 export interface EmployeeProfile {
@@ -68,6 +71,8 @@ export interface EmployeeProfile {
   contractStart?: string;
   contractEnd?: string;
   contractScans?: HrContractScan[];
+  /** Bank docs (RIB, statements) — PDF / images. */
+  banqueScans?: HrContractScan[];
   entries: HrEntry[];
 }
 
@@ -75,6 +80,7 @@ export type HrProfileTab =
   | "overview"
   | "bonus"
   | "commission"
+  | "banque"
   | "overtime"
   | "lateness"
   | "leave"
@@ -85,6 +91,7 @@ export const HR_PROFILE_TABS: HrProfileTab[] = [
   "overview",
   "bonus",
   "commission",
+  "banque",
   "overtime",
   "lateness",
   "leave",
@@ -202,6 +209,7 @@ export function normalizeEmployeeProfile(profile: EmployeeProfile): EmployeeProf
     contractStart: profile.contractStart ?? "",
     contractEnd: profile.contractEnd ?? "",
     contractScans: profile.contractScans ?? [],
+    banqueScans: profile.banqueScans ?? [],
     entries: profile.entries ?? [],
   };
 }

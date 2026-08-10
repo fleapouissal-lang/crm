@@ -11,7 +11,7 @@ import {
   canModifyTask,
   canViewAllTasks,
 } from "@/lib/permissions";
-import { taskSchema } from "@/lib/validations/task";
+import { taskSchema, normalizeAssigneeIds } from "@/lib/validations/task";
 import type {
   ActionResult,
   ActivityType,
@@ -19,6 +19,24 @@ import type {
   TaskPriority,
   TaskStatus,
 } from "@/types/database";
+
+function resolveAssignees(
+  profile: { id: string },
+  values: { assignee_ids?: string[] | null; assigned_to?: string | null },
+  options?: { requireSelf?: boolean }
+): { assigneeIds: string[]; assignedTo: string | null } {
+  let assigneeIds = normalizeAssigneeIds(values);
+  if (options?.requireSelf && !assigneeIds.includes(profile.id)) {
+    assigneeIds = [profile.id, ...assigneeIds];
+  }
+  if (!assigneeIds.length) {
+    return { assigneeIds: [profile.id], assignedTo: profile.id };
+  }
+  return {
+    assigneeIds,
+    assignedTo: assigneeIds[0] ?? null,
+  };
+}
 
 async function logActivity(
   orgId: string,
@@ -42,7 +60,7 @@ async function fetchTaskForAccess(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
-    .select("id, assigned_to, created_by, organization_id, title")
+    .select("id, assigned_to, assignee_ids, created_by, organization_id, title")
     .eq("id", id)
     .single();
   return data;
@@ -66,7 +84,9 @@ export async function getTasks(filters?: {
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (!canViewAllTasks(profile)) {
-    query = query.or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`);
+    query = query.or(
+      `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`
+    );
   }
 
   if (filters?.status && filters.status !== "all") {
@@ -116,7 +136,9 @@ export async function getTasksForLead(leadId: string): Promise<Task[]> {
     .order("due_date", { ascending: true });
 
   if (!canViewAllTasks(profile)) {
-    query = query.or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`);
+    query = query.or(
+      `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`
+    );
   }
 
   const { data } = await query;
@@ -141,9 +163,9 @@ export async function createTask(
   }
 
   const values = parsed.data;
-  const assignedTo = canViewAllTasks(profile)
-    ? values.assigned_to || null
-    : profile.id;
+  const { assigneeIds, assignedTo } = resolveAssignees(profile, values, {
+    requireSelf: true,
+  });
 
   const supabase = await createClient();
 
@@ -157,7 +179,8 @@ export async function createTask(
       priority: values.priority as TaskPriority,
       due_date: values.due_date || null,
       assigned_to: assignedTo,
-      lead_id: values.lead_id || null,
+      assignee_ids: assigneeIds,
+      lead_id: null,
       project_id: values.project_id || null,
       created_by: profile.id,
     })
@@ -176,9 +199,6 @@ export async function createTask(
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
-  if (values.lead_id) {
-    revalidatePath(`/leads/${values.lead_id}`);
-  }
   return { success: true, data: data as Task };
 }
 
@@ -205,6 +225,7 @@ export async function updateTask(
   }
 
   const values = parsed.data;
+  const { assigneeIds, assignedTo } = resolveAssignees(profile, values);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -215,10 +236,8 @@ export async function updateTask(
       status: values.status as TaskStatus,
       priority: values.priority as TaskPriority,
       due_date: values.due_date || null,
-      assigned_to: canViewAllTasks(profile)
-        ? values.assigned_to || null
-        : profile.id,
-      lead_id: values.lead_id || null,
+      assigned_to: assignedTo,
+      assignee_ids: assigneeIds,
       project_id: values.project_id || null,
     })
     .eq("id", id)

@@ -6,6 +6,7 @@ import type {
   HrEntry,
   HrEntryType,
   HrMemberStatus,
+  HrScanCategory,
 } from "./types";
 import { normalizeEmployeeProfile } from "./types";
 import type { TeamMemberOption } from "@/lib/team/members";
@@ -52,6 +53,7 @@ export type HrScanRow = {
   storage_path: string;
   label: string | null;
   uploaded_at: string;
+  category?: string | null;
 };
 
 function num(v: number | string | null | undefined): number | undefined {
@@ -81,6 +83,8 @@ export function mapScanRow(
   row: HrScanRow,
   signedUrl: string
 ): HrContractScan {
+  const category: HrScanCategory =
+    row.category === "banque" ? "banque" : "contract";
   return {
     id: row.id,
     memberId: row.member_id,
@@ -90,6 +94,7 @@ export function mapScanRow(
     storagePath: row.storage_path,
     uploadedAt: row.uploaded_at,
     label: row.label ?? undefined,
+    category,
   };
 }
 
@@ -115,6 +120,7 @@ export function emptyProfileForMember(member: TeamMemberOption): EmployeeProfile
     contractStart: "",
     contractEnd: "",
     contractScans: [],
+    banqueScans: [],
     entries: [],
   });
 }
@@ -134,11 +140,19 @@ export function mergeHrWorkspace(
     entriesByMember.set(row.member_id, list);
   }
   const scansByMember = new Map<string, HrContractScan[]>();
+  const banqueByMember = new Map<string, HrContractScan[]>();
   for (const row of scanRows) {
     const url = signedByPath.get(row.storage_path) ?? "";
-    const list = scansByMember.get(row.member_id) ?? [];
-    list.push(mapScanRow(row, url));
-    scansByMember.set(row.member_id, list);
+    const scan = mapScanRow(row, url);
+    if (scan.category === "banque") {
+      const list = banqueByMember.get(row.member_id) ?? [];
+      list.push(scan);
+      banqueByMember.set(row.member_id, list);
+    } else {
+      const list = scansByMember.get(row.member_id) ?? [];
+      list.push(scan);
+      scansByMember.set(row.member_id, list);
+    }
   }
 
   return team.map((member) => {
@@ -162,6 +176,7 @@ export function mergeHrWorkspace(
       contractStart: row.contract_start ?? "",
       contractEnd: row.contract_end ?? "",
       contractScans: scansByMember.get(member.id) ?? [],
+      banqueScans: banqueByMember.get(member.id) ?? [],
       entries: entriesByMember.get(member.id) ?? [],
     });
   });

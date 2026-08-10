@@ -168,9 +168,12 @@ export function canAccessFullCrm(profile: Profile): boolean {
 
 export function isTaskOwnedBy(
   profile: Pick<Profile, "id">,
-  task: Pick<Task, "assigned_to" | "created_by">
+  task: Pick<Task, "assigned_to" | "created_by" | "assignee_ids">
 ): boolean {
-  return task.assigned_to === profile.id || task.created_by === profile.id;
+  if (task.assigned_to === profile.id || task.created_by === profile.id) {
+    return true;
+  }
+  return (task.assignee_ids ?? []).includes(profile.id);
 }
 
 export function canViewAllTasks(profile: Profile): boolean {

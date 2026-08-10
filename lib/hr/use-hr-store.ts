@@ -172,10 +172,13 @@ export function useHrStore(
       memberId: string;
       file: File;
       label?: string;
+      category?: "contract" | "banque";
     }): Promise<HrContractScan | null> => {
+      const category = input.category === "banque" ? "banque" : "contract";
       const fd = new FormData();
       fd.set("memberId", input.memberId);
       fd.set("file", input.file);
+      fd.set("category", category);
       if (input.label) fd.set("label", input.label);
 
       const res = await uploadHrContractScanAction(fd);
@@ -185,14 +188,19 @@ export function useHrStore(
       }
 
       setHrProfiles((prev) =>
-        prev.map((p) =>
-          p.memberId === input.memberId
-            ? {
-                ...p,
-                contractScans: [res.data, ...(p.contractScans ?? [])],
-              }
-            : p
-        )
+        prev.map((p) => {
+          if (p.memberId !== input.memberId) return p;
+          if (category === "banque") {
+            return {
+              ...p,
+              banqueScans: [res.data, ...(p.banqueScans ?? [])],
+            };
+          }
+          return {
+            ...p,
+            contractScans: [res.data, ...(p.contractScans ?? [])],
+          };
+        })
       );
       return res.data;
     },
@@ -206,6 +214,7 @@ export function useHrStore(
           ? {
               ...p,
               contractScans: (p.contractScans ?? []).filter((s) => s.id !== scanId),
+              banqueScans: (p.banqueScans ?? []).filter((s) => s.id !== scanId),
             }
           : p
       )

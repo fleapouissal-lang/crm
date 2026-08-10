@@ -165,6 +165,7 @@ export function EmployeeProfileContent({
     memberId: string;
     file: File;
     label?: string;
+    category?: "contract" | "banque";
   }) => Promise<HrContractScan | null>;
   onDeleteScan?: (scanId: string) => void;
 }) {
@@ -179,6 +180,7 @@ export function EmployeeProfileContent({
     () => ({
       bonus: filterEntriesByType(profile.entries, "bonus").length,
       commission: filterEntriesByType(profile.entries, "commission").length,
+      banque: (profile.banqueScans ?? []).length,
       overtime: filterEntriesByType(profile.entries, "overtime").length,
       lateness: filterEntriesByType(profile.entries, "lateness").length,
       leave: filterEntriesByType(profile.entries, "leave").length,
@@ -192,6 +194,7 @@ export function EmployeeProfileContent({
     { key: "overview", label: h.tabOverview, count: 0 },
     { key: "bonus", label: h.bonus, count: counts.bonus },
     { key: "commission", label: h.commission, count: counts.commission },
+    { key: "banque", label: h.banque, count: counts.banque },
     { key: "overtime", label: h.overtime, count: counts.overtime },
     { key: "lateness", label: h.lateness, count: counts.lateness },
     { key: "leave", label: h.leave, count: counts.leave },
@@ -354,6 +357,16 @@ export function EmployeeProfileContent({
                 onAdd={onQuickAdd ? () => onQuickAdd("commission") : undefined}
               />
             </>
+          )}
+
+          {activeTab === "banque" && (
+            <ContractScanPanel
+              profile={profile}
+              variant="banque"
+              readOnly={!(onUploadScan && onDeleteScan)}
+              onUpload={onUploadScan}
+              onDelete={onDeleteScan}
+            />
           )}
 
           {activeTab === "overtime" && (
