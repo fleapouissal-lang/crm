@@ -8,12 +8,15 @@ import {
   canViewAllTasks,
   isLeadership,
 } from "@/lib/permissions/capabilities";
+import { memberTaskOrFilter } from "@/lib/tasks/visibility";
 import type {
   Activity,
   Lead,
   LeadStage,
   Task,
+  TaskStatus,
 } from "@/types/database";
+import { TASK_STATUSES } from "@/types/database";
 
 export interface DashboardStats {
   totalLeads: number;
@@ -27,6 +30,7 @@ export interface DashboardStats {
   urgentTasks: number;
   conversionRate: number;
   leadsByStage: { stage: LeadStage; count: number; value: number }[];
+  tasksByStatus: { status: TaskStatus; count: number }[];
   recentLeads: Lead[];
   upcomingTasks: Task[];
   urgentTaskList: Task[];
@@ -50,6 +54,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     urgentTasks: 0,
     conversionRate: 0,
     leadsByStage: [],
+    tasksByStatus: TASK_STATUSES.map((status) => ({ status, count: 0 })),
     recentLeads: [],
     upcomingTasks: [],
     urgentTaskList: [],
@@ -62,41 +67,36 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const orgId = profile.organization_id;
   const today = new Date().toISOString().slice(0, 10);
   const memberScoped = !canViewAllTasks(profile);
-  const taskOwnerFilter = `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`;
+  const taskOwnerFilter = memberTaskOrFilter(profile.id);
 
   let tasksTodayQ = supabase
     .from("tasks")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId)
     .eq("due_date", today)
-    .neq("status", "done")
-    .neq("status", "cancelled");
+    .neq("status", "testing");
   let openTasksQ = supabase
     .from("tasks")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId)
-    .neq("status", "done")
-    .neq("status", "cancelled");
+    .neq("status", "testing");
   let overdueTasksQ = supabase
     .from("tasks")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId)
     .lt("due_date", today)
-    .neq("status", "done")
-    .neq("status", "cancelled");
+    .neq("status", "testing");
   let urgentCountQ = supabase
     .from("tasks")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId)
     .in("priority", ["urgent", "high"])
-    .neq("status", "done")
-    .neq("status", "cancelled");
+    .neq("status", "testing");
   let upcomingTasksQ = supabase
     .from("tasks")
     .select("*, assigned_profile:profiles!tasks_assigned_to_fkey(*)")
     .eq("organization_id", orgId)
-    .neq("status", "done")
-    .neq("status", "cancelled")
+    .neq("status", "testing")
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(6);
   let urgentListQ = supabase
@@ -104,10 +104,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .select("*, assigned_profile:profiles!tasks_assigned_to_fkey(*)")
     .eq("organization_id", orgId)
     .in("priority", ["urgent", "high"])
-    .neq("status", "done")
-    .neq("status", "cancelled")
+    .neq("status", "testing")
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(6);
+
+  let tasksByStatusQ = supabase
+    .from("tasks")
+    .select("status")
+    .eq("organization_id", orgId);
 
   if (memberScoped) {
     tasksTodayQ = tasksTodayQ.or(taskOwnerFilter);
@@ -116,6 +120,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     urgentCountQ = urgentCountQ.or(taskOwnerFilter);
     upcomingTasksQ = upcomingTasksQ.or(taskOwnerFilter);
     urgentListQ = urgentListQ.or(taskOwnerFilter);
+    tasksByStatusQ = tasksByStatusQ.or(taskOwnerFilter);
   }
 
   const leadership = isLeadership(profile);
@@ -133,6 +138,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     upcomingTasksRes,
     urgentListRes,
     activitiesRes,
+    tasksByStatusRes,
   ] = await Promise.all([
     showLeads
       ? supabase
@@ -175,6 +181,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           .order("created_at", { ascending: false })
           .limit(10)
       : Promise.resolve({ data: [] }),
+    tasksByStatusQ,
   ]);
 
   const leads = leadsRes.data ?? [];
@@ -226,6 +233,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     ([date, value]) => ({ date, value })
   );
 
+  const statusCount = new Map<TaskStatus, number>();
+  for (const status of TASK_STATUSES) statusCount.set(status, 0);
+  for (const row of tasksByStatusRes.data ?? []) {
+    const status = row.status as TaskStatus;
+    if (statusCount.has(status)) {
+      statusCount.set(status, (statusCount.get(status) ?? 0) + 1);
+    }
+  }
+  const tasksByStatus = TASK_STATUSES.map((status) => ({
+    status,
+    count: statusCount.get(status) ?? 0,
+  }));
+
   return {
     totalLeads,
     openLeads,
@@ -238,6 +258,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     urgentTasks: urgentCountRes.count ?? 0,
     conversionRate,
     leadsByStage,
+    tasksByStatus,
     recentLeads: (recentLeadsRes.data as Lead[]) ?? [],
     upcomingTasks: (upcomingTasksRes.data as Task[]) ?? [],
     urgentTaskList: (urgentListRes.data as Task[]) ?? [],

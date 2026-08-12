@@ -27,7 +27,7 @@ export function PipelineTrendChart({ trend }: PipelineChartProps) {
       <div className="fl-card-head">
         <div>
           <h3>{dict.dashboard.pipelineTrend}</h3>
-          <div className="ch-sub">{dict.dashboard.subtitle}</div>
+          <div className="ch-sub">{dict.dashboard.pipelineTrendHint ?? dict.dashboard.subtitle}</div>
         </div>
         <div className="fl-seg">
           <button type="button" className="on">
@@ -72,7 +72,7 @@ export function PipelineTrendChart({ trend }: PipelineChartProps) {
                 labels: {
                   style: { colors: "#646b81", fontSize: "11px" },
                   formatter: (v: number) =>
-                    v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`,
+                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`,
                 },
               },
               grid: {
@@ -85,7 +85,7 @@ export function PipelineTrendChart({ trend }: PipelineChartProps) {
                   formatter: (v: number) =>
                     new Intl.NumberFormat(dateLocale, {
                       style: "currency",
-                      currency: "USD",
+                      currency: "MAD",
                       maximumFractionDigits: 0,
                     }).format(v),
                 },

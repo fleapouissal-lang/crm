@@ -1,6 +1,7 @@
 "use client";
 
 import type { LeadStage, TaskPriority, TaskStatus } from "@/types/database";
+import { TASK_STATUS_PILL } from "@/lib/tasks/status";
 import { useDict } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -12,13 +13,6 @@ const stageBadgeClass: Record<LeadStage, string> = {
   negotiation: "b-iris",
   won: "b-green",
   lost: "b-rose",
-};
-
-const statusBadgeClass: Record<TaskStatus, string> = {
-  todo: "b-gray",
-  in_progress: "b-blue",
-  done: "b-green",
-  cancelled: "b-rose",
 };
 
 const priorityBadgeClass: Record<TaskPriority, string> = {
@@ -39,8 +33,16 @@ export function LeadStageBadge({ stage }: { stage: LeadStage }) {
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
   const dict = useDict();
+  const pill = TASK_STATUS_PILL[status];
   return (
-    <span className={cn("fl-badge", statusBadgeClass[status])}>
+    <span
+      className="fl-badge fl-task-status-pill"
+      style={{
+        background: pill.bg,
+        color: pill.color,
+        border: pill.border ?? "1px solid transparent",
+      }}
+    >
       {dict.taskStatus[status]}
     </span>
   );

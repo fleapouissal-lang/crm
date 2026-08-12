@@ -8,7 +8,7 @@ import { canAccessTasks } from "@/lib/permissions";
 export default async function CreateTaskPage({
   searchParams,
 }: {
-  searchParams: Promise<{ due_date?: string }>;
+  searchParams: Promise<{ due_date?: string; status?: string }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) redirect("/login");
@@ -27,6 +27,7 @@ export default async function CreateTaskPage({
         projects={projects}
         currentUserId={profile.id}
         defaultDueDate={params.due_date}
+        defaultStatus={params.status}
       />
     </PageTransition>
   );

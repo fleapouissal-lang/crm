@@ -186,7 +186,7 @@ export function canCreateTask(profile: Profile): boolean {
 
 export function canModifyTask(
   profile: Profile,
-  task: Pick<Task, "assigned_to" | "created_by">
+  task: Pick<Task, "assigned_to" | "created_by" | "assignee_ids">
 ): boolean {
   if (isLeadership(profile)) return true;
   if (!canAccessTasks(profile)) return false;
@@ -195,7 +195,7 @@ export function canModifyTask(
 
 export function canDeleteTaskForProfile(
   profile: Profile,
-  task?: Pick<Task, "assigned_to" | "created_by">
+  task?: Pick<Task, "assigned_to" | "created_by" | "assignee_ids">
 ): boolean {
   if (isLeadership(profile)) return true;
   if (!task) return false;

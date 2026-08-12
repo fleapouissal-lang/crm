@@ -3,10 +3,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import type { Lead, Profile, Task } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
-import { isIsoDateKey, todayKey } from "@/lib/tasks/due-filter";
+import { isIsoDateKey } from "@/lib/tasks/due-filter";
 import { canViewAllTasks } from "@/lib/permissions/capabilities";
 import { buildTeamOptions } from "@/lib/team/members";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -19,8 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskList } from "@/components/tasks/task-list";
-import { TaskKanbanBoard } from "@/components/tasks/task-kanban-board";
-import { cn } from "@/lib/utils";
 
 export function TasksPageClient({
   tasks,
@@ -42,9 +40,7 @@ export function TasksPageClient({
   const projectFilter = searchParams.get("project_id") ?? "all";
   const dueParam = searchParams.get("due");
   const dueFilter =
-    dueParam && isIsoDateKey(dueParam) ? dueParam : todayKey();
-  const viewParam = searchParams.get("view");
-  const view: "board" | "list" = viewParam === "list" ? "list" : "board";
+    dueParam && isIsoDateKey(dueParam) ? dueParam : "all";
   const showMemberFilter = canViewAllTasks(profile);
   const memberFilter = showMemberFilter
     ? (searchParams.get("assigned_to") ?? "all")
@@ -55,8 +51,7 @@ export function TasksPageClient({
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (key === "due") {
-      const today = todayKey();
-      if (!value || value === today) params.delete("due");
+      if (!value || value === "all") params.delete("due");
       else params.set("due", value);
     } else if (!value || value === "all") {
       params.delete(key);
@@ -65,14 +60,7 @@ export function TasksPageClient({
     }
     params.delete("status");
     params.delete("q");
-    router.push(`/tasks?${params.toString()}`);
-  }
-
-  function setView(next: "board" | "list") {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", next);
-    params.delete("status");
-    params.delete("q");
+    params.delete("view");
     router.push(`/tasks?${params.toString()}`);
   }
 
@@ -97,35 +85,29 @@ export function TasksPageClient({
       <div className="fl-card overflow-hidden">
         <div className="fl-filter-bar fl-filter-bar--card">
           <div className="fl-filter-bar__head">
-            <div className="fl-seg shrink-0">
-              <button
-                type="button"
-                className={cn(view === "board" && "on")}
-                onClick={() => setView("board")}
-              >
-                {dict.fusion.kanban.board}
-              </button>
-              <button
-                type="button"
-                className={cn(view === "list" && "on")}
-                onClick={() => setView("list")}
-              >
-                {dict.tasks.list}
-              </button>
-            </div>
-
-            <div className="fl-clients-toolbar__actions">
-              <div className="fl-filter-field">
+            <div className="fl-clients-toolbar__actions w-full justify-end">
+              <div className="fl-filter-field flex items-center gap-1.5">
                 <Input
                   type="date"
                   className="fl-input"
-                  value={dueFilter}
+                  value={dueFilter === "all" ? "" : dueFilter}
                   aria-label={dict.tasks.pickDueDate}
-                  title={dict.tasks.pickDueDate}
+                  title={dict.tasks.allDates}
                   onChange={(e) => {
-                    updateFilter("due", e.target.value || todayKey());
+                    updateFilter("due", e.target.value || "all");
                   }}
                 />
+                {dueFilter !== "all" ? (
+                  <button
+                    type="button"
+                    className="fl-btn sm ghost shrink-0"
+                    title={dict.tasks.allDates}
+                    onClick={() => updateFilter("due", "all")}
+                  >
+                    <X className="size-3.5" strokeWidth={2} />
+                    <span className="hidden sm:inline">{dict.tasks.allDates}</span>
+                  </button>
+                ) : null}
               </div>
 
               <div className="fl-filter-field fl-filter-field--lg">
@@ -194,32 +176,19 @@ export function TasksPageClient({
           </div>
         </div>
 
-        {view === "board" ? (
-          <TaskKanbanBoard
+        <div className="fl-pad">
+          <TaskList
             initialTasks={tasks}
             organizationId={organizationId}
             profiles={profiles}
+            leads={leads}
+            profile={profile}
             projects={projects}
             projectFilter={projectFilter}
             memberFilter={memberFilter}
             dueFilter={dueFilter}
-            profile={profile}
           />
-        ) : (
-          <div className="fl-pad">
-            <TaskList
-              initialTasks={tasks}
-              organizationId={organizationId}
-              profiles={profiles}
-              leads={leads}
-              profile={profile}
-              projects={projects}
-              projectFilter={projectFilter}
-              memberFilter={memberFilter}
-              dueFilter={dueFilter}
-            />
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

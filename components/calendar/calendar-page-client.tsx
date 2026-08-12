@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Task } from "@/types/database";
+import { tasksVisibleOnDay } from "@/lib/tasks/due-filter";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
 import {
@@ -104,8 +105,11 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
     month: "short",
   });
 
-  const dayTasks = tasksByDate.get(selectedKey) ?? [];
   const todayKey = formatKey(new Date());
+  const dayTasks = useMemo(
+    () => tasksVisibleOnDay(tasks, selectedKey, todayKey),
+    [tasks, selectedKey, todayKey]
+  );
 
   function shiftMonth(delta: number) {
     setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
@@ -198,7 +202,9 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
               const overdue =
                 !!task.due_date &&
                 task.due_date < todayKey &&
-                task.status !== "done";
+                task.status !== "testing";
+              const isReminder =
+                task.due_date !== selectedKey && task.status !== "testing";
               return (
                 <Link
                   key={task.id}
@@ -213,6 +219,11 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
                   />
                   <div className="min-w-0 flex-1">
                     <b className="block truncate text-[13px]">{task.title}</b>
+                    {isReminder ? (
+                      <p className="mt-0.5 text-[11px] fl-faint">
+                        {dict.tasks.dailyReminder}
+                      </p>
+                    ) : null}
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       <TaskPriorityBadge priority={task.priority} />
                       <TaskStatusBadge status={task.status} />

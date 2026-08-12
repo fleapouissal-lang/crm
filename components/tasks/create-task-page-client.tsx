@@ -13,6 +13,7 @@ import type { Profile } from "@/types/database";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { buildTeamOptions } from "@/lib/team/members";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
+import type { TaskStatus } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { TeamMemberPicker } from "@/components/projects/team-member-picker";
 import { Input } from "@/components/ui/input";
@@ -51,16 +52,24 @@ function FormField({
   );
 }
 
+function resolveDefaultStatus(value?: string): TaskStatus {
+  return TASK_STATUSES.includes(value as TaskStatus)
+    ? (value as TaskStatus)
+    : "todo";
+}
+
 export function CreateTaskPageClient({
   profiles,
   projects = [],
   currentUserId,
   defaultDueDate,
+  defaultStatus,
 }: {
   profiles: Profile[];
   projects?: ProjectRecord[];
   currentUserId: string;
   defaultDueDate?: string;
+  defaultStatus?: string;
 }) {
   const dict = useDict();
   const router = useRouter();
@@ -80,7 +89,7 @@ export function CreateTaskPageClient({
     defaultValues: {
       title: "",
       description: "",
-      status: "todo",
+      status: resolveDefaultStatus(defaultStatus),
       priority: "medium",
       due_date: defaultDueDate || todayKey(),
       assigned_to: currentUserId,

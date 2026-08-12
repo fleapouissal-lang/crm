@@ -1,30 +1,43 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckSquare, Circle, Eye, Pencil, Trash2, Check } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  Eye,
+  Flag,
+  Pencil,
+  Plus,
+  Trash2,
+  Check,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
-import type { Lead, Profile, Task, TaskStatus } from "@/types/database";
+import type { Lead, Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
+import {
+  TASK_STATUS_ORDER,
+  TASK_STATUS_COLOR,
+  isTaskDoneStatus,
+  TASK_DONE_STATUS,
+} from "@/lib/tasks/status";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
 import { taskMatchesDueFilter, todayKey } from "@/lib/tasks/due-filter";
-import { taskMatchesAssigneeFilter } from "@/lib/tasks/assignee-filter";
+import {
+  getTaskAssigneeIds,
+  taskMatchesAssigneeFilter,
+} from "@/lib/tasks/assignee-filter";
+import { buildTeamOptions } from "@/lib/team/members";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
-import {
-  TaskPriorityBadge,
-  TaskStatusBadge,
-} from "@/components/shared/status-badge";
-import { EmptyState } from "@/components/shared/page-header";
-import { DataPagination } from "@/components/shared/data-pagination";
+import { TaskStatusBadge } from "@/components/shared/status-badge";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { TaskFormDialog } from "@/components/tasks/task-form";
+import { AvatarStack } from "@/components/fusion/primitives";
 import { canDeleteTaskForProfile } from "@/lib/permissions";
-import { useAdaptivePagination } from "@/hooks/use-adaptive-pagination";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -36,6 +49,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const PRIORITY_FLAG: Record<TaskPriority, string> = {
+  urgent: "var(--rose)",
+  high: "var(--amber)",
+  medium: "var(--iris-2)",
+  low: "var(--text-dim)",
+};
 
 function TaskRowActions({
   task,
@@ -67,7 +87,9 @@ function TaskRowActions({
       onClick: onEdit,
     },
     {
-      label: task.status === "done" ? dict.tasks.markTodo : dict.tasks.markDone,
+      label: isTaskDoneStatus(task.status)
+        ? dict.tasks.markTodo
+        : dict.tasks.markDone,
       icon: <Check className="size-4" />,
       onClick: onToggleDone,
     },
@@ -128,13 +150,13 @@ export function TaskList({
   initialTasks,
   organizationId,
   profiles,
-  leads,
+  leads: _leads,
   profile,
   projects = [],
   projectFilter = "all",
   memberFilter = "all",
   searchQuery = "",
-  dueFilter = todayKey(),
+  dueFilter = "all",
 }: {
   initialTasks: Task[];
   organizationId: string;
@@ -152,7 +174,14 @@ export function TaskList({
   const dateLocale = getIntlLocale(locale);
   const [tasks, setTasks] = useState(initialTasks);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [, startTransition] = useTransition();
+  const teamById = useMemo(() => {
+    const map = new Map(
+      buildTeamOptions(profiles).map((m) => [m.id, m] as const)
+    );
+    return map;
+  }, [profiles]);
 
   useEffect(() => {
     setTasks(initialTasks);
@@ -198,11 +227,17 @@ export function TaskList({
     };
   }, [organizationId]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
+
+  const projectsById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects]
+  );
 
   function toggleDone(task: Task) {
-    const nextStatus: TaskStatus =
-      task.status === "done" ? "todo" : "done";
+    const nextStatus: TaskStatus = isTaskDoneStatus(task.status)
+      ? "todo"
+      : TASK_DONE_STATUS;
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
     );
@@ -219,11 +254,6 @@ export function TaskList({
     });
   }
 
-  const projectsById = useMemo(
-    () => new Map(projects.map((p) => [p.id, p])),
-    [projects]
-  );
-
   const filteredTasks = useMemo(
     () =>
       tasks.filter((t) => {
@@ -235,192 +265,241 @@ export function TaskList({
         const creator =
           t.created_profile ??
           profiles.find((p) => p.id === t.created_by);
+        const assigneeIds = getTaskAssigneeIds(t);
+        const assigneeNames = assigneeIds
+          .map((id) => teamById.get(id)?.name ?? "")
+          .join(" ");
         return (
           t.title.toLowerCase().includes(query) ||
           (t.description ?? "").toLowerCase().includes(query) ||
           (creator?.full_name ?? "").toLowerCase().includes(query) ||
-          (t.assigned_profile?.full_name ?? "").toLowerCase().includes(query)
+          assigneeNames.toLowerCase().includes(query)
         );
       }),
-    [tasks, projectFilter, memberFilter, searchQuery, dueFilter, profiles, today]
+    [
+      tasks,
+      projectFilter,
+      memberFilter,
+      searchQuery,
+      dueFilter,
+      profiles,
+      today,
+      teamById,
+    ]
   );
-  const orderedTasks = useMemo(() => {
-    const sectionRank = (task: Task) => {
-      if (task.status === "done" || task.status === "cancelled") return 3;
-      if (task.due_date && task.due_date < today) return 0;
-      if (task.due_date === today) return 1;
-      return 2;
-    };
-    return [...filteredTasks].sort((a, b) => sectionRank(a) - sectionRank(b));
-  }, [filteredTasks, today]);
-  const pagination = useAdaptivePagination(orderedTasks, {
-    rowHeight: 61,
-    resetKey: `${projectFilter}|${memberFilter}|${searchQuery}|${dueFilter}`,
-  });
 
-  if (filteredTasks.length === 0) {
-    return (
-      <EmptyState
-        icon={CheckSquare}
-        title={dict.tasks.noTasksFound}
-        description={dict.tasks.noTasksHint}
-      />
-    );
-  }
-
-  const grouped = {
-    overdue: pagination.pageItems.filter(
-      (t) =>
-        t.due_date &&
-        t.due_date < today &&
-        t.status !== "done" &&
-        t.status !== "cancelled"
-    ),
-    today: pagination.pageItems.filter(
-      (t) =>
-        t.due_date === today &&
-        t.status !== "done" &&
-        t.status !== "cancelled"
-    ),
-    upcoming: pagination.pageItems.filter(
-      (t) =>
-        (!t.due_date || t.due_date > today) &&
-        t.status !== "done" &&
-        t.status !== "cancelled"
-    ),
-    done: pagination.pageItems.filter(
-      (t) => t.status === "done" || t.status === "cancelled"
-    ),
-  };
-
-  const sections: { key: keyof typeof grouped; title: string }[] = [
-    { key: "overdue", title: dict.tasks.sections.overdue },
-    { key: "today", title: dict.tasks.sections.today },
-    { key: "upcoming", title: dict.tasks.sections.upcoming },
-    { key: "done", title: dict.tasks.sections.done },
-  ];
+  const groups = useMemo(() => {
+    const byStatus = new Map<TaskStatus, Task[]>();
+    for (const status of TASK_STATUS_ORDER) byStatus.set(status, []);
+    for (const task of filteredTasks) {
+      const list = byStatus.get(task.status) ?? byStatus.get("todo")!;
+      list.push(task);
+    }
+    for (const list of byStatus.values()) {
+      list.sort((a, b) => {
+        const pa = PRIORITY_RANK[a.priority];
+        const pb = PRIORITY_RANK[b.priority];
+        if (pa !== pb) return pa - pb;
+        return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
+      });
+    }
+    return TASK_STATUS_ORDER.map((status) => ({
+      status,
+      items: byStatus.get(status) ?? [],
+    }));
+  }, [filteredTasks]);
 
   return (
     <>
-      <div className="space-y-6">
-        {sections.map(({ key, title }) => {
-          const items = grouped[key];
-          if (items.length === 0) return null;
+      <div className="fl-task-list">
+        <div className="fl-task-list__head" aria-hidden>
+          <div className="fl-task-list__col fl-task-list__col--name">
+            {dict.common.title}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--project">
+            {dict.fusion.labels.project}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--assignee">
+            {dict.common.assignee}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--due">
+            {dict.common.dueDate}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--priority">
+            {dict.common.priority}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--status">
+            {dict.common.status}
+          </div>
+          <div className="fl-task-list__col fl-task-list__col--actions" />
+        </div>
+
+        {groups.map(({ status, items }) => {
+          const isCollapsed = !!collapsed[status];
+          const color = TASK_STATUS_COLOR[status];
           return (
-            <div key={key}>
-              <h3
-                className={cn(
-                  "mb-2 text-sm font-semibold",
-                  key === "overdue" && "text-destructive"
-                )}
+            <section key={status} className="fl-task-group">
+              <button
+                type="button"
+                className="fl-task-group__header"
+                style={{ ["--task-status-color" as string]: color }}
+                onClick={() =>
+                  setCollapsed((prev) => ({
+                    ...prev,
+                    [status]: !prev[status],
+                  }))
+                }
               >
-                {title}{" "}
-                <span className="font-normal text-muted-foreground">
-                  ({items.length})
+                <ChevronDown
+                  className={cn(
+                    "fl-task-group__chevron",
+                    isCollapsed && "is-collapsed"
+                  )}
+                  strokeWidth={2}
+                />
+                <span className="fl-task-group__dot" aria-hidden />
+                <span className="fl-task-group__title">
+                  {dict.taskStatus[status]}
                 </span>
-              </h3>
-              <ul className="divide-y overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-                {items.map((task) => (
-                  <li
-                    key={task.id}
-                    className="flex items-center gap-3 px-4 py-3"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0"
-                      onClick={() => toggleDone(task)}
-                      aria-label={
-                        task.status === "done"
-                          ? dict.tasks.markTodo
-                          : dict.tasks.markDone
-                      }
-                    >
-                      {task.status === "done" ? (
-                        <CheckSquare className="size-4 text-emerald-600" />
-                      ) : (
-                        <Circle className="size-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/tasks/${task.id}`}
-                        className={cn(
-                          "text-sm font-medium hover:underline",
-                          task.status === "done" &&
-                            "text-muted-foreground line-through"
-                        )}
-                      >
-                        {task.title}
-                      </Link>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        {task.due_date && (
+                <span className="fl-task-group__count">{items.length}</span>
+              </button>
+
+              {!isCollapsed ? (
+                <div className="fl-task-group__body">
+                  {items.map((task) => {
+                    const assigneeIds = getTaskAssigneeIds(task);
+                    const avatars = assigneeIds
+                      .map((id) => teamById.get(id))
+                      .filter(Boolean)
+                      .slice(0, 4)
+                      .map((m) => ({
+                        initials: m!.initials,
+                        bg: m!.color,
+                      }));
+                    const overdue =
+                      !!task.due_date &&
+                      task.due_date < today &&
+                      !isTaskDoneStatus(task.status);
+                    const project = task.project_id
+                      ? projectsById.get(task.project_id)
+                      : undefined;
+
+                    return (
+                      <div key={task.id} className="fl-task-row">
+                        <div className="fl-task-list__col fl-task-list__col--name">
                           <span
-                            className={
-                              key === "overdue" ? "text-destructive" : undefined
-                            }
+                            className="fl-task-row__dot"
+                            style={{ background: color }}
+                            aria-hidden
+                          />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/tasks/${task.id}`}
+                              className={cn(
+                                "fl-task-row__title",
+                                isTaskDoneStatus(task.status) && "is-done"
+                              )}
+                            >
+                              {task.title}
+                            </Link>
+                            <p className="fl-task-row__project-mobile">
+                              {project?.title ?? dict.fusion.kanban.noProject}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--project">
+                          {project ? (
+                            <span className="fl-task-row__project" title={project.title}>
+                              {project.title}
+                            </span>
+                          ) : (
+                            <span className="fl-task-row__empty">
+                              {dict.fusion.kanban.noProject}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--assignee">
+                          {avatars.length > 0 ? (
+                            <AvatarStack items={avatars} />
+                          ) : (
+                            <span className="fl-task-row__empty">—</span>
+                          )}
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--due">
+                          {task.due_date ? (
+                            <span
+                              className={cn(
+                                "fl-task-row__due",
+                                overdue && "is-overdue"
+                              )}
+                            >
+                              <Calendar className="size-3.5 shrink-0" strokeWidth={1.75} />
+                              {new Date(
+                                task.due_date + "T00:00:00"
+                              ).toLocaleDateString(dateLocale, {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                          ) : (
+                            <span className="fl-task-row__empty" title={dict.common.dueDate}>
+                              <Calendar className="size-3.5" strokeWidth={1.75} />
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--priority">
+                          <span
+                            className="fl-task-row__priority"
+                            style={{ color: PRIORITY_FLAG[task.priority] }}
                           >
-                            {new Date(
-                              task.due_date + "T00:00:00"
-                            ).toLocaleDateString(dateLocale)}
-                          </span>
-                        )}
-                        {(task.created_profile ||
-                          profiles.find((p) => p.id === task.created_by)) && (
-                          <span>
-                            {dict.common.createdBy}{" "}
-                            <span className="font-medium text-foreground/80">
-                              {(() => {
-                                const creator =
-                                  task.created_profile ??
-                                  profiles.find((p) => p.id === task.created_by);
-                                return (
-                                  creator?.full_name?.trim() ||
-                                  creator?.email ||
-                                  "—"
-                                );
-                              })()}
+                            <Flag
+                              className="size-3.5 shrink-0"
+                              strokeWidth={2}
+                              fill="currentColor"
+                            />
+                            <span className="hidden lg:inline">
+                              {dict.taskPriority[task.priority]}
                             </span>
                           </span>
-                        )}
-                        {task.lead && (
-                          <span>{task.lead.title}</span>
-                        )}
-                        {task.project_id &&
-                          projectsById.get(task.project_id) && (
-                          <span className="text-[var(--iris)]">
-                            {projectsById.get(task.project_id)!.title}
-                          </span>
-                        )}
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--status">
+                          <TaskStatusBadge status={task.status} />
+                        </div>
+
+                        <div className="fl-task-list__col fl-task-list__col--actions">
+                          <TaskRowActions
+                            task={task}
+                            profile={profile}
+                            onEdit={() => setEditTask(task)}
+                            onToggleDone={() => toggleDone(task)}
+                            onDeleted={() =>
+                              setTasks((prev) =>
+                                prev.filter((t) => t.id !== task.id)
+                              )
+                            }
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="hidden items-center gap-2 sm:flex">
-                      <TaskPriorityBadge priority={task.priority} />
-                      <TaskStatusBadge status={task.status} />
-                    </div>
-                    <TaskRowActions
-                      task={task}
-                      profile={profile}
-                      onEdit={() => setEditTask(task)}
-                      onToggleDone={() => toggleDone(task)}
-                      onDeleted={() =>
-                        setTasks((prev) => prev.filter((t) => t.id !== task.id))
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    );
+                  })}
+
+                  <Link
+                    href={`/tasks/new?status=${status}`}
+                    className="fl-task-group__add"
+                  >
+                    <Plus className="size-3.5" strokeWidth={2} />
+                    {dict.tasks.addTask}
+                  </Link>
+                </div>
+              ) : null}
+            </section>
           );
         })}
-        <DataPagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          totalItems={pagination.totalItems}
-          totalPages={pagination.totalPages}
-          onPageChange={pagination.setPage}
-          className="rounded-xl border border-[var(--border)]"
-        />
       </div>
 
       <TaskFormDialog
@@ -435,3 +514,10 @@ export function TaskList({
     </>
   );
 }
+
+const PRIORITY_RANK: Record<TaskPriority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};

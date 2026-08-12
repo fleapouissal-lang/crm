@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
+import { isTaskDoneStatus } from "@/lib/tasks/status";
 import {
   canDeleteTaskForProfile,
   canModifyTask,
@@ -100,10 +101,7 @@ export function TaskDetailClient({
 
   const today = new Date().toISOString().slice(0, 10);
   const overdue =
-    !!dueDate &&
-    dueDate < today &&
-    status !== "done" &&
-    status !== "cancelled";
+    !!dueDate && dueDate < today && !isTaskDoneStatus(status);
 
   const creatorLabel =
     task.created_profile?.full_name?.trim() ||

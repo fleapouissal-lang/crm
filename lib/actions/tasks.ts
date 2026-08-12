@@ -12,6 +12,8 @@ import {
   canViewAllTasks,
 } from "@/lib/permissions";
 import { taskSchema, normalizeAssigneeIds } from "@/lib/validations/task";
+import { isTaskDoneStatus } from "@/lib/tasks/status";
+import { memberTaskOrFilter } from "@/lib/tasks/visibility";
 import type {
   ActionResult,
   ActivityType,
@@ -27,7 +29,8 @@ function resolveAssignees(
 ): { assigneeIds: string[]; assignedTo: string | null } {
   let assigneeIds = normalizeAssigneeIds(values);
   if (options?.requireSelf && !assigneeIds.includes(profile.id)) {
-    assigneeIds = [profile.id, ...assigneeIds];
+    // Keep the first selected person as primary assignee; creator stays on the task.
+    assigneeIds = [...assigneeIds, profile.id];
   }
   if (!assigneeIds.length) {
     return { assigneeIds: [profile.id], assignedTo: profile.id };
@@ -84,9 +87,7 @@ export async function getTasks(filters?: {
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (!canViewAllTasks(profile)) {
-    query = query.or(
-      `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`
-    );
+    query = query.or(memberTaskOrFilter(profile.id));
   }
 
   if (filters?.status && filters.status !== "all") {
@@ -136,9 +137,7 @@ export async function getTasksForLead(leadId: string): Promise<Task[]> {
     .order("due_date", { ascending: true });
 
   if (!canViewAllTasks(profile)) {
-    query = query.or(
-      `assigned_to.eq.${profile.id},created_by.eq.${profile.id},assignee_ids.cs.{${profile.id}}`
-    );
+    query = query.or(memberTaskOrFilter(profile.id));
   }
 
   const { data } = await query;
@@ -246,14 +245,17 @@ export async function updateTask(
 
   if (error) return { success: false, error: error.message };
 
-  const activityType =
-    values.status === "done" ? "task_completed" : "task_updated";
+  const activityType: ActivityType = isTaskDoneStatus(
+    values.status as TaskStatus
+  )
+    ? "task_completed"
+    : "task_updated";
   await logActivity(
     profile.organization_id,
     profile.id,
     activityType,
     id,
-    values.status === "done"
+    isTaskDoneStatus(values.status as TaskStatus)
       ? `Completed task "${data.title}"`
       : `Updated task "${data.title}"`
   );
@@ -294,9 +296,9 @@ export async function updateTaskStatus(
   await logActivity(
     profile.organization_id,
     profile.id,
-    status === "done" ? "task_completed" : "task_updated",
+    isTaskDoneStatus(status) ? "task_completed" : "task_updated",
     id,
-    status === "done"
+    isTaskDoneStatus(status)
       ? `Completed task "${data.title}"`
       : `Updated task "${data.title}" status`
   );

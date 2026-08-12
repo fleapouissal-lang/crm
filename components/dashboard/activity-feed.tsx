@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/shared/page-header";
 function formatMoney(value: number, locale: Locale) {
   return new Intl.NumberFormat(getIntlLocale(locale), {
     style: "currency",
-    currency: "USD",
+    currency: "MAD",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -148,7 +148,7 @@ export function UpcomingTasks({
           <h3>{title ?? dict.dashboard.upcomingTasks}</h3>
           <div className="ch-sub">{dict.nav.tasks}</div>
         </div>
-        <Link href="/tasks?view=list" className="fl-btn sm ghost">
+        <Link href="/tasks" className="fl-btn sm ghost">
           {dict.common.viewAll}
         </Link>
       </div>
@@ -161,7 +161,7 @@ export function UpcomingTasks({
           <div>
             {tasks.map((task) => {
               const overdue =
-                task.due_date && task.due_date < today && task.status !== "done";
+                task.due_date && task.due_date < today && task.status !== "testing";
               return (
                 <div
                   key={task.id}

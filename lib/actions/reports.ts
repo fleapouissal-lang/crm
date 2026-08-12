@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
+import { isTaskDoneStatus } from "@/lib/tasks/status";
 import type { LeadStage, TaskStatus } from "@/types/database";
 
 export type ReportsPeriod = "weekly" | "monthly" | "quarterly";
@@ -235,9 +236,11 @@ export async function getReportsData(
     .filter((l) => l.stage !== "won" && l.stage !== "lost")
     .reduce((s, l) => s + Number(l.value ?? 0), 0);
   const wonValue = wonLeads.reduce((s, l) => s + Number(l.value ?? 0), 0);
-  const tasksCompleted = tasks.filter((t) => t.status === "done").length;
+  const tasksCompleted = tasks.filter((t) =>
+    isTaskDoneStatus(t.status as TaskStatus)
+  ).length;
   const openTasks = tasks.filter(
-    (t) => t.status !== "done" && t.status !== "cancelled"
+    (t) => !isTaskDoneStatus(t.status as TaskStatus)
   ).length;
 
   const profileMap = new Map(
@@ -267,7 +270,8 @@ export async function getReportsData(
   }
 
   for (const task of tasks) {
-    if (!task.assigned_to || task.status !== "done") continue;
+    if (!task.assigned_to || !isTaskDoneStatus(task.status as TaskStatus))
+      continue;
     const cur = teamMap.get(task.assigned_to) ?? {
       leads: 0,
       pipelineValue: 0,

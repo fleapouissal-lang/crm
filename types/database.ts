@@ -13,7 +13,12 @@ export type LeadStage =
   | "won"
   | "lost";
 
-export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
+export type TaskStatus =
+  | "testing"
+  | "review"
+  | "in_progress"
+  | "todo"
+  | "backlog";
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
@@ -223,17 +228,19 @@ export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 export const TASK_STATUSES: TaskStatus[] = [
-  "todo",
+  "testing",
+  "review",
   "in_progress",
-  "done",
-  "cancelled",
+  "todo",
+  "backlog",
 ];
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: "To Do",
-  in_progress: "In Progress",
-  done: "Done",
-  cancelled: "Cancelled",
+  testing: "Done",
+  review: "To review",
+  in_progress: "In progress",
+  todo: "To do",
+  backlog: "Backlog",
 };
 
 export const TASK_PRIORITIES: TaskPriority[] = [

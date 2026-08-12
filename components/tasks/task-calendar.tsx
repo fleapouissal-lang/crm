@@ -5,6 +5,7 @@ import { format, startOfMonth } from "date-fns";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import type { Task } from "@/types/database";
+import { tasksVisibleOnDay } from "@/lib/tasks/due-filter";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -32,8 +33,11 @@ export function TaskCalendar({ tasks }: { tasks: Task[] }) {
   }, [tasks]);
 
   const selectedKey = format(selected, "yyyy-MM-dd");
-  const dayTasks = tasksByDate.get(selectedKey) ?? [];
   const todayKey = format(new Date(), "yyyy-MM-dd");
+  const dayTasks = useMemo(
+    () => tasksVisibleOnDay(tasks, selectedKey, todayKey),
+    [tasks, selectedKey, todayKey]
+  );
 
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
@@ -82,7 +86,9 @@ export function TaskCalendar({ tasks }: { tasks: Task[] }) {
                 const overdue =
                   !!task.due_date &&
                   task.due_date < todayKey &&
-                  task.status !== "done";
+                  task.status !== "testing";
+                const isReminder =
+                  task.due_date !== selectedKey && task.status !== "testing";
                 return (
                   <li
                     key={task.id}
@@ -98,11 +104,15 @@ export function TaskCalendar({ tasks }: { tasks: Task[] }) {
                       >
                         {task.title}
                       </Link>
-                      {task.lead && (
+                      {isReminder ? (
+                        <p className="text-xs text-muted-foreground">
+                          {dict.tasks.dailyReminder}
+                        </p>
+                      ) : task.lead ? (
                         <p className="text-xs text-muted-foreground">
                           {task.lead.title}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <TaskPriorityBadge priority={task.priority} />
