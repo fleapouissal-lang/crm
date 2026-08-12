@@ -366,6 +366,8 @@ export const ar = {
     },
     markDone: "وضع علامة منجز",
     markTodo: "وضع علامة للتنفيذ",
+    moveStatusUp: "نقل الحالة لأعلى",
+    moveStatusDown: "نقل الحالة لأسفل",
     createdTask: "تم إنشاء المهمة",
     updatedTask: "تم تحديث المهمة",
     deletedTask: "تم حذف المهمة",

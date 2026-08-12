@@ -228,11 +228,11 @@ export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 export const TASK_STATUSES: TaskStatus[] = [
-  "testing",
-  "review",
-  "in_progress",
-  "todo",
   "backlog",
+  "todo",
+  "in_progress",
+  "review",
+  "testing",
 ];
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  ArrowDown,
+  ArrowUp,
   Calendar,
   ChevronDown,
   Eye,
@@ -20,8 +22,10 @@ import type { Lead, Profile, Task, TaskPriority, TaskStatus } from "@/types/data
 import {
   TASK_STATUS_ORDER,
   TASK_STATUS_COLOR,
+  TASK_STATUS_PILL,
   isTaskDoneStatus,
   TASK_DONE_STATUS,
+  normalizeTaskStatusOrder,
 } from "@/lib/tasks/status";
 import type { ProjectRecord } from "@/lib/projects/types";
 import { taskMatchesProjectFilter } from "@/lib/tasks/project-links";
@@ -37,8 +41,15 @@ import { TaskStatusBadge } from "@/components/shared/status-badge";
 import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-actions-menu";
 import { TaskFormDialog } from "@/components/tasks/task-form";
 import { AvatarStack } from "@/components/fusion/primitives";
-import { canDeleteTaskForProfile } from "@/lib/permissions";
+import { canDeleteTaskForProfile, canModifyTask } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,12 +61,77 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const STATUS_ORDER_SESSION_KEY = "fusion-task-status-group-order-v1";
+
 const PRIORITY_FLAG: Record<TaskPriority, string> = {
   urgent: "var(--rose)",
   high: "var(--amber)",
   medium: "var(--iris-2)",
   low: "var(--text-dim)",
 };
+
+function TaskStatusSelect({
+  task,
+  disabled,
+  onChange,
+}: {
+  task: Task;
+  disabled?: boolean;
+  onChange: (status: TaskStatus) => void;
+}) {
+  const dict = useDict();
+  const pill = TASK_STATUS_PILL[task.status];
+
+  if (disabled) {
+    return <TaskStatusBadge status={task.status} />;
+  }
+
+  return (
+    <Select
+      value={task.status}
+      onValueChange={(v) => {
+        if (!v || v === task.status) return;
+        onChange(v as TaskStatus);
+      }}
+    >
+      <SelectTrigger
+        className="fl-status-select fl-badge fl-task-status-pill"
+        style={{
+          background: pill.bg,
+          color: pill.color,
+          border: pill.border ?? "1px solid transparent",
+        }}
+        aria-label={dict.common.status}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SelectValue>{dict.taskStatus[task.status]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent
+        className="fl-select-panel fl-status-select-panel"
+        align="start"
+        alignItemWithTrigger={false}
+      >
+        {TASK_STATUS_ORDER.map((status) => {
+          const optionPill = TASK_STATUS_PILL[status];
+          return (
+            <SelectItem key={status} value={status}>
+              <span
+                className="fl-badge fl-task-status-pill"
+                style={{
+                  background: optionPill.bg,
+                  color: optionPill.color,
+                  border: optionPill.border ?? "1px solid transparent",
+                }}
+              >
+                {dict.taskStatus[status]}
+              </span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function TaskRowActions({
   task,
@@ -77,25 +153,13 @@ function TaskRowActions({
 
   const actions: RowActionItem[] = [
     {
-      label: dict.common.viewDetails,
-      icon: <Eye className="size-4" />,
-      onClick: () => router.push(`/tasks/${task.id}`),
-    },
-    {
       label: dict.common.edit,
       icon: <Pencil className="size-4" />,
       onClick: onEdit,
-    },
-    {
-      label: isTaskDoneStatus(task.status)
-        ? dict.tasks.markTodo
-        : dict.tasks.markDone,
-      icon: <Check className="size-4" />,
-      onClick: onToggleDone,
+      disabled: !canModifyTask(profile, task),
     },
     ...(canDeleteTaskForProfile(profile, task)
       ? ([
-          { separator: true },
           {
             label: dict.common.delete,
             icon: <Trash2 className="size-4" />,
@@ -104,11 +168,27 @@ function TaskRowActions({
           },
         ] satisfies RowActionItem[])
       : []),
+    {
+      label: dict.common.viewDetails,
+      icon: <Eye className="size-4" />,
+      onClick: () => router.push(`/tasks/${task.id}`),
+    },
+    {
+      label: isTaskDoneStatus(task.status)
+        ? dict.tasks.markTodo
+        : dict.tasks.markDone,
+      icon: <Check className="size-4" />,
+      onClick: onToggleDone,
+      disabled: !canModifyTask(profile, task),
+    },
   ];
 
   return (
     <>
-      <RowActionsMenu actions={actions} />
+      <RowActionsMenu
+        actions={actions}
+        maxIcons={canDeleteTaskForProfile(profile, task) ? 2 : 1}
+      />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -175,6 +255,7 @@ export function TaskList({
   const [tasks, setTasks] = useState(initialTasks);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [statusOrder, setStatusOrder] = useState<TaskStatus[]>(TASK_STATUS_ORDER);
   const [, startTransition] = useTransition();
   const teamById = useMemo(() => {
     const map = new Map(
@@ -186,6 +267,34 @@ export function TaskList({
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STATUS_ORDER_SESSION_KEY);
+      if (!raw) return;
+      setStatusOrder(normalizeTaskStatusOrder(JSON.parse(raw)));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function moveStatusGroup(status: TaskStatus, direction: -1 | 1) {
+    setStatusOrder((prev) => {
+      const index = prev.indexOf(status);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      const current = next[index]!;
+      next[index] = next[target]!;
+      next[target] = current;
+      try {
+        sessionStorage.setItem(STATUS_ORDER_SESSION_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -234,10 +343,9 @@ export function TaskList({
     [projects]
   );
 
-  function toggleDone(task: Task) {
-    const nextStatus: TaskStatus = isTaskDoneStatus(task.status)
-      ? "todo"
-      : TASK_DONE_STATUS;
+  function changeStatus(task: Task, nextStatus: TaskStatus) {
+    if (task.status === nextStatus) return;
+    const prevStatus = task.status;
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
     );
@@ -247,11 +355,20 @@ export function TaskList({
         toast.error(result.error);
         setTasks((prev) =>
           prev.map((t) =>
-            t.id === task.id ? { ...t, status: task.status } : t
+            t.id === task.id ? { ...t, status: prevStatus } : t
           )
         );
+        return;
       }
+      toast.success(dict.tasks.updatedTask);
     });
+  }
+
+  function toggleDone(task: Task) {
+    changeStatus(
+      task,
+      isTaskDoneStatus(task.status) ? "todo" : TASK_DONE_STATUS
+    );
   }
 
   const filteredTasks = useMemo(
@@ -290,7 +407,7 @@ export function TaskList({
 
   const groups = useMemo(() => {
     const byStatus = new Map<TaskStatus, Task[]>();
-    for (const status of TASK_STATUS_ORDER) byStatus.set(status, []);
+    for (const status of statusOrder) byStatus.set(status, []);
     for (const task of filteredTasks) {
       const list = byStatus.get(task.status) ?? byStatus.get("todo")!;
       list.push(task);
@@ -303,11 +420,11 @@ export function TaskList({
         return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
       });
     }
-    return TASK_STATUS_ORDER.map((status) => ({
+    return statusOrder.map((status) => ({
       status,
       items: byStatus.get(status) ?? [],
     }));
-  }, [filteredTasks]);
+  }, [filteredTasks, statusOrder]);
 
   return (
     <>
@@ -334,35 +451,62 @@ export function TaskList({
           <div className="fl-task-list__col fl-task-list__col--actions" />
         </div>
 
-        {groups.map(({ status, items }) => {
+        {groups.map(({ status, items }, groupIndex) => {
           const isCollapsed = !!collapsed[status];
           const color = TASK_STATUS_COLOR[status];
           return (
             <section key={status} className="fl-task-group">
-              <button
-                type="button"
+              <div
                 className="fl-task-group__header"
                 style={{ ["--task-status-color" as string]: color }}
-                onClick={() =>
-                  setCollapsed((prev) => ({
-                    ...prev,
-                    [status]: !prev[status],
-                  }))
-                }
               >
-                <ChevronDown
-                  className={cn(
-                    "fl-task-group__chevron",
-                    isCollapsed && "is-collapsed"
-                  )}
-                  strokeWidth={2}
-                />
-                <span className="fl-task-group__dot" aria-hidden />
-                <span className="fl-task-group__title">
-                  {dict.taskStatus[status]}
-                </span>
-                <span className="fl-task-group__count">{items.length}</span>
-              </button>
+                <button
+                  type="button"
+                  className="fl-task-group__toggle"
+                  onClick={() =>
+                    setCollapsed((prev) => ({
+                      ...prev,
+                      [status]: !prev[status],
+                    }))
+                  }
+                >
+                  <ChevronDown
+                    className={cn(
+                      "fl-task-group__chevron",
+                      isCollapsed && "is-collapsed"
+                    )}
+                    strokeWidth={2}
+                  />
+                  <span className="fl-task-group__dot" aria-hidden />
+                  <span className="fl-task-group__title">
+                    {dict.taskStatus[status]}
+                  </span>
+                  <span className="fl-task-group__count">{items.length}</span>
+                </button>
+
+                <div className="fl-task-group__reorder">
+                  <button
+                    type="button"
+                    className="fl-task-group__move"
+                    disabled={groupIndex === 0}
+                    title={dict.tasks.moveStatusUp}
+                    aria-label={dict.tasks.moveStatusUp}
+                    onClick={() => moveStatusGroup(status, -1)}
+                  >
+                    <ArrowUp className="size-3.5" strokeWidth={2.25} />
+                  </button>
+                  <button
+                    type="button"
+                    className="fl-task-group__move"
+                    disabled={groupIndex === groups.length - 1}
+                    title={dict.tasks.moveStatusDown}
+                    aria-label={dict.tasks.moveStatusDown}
+                    onClick={() => moveStatusGroup(status, 1)}
+                  >
+                    <ArrowDown className="size-3.5" strokeWidth={2.25} />
+                  </button>
+                </div>
+              </div>
 
               {!isCollapsed ? (
                 <div className="fl-task-group__body">
@@ -395,6 +539,7 @@ export function TaskList({
                           <div className="min-w-0">
                             <Link
                               href={`/tasks/${task.id}`}
+                              title={task.title}
                               className={cn(
                                 "fl-task-row__title",
                                 isTaskDoneStatus(task.status) && "is-done"
@@ -402,7 +547,10 @@ export function TaskList({
                             >
                               {task.title}
                             </Link>
-                            <p className="fl-task-row__project-mobile">
+                            <p
+                              className="fl-task-row__project-mobile"
+                              title={project?.title ?? dict.fusion.kanban.noProject}
+                            >
                               {project?.title ?? dict.fusion.kanban.noProject}
                             </p>
                           </div>
@@ -410,7 +558,10 @@ export function TaskList({
 
                         <div className="fl-task-list__col fl-task-list__col--project">
                           {project ? (
-                            <span className="fl-task-row__project" title={project.title}>
+                            <span
+                              className="fl-task-row__project"
+                              title={project.title}
+                            >
                               {project.title}
                             </span>
                           ) : (
@@ -461,14 +612,18 @@ export function TaskList({
                               strokeWidth={2}
                               fill="currentColor"
                             />
-                            <span className="hidden lg:inline">
+                            <span className="hidden xl:inline">
                               {dict.taskPriority[task.priority]}
                             </span>
                           </span>
                         </div>
 
                         <div className="fl-task-list__col fl-task-list__col--status">
-                          <TaskStatusBadge status={task.status} />
+                          <TaskStatusSelect
+                            task={task}
+                            disabled={!canModifyTask(profile, task)}
+                            onChange={(status) => changeStatus(task, status)}
+                          />
                         </div>
 
                         <div className="fl-task-list__col fl-task-list__col--actions">

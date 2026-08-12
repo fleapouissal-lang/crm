@@ -370,6 +370,8 @@ export const fr = {
     },
     markDone: "Marquer comme terminé",
     markTodo: "Marquer à faire",
+    moveStatusUp: "Monter le statut",
+    moveStatusDown: "Descendre le statut",
     createdTask: "Tâche créée",
     updatedTask: "Tâche mise à jour",
     deletedTask: "Tâche supprimée",

@@ -368,6 +368,8 @@ export const en = {
     },
     markDone: "Mark as done",
     markTodo: "Mark as to do",
+    moveStatusUp: "Move status up",
+    moveStatusDown: "Move status down",
     createdTask: "Task created",
     updatedTask: "Task updated",
     deletedTask: "Task deleted",

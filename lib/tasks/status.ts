@@ -1,13 +1,34 @@
 import type { TaskStatus } from "@/types/database";
 
-/** Display order for list groups (matches ClickUp capture top → bottom). */
+/** Default display order: À planifier → … → Terminé */
 export const TASK_STATUS_ORDER: TaskStatus[] = [
-  "testing",
-  "review",
-  "in_progress",
-  "todo",
   "backlog",
+  "todo",
+  "in_progress",
+  "review",
+  "testing",
 ];
+
+const STATUS_SET = new Set<string>(TASK_STATUS_ORDER);
+
+/** Keep a custom list valid (all statuses, no dupes). */
+export function normalizeTaskStatusOrder(order: unknown): TaskStatus[] {
+  if (!Array.isArray(order)) return [...TASK_STATUS_ORDER];
+  const seen = new Set<TaskStatus>();
+  const next: TaskStatus[] = [];
+  for (const item of order) {
+    if (typeof item !== "string" || !STATUS_SET.has(item) || seen.has(item as TaskStatus)) {
+      continue;
+    }
+    const status = item as TaskStatus;
+    seen.add(status);
+    next.push(status);
+  }
+  for (const status of TASK_STATUS_ORDER) {
+    if (!seen.has(status)) next.push(status);
+  }
+  return next;
+}
 
 export const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
   testing: "#7c3aed",
