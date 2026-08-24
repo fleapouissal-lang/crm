@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpRequest } from "@/lib/mcp/auth";
+import { getPublicOrigin } from "@/lib/mcp/origin";
 import { createFusionLeapMcpServer } from "@/lib/mcp/server";
 
 export const runtime = "nodejs";
@@ -24,7 +25,10 @@ function withCors(response: Response) {
 }
 
 function authFailure(request: Request, status: 401 | 403, message: string) {
-  const metadataUrl = new URL("/.well-known/oauth-protected-resource", request.url);
+  const metadataUrl = new URL(
+    "/.well-known/oauth-protected-resource",
+    getPublicOrigin(request)
+  );
   const headers = new Headers(corsHeaders);
   if (status === 401) {
     headers.set(
@@ -42,7 +46,7 @@ async function handleMcpRequest(request: Request) {
   const auth = await authenticateMcpRequest(request);
   if (!auth.ok) return authFailure(request, auth.status, auth.message);
 
-  const baseUrl = new URL(request.url).origin;
+  const baseUrl = getPublicOrigin(request);
   const transport = new WebStandardStreamableHTTPServerTransport();
   const server = createFusionLeapMcpServer(auth.context, baseUrl);
   await server.connect(transport);

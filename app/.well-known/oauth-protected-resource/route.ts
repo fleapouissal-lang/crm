@@ -1,3 +1,5 @@
+import { getPublicOrigin } from "@/lib/mcp/origin";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -6,7 +8,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "OAuth server is not configured" }, { status: 503 });
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = getPublicOrigin(request);
   return Response.json(
     {
       resource: `${origin}/mcp`,
