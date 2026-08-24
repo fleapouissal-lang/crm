@@ -56,6 +56,30 @@ export async function sendOutreachMessage(id: string): Promise<ActionResult<{ pr
     return { success: false, error: "Only leadership can send outreach" };
   }
   const supabase = await createClient();
+  const { data: message } = await supabase
+    .from("outreach_messages")
+    .select("status, lead_id, lead:leads(id, contact_permission)")
+    .eq("id", parsed.data)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+  const lead = Array.isArray(message?.lead) ? message.lead[0] : message?.lead;
+  if (message && ["approved", "queued", "failed"].includes(message.status) && lead?.contact_permission === "unknown") {
+    const { error: permissionError } = await supabase
+      .from("leads")
+      .update({ contact_permission: "legitimate_interest" })
+      .eq("id", message.lead_id)
+      .eq("organization_id", profile.organization_id)
+      .eq("contact_permission", "unknown");
+    if (permissionError) return { success: false, error: permissionError.message };
+    await supabase.from("activities").insert({
+      organization_id: profile.organization_id,
+      type: "lead_updated",
+      entity_type: "lead",
+      entity_id: message.lead_id,
+      message: "Leadership verified legitimate interest before outreach",
+      user_id: profile.id,
+    });
+  }
   const result = await dispatchOutreachMessage(supabase, profile.organization_id, parsed.data);
   revalidatePath("/leads");
   if (!result.success) return result;
