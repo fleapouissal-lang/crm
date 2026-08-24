@@ -10,6 +10,11 @@ export type ProjectPhase = "inProgress" | "review" | "delivered";
 export type ProjectStatusKey = keyof FusionDictionary["badges"];
 export type ProjectTab = "all" | ProjectPhase;
 
+export interface ProjectDeliveryPhase {
+  code: string;
+  label: string;
+}
+
 export interface ProjectRecord {
   id: string;
   initials: string;
@@ -26,6 +31,7 @@ export interface ProjectRecord {
   chipKey: ProjectStatusKey;
   chipRose?: boolean;
   phase: ProjectPhase;
+  deliveryPhases: ProjectDeliveryPhase[];
 }
 
 export const PROJECT_STATUS_FILTERS: ProjectStatusKey[] = [

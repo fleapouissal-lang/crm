@@ -200,6 +200,9 @@ export const fusionAr: FusionDictionary = {
     membersSelected: "{count} شخص/أشخاص مختارون",
     noTeamAvailable: "لا يوجد أعضاء متاحون",
     leadMember: "المسؤول",
+    deliveryPhases: "مراحل تسليم المهام",
+    deliveryPhasesHint: "مرحلة واحدة في كل سطر. حافظ على الرمز ثابتاً إذا كانت المهام تستخدمه.",
+    deliveryPhasesPlaceholder: "P0 | الاستكشاف\nP1 | التصميم\nP2 | التطوير\nP3 | الإطلاق",
   },
   kanban: {
     board: "لوحة",

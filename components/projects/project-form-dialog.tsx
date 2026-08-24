@@ -20,6 +20,11 @@ import {
 } from "@/lib/projects/types";
 import { TeamMemberPicker } from "@/components/projects/team-member-picker";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  parseProjectDeliveryPhases,
+  serializeProjectDeliveryPhases,
+} from "@/lib/tasks/phases";
 import {
   Select,
   SelectContent,
@@ -47,6 +52,7 @@ const projectFormSchema = z.object({
   chipKey: z.string(),
   teamMemberIds: z.array(z.string()),
   chipRose: z.boolean().optional(),
+  deliveryPhasesText: z.string().optional(),
 });
 
 type ProjectFormValues = z.infer<typeof projectFormSchema>;
@@ -85,6 +91,7 @@ function toFormValues(project?: ProjectRecord | null): ProjectFormValues {
     chipKey: project?.chipKey ?? "onTrack",
     teamMemberIds: project?.teamMemberIds ?? [],
     chipRose: project?.chipRose ?? false,
+    deliveryPhasesText: serializeProjectDeliveryPhases(project?.deliveryPhases ?? []),
   };
 }
 
@@ -108,6 +115,7 @@ function toProjectRecord(
     chipKey: values.chipKey as ProjectStatusKey,
     chipRose: values.chipRose,
     phase: values.phase as ProjectPhase,
+    deliveryPhases: parseProjectDeliveryPhases(values.deliveryPhasesText ?? ""),
   };
 }
 
@@ -285,6 +293,20 @@ export function ProjectFormDialog({
                   />
                 )}
               />
+            </FormField>
+
+            <FormField
+              label={p.deliveryPhases}
+              htmlFor="project-delivery-phases"
+            >
+              <Textarea
+                id="project-delivery-phases"
+                rows={6}
+                className="fl-inp min-h-[132px] resize-y font-mono text-sm"
+                placeholder={p.deliveryPhasesPlaceholder}
+                {...register("deliveryPhasesText")}
+              />
+              <p className="mt-1.5 text-xs fl-faint">{p.deliveryPhasesHint}</p>
             </FormField>
           </div>
 

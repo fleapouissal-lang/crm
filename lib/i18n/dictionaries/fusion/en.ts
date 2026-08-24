@@ -198,6 +198,9 @@ export const fusionEn = {
     membersSelected: "{count} person(s) selected",
     noTeamAvailable: "No team members available",
     leadMember: "Owner",
+    deliveryPhases: "Task delivery phases",
+    deliveryPhasesHint: "One phase per line. Keep the code stable when tasks already use it.",
+    deliveryPhasesPlaceholder: "P0 | Discovery\nP1 | Design\nP2 | Development\nP3 | Launch",
   },
   kanban: {
     board: "Board",

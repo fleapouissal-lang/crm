@@ -13,6 +13,7 @@ export const PROJECT_SEED: ProjectRecord[] = [
     teamMemberIds: ["tm-yk", "tm-ob"],
     chipKey: "dueAug22",
     phase: "inProgress",
+    deliveryPhases: [],
   },
   {
     id: "pr-al",
@@ -26,6 +27,7 @@ export const PROJECT_SEED: ProjectRecord[] = [
     teamMemberIds: ["tm-yk", "tm-ac"],
     chipKey: "product",
     phase: "inProgress",
+    deliveryPhases: [],
   },
   {
     id: "pr-sh",
@@ -39,6 +41,7 @@ export const PROJECT_SEED: ProjectRecord[] = [
     teamMemberIds: ["tm-ob"],
     chipKey: "maintenance",
     phase: "inProgress",
+    deliveryPhases: [],
   },
   {
     id: "pr-mk",
@@ -53,6 +56,7 @@ export const PROJECT_SEED: ProjectRecord[] = [
     chipKey: "dueJul10",
     chipRose: true,
     phase: "inProgress",
+    deliveryPhases: [],
   },
   {
     id: "pr-st",
@@ -66,6 +70,7 @@ export const PROJECT_SEED: ProjectRecord[] = [
     teamMemberIds: ["tm-ob", "tm-yk"],
     chipKey: "review",
     phase: "review",
+    deliveryPhases: [],
   },
   {
     id: "pr-fp",
@@ -79,5 +84,6 @@ export const PROJECT_SEED: ProjectRecord[] = [
     teamMemberIds: ["tm-yk"],
     chipKey: "delivered",
     phase: "delivered",
+    deliveryPhases: [],
   },
 ];

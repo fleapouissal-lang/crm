@@ -1,4 +1,5 @@
-import type { ProjectRecord } from "@/lib/projects/types";
+import type { ProjectDeliveryPhase, ProjectRecord } from "@/lib/projects/types";
+import { normalizeProjectDeliveryPhases } from "@/lib/tasks/phases";
 
 export type ProjectRow = {
   id: string;
@@ -14,6 +15,7 @@ export type ProjectRow = {
   chip_key: string;
   chip_rose: boolean;
   phase: string;
+  delivery_phases: ProjectDeliveryPhase[] | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -32,6 +34,7 @@ export function rowToProject(row: ProjectRow): ProjectRecord {
     chipKey: row.chip_key as ProjectRecord["chipKey"],
     chipRose: !!row.chip_rose,
     phase: row.phase as ProjectRecord["phase"],
+    deliveryPhases: normalizeProjectDeliveryPhases(row.delivery_phases),
   };
 }
 
@@ -56,5 +59,6 @@ export function projectToRow(
     chip_key: project.chipKey,
     chip_rose: !!project.chipRose,
     phase: project.phase,
+    delivery_phases: normalizeProjectDeliveryPhases(project.deliveryPhases),
   };
 }

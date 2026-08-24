@@ -180,7 +180,7 @@ export function createFusionLeapMcpServer(
       let request = context.supabase
         .from("projects")
         .select(
-          "id, title, subtitle, progress, status_key, team_member_ids, phase, updated_at"
+          "id, title, subtitle, progress, status_key, team_member_ids, phase, delivery_phases, updated_at"
         )
         .eq("organization_id", context.profile.organization_id!)
         .order("updated_at", { ascending: false })

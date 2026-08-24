@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskList } from "@/components/tasks/task-list";
-import { NATUS_TASK_PHASES } from "@/lib/tasks/phases";
 import { cn } from "@/lib/utils";
 
 export function TasksPageClient({
@@ -52,18 +51,21 @@ export function TasksPageClient({
   const router = useRouter();
   const selectedProject = projects.find((project) => project.id === projectFilter);
   const phaseOptions = useMemo(() => {
-    if (selectedProject?.title.trim().toLowerCase() === "natus") {
-      return [...NATUS_TASK_PHASES];
+    if (!selectedProject) return [];
+    if (selectedProject.deliveryPhases.length > 0) {
+      return selectedProject.deliveryPhases;
     }
     return Array.from(
       new Set(
         tasks
-          .filter((task) => projectFilter === "all" || task.project_id === projectFilter)
+          .filter((task) => task.project_id === selectedProject.id)
           .map((task) => task.task_phase)
           .filter((phase): phase is string => Boolean(phase))
       )
-    ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [projectFilter, selectedProject, tasks]);
+    )
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((code) => ({ code, label: code }));
+  }, [selectedProject, tasks]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -206,12 +208,12 @@ export function TasksPageClient({
             </button>
             {phaseOptions.map((phase) => (
               <button
-                key={phase}
+                key={phase.code}
                 type="button"
-                className={cn("fl-btn sm", phaseFilter === phase && "primary")}
-                onClick={() => updateFilter("phase", phase)}
+                className={cn("fl-btn sm", phaseFilter === phase.code && "primary")}
+                onClick={() => updateFilter("phase", phase.code)}
               >
-                {phase} · {dict.tasks.phaseLabels[phase as keyof typeof dict.tasks.phaseLabels] ?? phase}
+                {phase.code}{phase.label !== phase.code ? ` · ${phase.label}` : ""}
               </button>
             ))}
           </div>

@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { todayKey } from "@/lib/tasks/due-filter";
-import { NATUS_TASK_PHASES } from "@/lib/tasks/phases";
 
 function FormField({
   label,
@@ -108,6 +107,9 @@ export function CreateTaskPageClient({
   const status = watch("status");
   const priority = watch("priority");
   const taskPhase = watch("task_phase") || "none";
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const phaseOptions = selectedProject?.deliveryPhases ?? [];
+  const selectedPhaseLabel = phaseOptions.find((phase) => phase.code === taskPhase)?.label;
 
   const projectLabel = projectId
     ? (projects.find((p) => p.id === projectId)?.title ??
@@ -243,9 +245,10 @@ export function CreateTaskPageClient({
                 <FormField label={dict.fusion.labels.project}>
                   <Select
                     value={projectId || "none"}
-                    onValueChange={(v) =>
-                      setProjectId(!v || v === "none" ? "" : v)
-                    }
+                    onValueChange={(v) => {
+                      setProjectId(!v || v === "none" ? "" : v);
+                      setValue("task_phase", "");
+                    }}
                   >
                     <SelectTrigger className="fl-select-trigger fl-input w-full">
                       <SelectValue>{projectLabel}</SelectValue>
@@ -264,24 +267,24 @@ export function CreateTaskPageClient({
                 </FormField>
               </div>
 
-              <FormField label={dict.tasks.phase}>
+              {phaseOptions.length > 0 ? <FormField label={dict.tasks.phase}>
                 <Select
                   value={taskPhase}
                   onValueChange={(v) => setValue("task_phase", !v || v === "none" ? "" : v)}
                 >
                   <SelectTrigger className="fl-select-trigger fl-input w-full">
-                    <SelectValue>{taskPhase === "none" ? dict.tasks.allPhases : `${taskPhase} · ${dict.tasks.phaseLabels[taskPhase as keyof typeof dict.tasks.phaseLabels] ?? taskPhase}`}</SelectValue>
+                    <SelectValue>{taskPhase === "none" ? "—" : `${taskPhase} · ${selectedPhaseLabel ?? taskPhase}`}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="fl-select-panel" align="start">
                     <SelectItem value="none">—</SelectItem>
-                    {NATUS_TASK_PHASES.map((phase) => (
-                      <SelectItem key={phase} value={phase}>
-                        {phase} · {dict.tasks.phaseLabels[phase]}
+                    {phaseOptions.map((phase) => (
+                      <SelectItem key={phase.code} value={phase.code}>
+                        {phase.code} · {phase.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </FormField>
+              </FormField> : null}
 
               <FormField label={dict.common.assignedTo}>
                 <Controller

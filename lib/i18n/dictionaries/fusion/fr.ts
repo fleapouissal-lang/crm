@@ -200,6 +200,9 @@ export const fusionFr: FusionDictionary = {
     membersSelected: "{count} personne(s) choisie(s)",
     noTeamAvailable: "Aucun membre disponible",
     leadMember: "Responsable",
+    deliveryPhases: "Phases de livraison des tâches",
+    deliveryPhasesHint: "Une phase par ligne. Gardez le code stable si des tâches l'utilisent déjà.",
+    deliveryPhasesPlaceholder: "P0 | Découverte\nP1 | Design\nP2 | Développement\nP3 | Lancement",
   },
   kanban: {
     board: "Tableau",
