@@ -10,6 +10,7 @@ import {
   LogOut,
   Lock,
   Moon,
+  MessageCircle,
   Palette,
   Sun,
   Trash2,
@@ -53,8 +54,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n/types";
+import { WhatsAppConnectionPanel } from "@/components/settings/whatsapp-connection-panel";
 
-type SettingsTab = "profile" | "account" | "workspace" | "appearance" | "notifications";
+type SettingsTab = "profile" | "account" | "workspace" | "whatsapp" | "appearance" | "notifications";
 
 function FlToggle({
   checked,
@@ -175,6 +177,11 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 key: "workspace" as const,
                 label: s.workspace,
                 icon: <Building2 className="size-3.5" />,
+              },
+              {
+                key: "whatsapp" as const,
+                label: "WhatsApp",
+                icon: <MessageCircle className="size-3.5" />,
               },
             ]),
         { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
@@ -674,6 +681,10 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
             </SettingRow>
           </div>
         </div>
+      ) : null}
+
+      {activeTab === "whatsapp" && !platformAdmin && !isTeamMember ? (
+        <WhatsAppConnectionPanel locale={locale} />
       ) : null}
 
       {activeTab === "notifications" && !platformAdmin && !isTeamMember ? (
