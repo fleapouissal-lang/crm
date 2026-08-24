@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { Plus, Search, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -156,6 +157,8 @@ export function ProjectsPageClient({
   const [activeProject, setActiveProject] = useState<ProjectRecord | null>(null);
 
   useEffect(() => {
+    // Refresh the editable client-side copy after a server refresh.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProjects(initialProjects);
   }, [initialProjects]);
 
@@ -466,7 +469,11 @@ export function ProjectsPageClient({
                   return (
                     <tr key={proj.id}>
                       <td>
-                        <div className="flex items-center gap-3">
+                        <Link
+                          href={`/tasks?project_id=${encodeURIComponent(proj.id)}`}
+                          className="flex items-center gap-3 rounded-lg outline-none transition hover:text-[var(--iris)] focus-visible:ring-2 focus-visible:ring-[var(--iris)]/40"
+                          aria-label={`${proj.title} — ${dict.nav.tasks}`}
+                        >
                           <span
                             className="grid size-9 shrink-0 place-items-center rounded-lg text-[11px] font-semibold text-white"
                             style={{ background: proj.gradient }}
@@ -474,14 +481,14 @@ export function ProjectsPageClient({
                             {proj.initials}
                           </span>
                           <div className="min-w-0">
-                            <b className="block truncate">{proj.title}</b>
+                            <b className="block truncate hover:underline">{proj.title}</b>
                             {proj.subtitle ? (
                               <span className="fl-muted fl-tny line-clamp-1">
                                 {proj.subtitle}
                               </span>
                             ) : null}
                           </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="fl-muted">{phaseLabels[proj.phase]}</td>
                       <td>
