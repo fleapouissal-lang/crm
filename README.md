@@ -79,6 +79,48 @@ npm run dev
 
 Ouvrez [http://localhost:3000](http://localhost:3000) → **Inscription** pour créer votre organisation (premier utilisateur = admin).
 
+## Connexion ChatGPT via MCP
+
+Le CRM expose un serveur MCP Streamable HTTP sur :
+
+```
+https://os.fusionleap.net/mcp
+```
+
+Les outils MCP utilisent le jeton OAuth de l'utilisateur et les politiques RLS de
+Supabase. La clé `SUPABASE_SERVICE_ROLE_KEY` n'est jamais envoyée à ChatGPT et
+n'est pas utilisée par le serveur MCP.
+
+Outils disponibles dans la première version :
+
+- profil CRM courant ;
+- membres de l'équipe ;
+- comptes clients, projets et tâches ;
+- création de tâches ;
+- changement du statut d'une tâche.
+
+Les suppressions et les actions financières ne sont pas exposées.
+
+### Configuration Supabase obligatoire
+
+1. Dans Supabase, ouvrez **Authentication → OAuth Server** et activez OAuth 2.1.
+2. Définissez **Authorization Path** sur `/oauth/consent`.
+3. Activez Dynamic Client Registration pour permettre à ChatGPT d'enregistrer
+   son client OAuth MCP.
+4. Utilisez une clé de signature JWT asymétrique (RS256 ou ES256) pour OIDC.
+5. Vérifiez que **Authentication → URL Configuration → Site URL** pointe vers
+   `https://os.fusionleap.net`.
+
+### Connexion dans ChatGPT
+
+1. Activez Developer mode dans les paramètres ChatGPT autorisés par votre espace.
+2. Ajoutez un serveur MCP avec l'URL `https://os.fusionleap.net/mcp`.
+3. Terminez la connexion OAuth sur l'écran Fusion Leap.
+4. Vérifiez la liste des outils avant d'autoriser l'application dans l'espace.
+
+Pour un test local, utilisez MCP Inspector avec `http://localhost:3000/mcp`. Le
+serveur exige un jeton OAuth Supabase contenant un `client_id`, même en local.
+
 ## Langues
 
 - Sélecteur **FR / EN** dans l'en-tête (dashboard) et pages auth

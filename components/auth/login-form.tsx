@@ -58,7 +58,7 @@ function LoginSubmitButton({
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ nextPath }: { nextPath?: string }) {
   const dict = useDict();
   const { locale } = useI18n();
   const rtl = isRtlLocale(locale);
@@ -152,6 +152,7 @@ export function LoginForm() {
           </div>
 
           <form action={handleSubmit} className="login-split__form">
+            {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
             {formFields}
           </form>
 

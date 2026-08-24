@@ -6,6 +6,16 @@ export async function generateMetadata() {
   return { title: dict.auth.login };
 }
 
-export default function LoginPage() {
-  return <LoginForm />;
+function safeNextPath(value: string | undefined) {
+  if (!value?.startsWith("/") || value.startsWith("//")) return undefined;
+  return value;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const nextPath = safeNextPath((await searchParams).next);
+  return <LoginForm nextPath={nextPath} />;
 }

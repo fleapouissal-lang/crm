@@ -39,12 +39,19 @@ export async function updateSession(request: NextRequest) {
     pathname === "/about" ||
     pathname === "/faq" ||
     pathname === "/contact";
-  const isPublicRoute = isAuthRoute || isMarketingRoute;
+  const isOAuthConsentRoute = pathname === "/oauth/consent";
+  const isPublicRoute = isAuthRoute || isMarketingRoute || isOAuthConsentRoute;
+  const isMcpRoute = pathname === "/mcp";
+  const isOAuthMetadataRoute = pathname.startsWith(
+    "/.well-known/oauth-protected-resource"
+  );
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/api/org-logos/") ||
     pathname.startsWith("/api/avatars/") ||
+    isMcpRoute ||
+    isOAuthMetadataRoute ||
     pathname.includes(".");
 
   if (isPublicAsset) {

@@ -27,6 +27,11 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   const dict = await getLocalizedDict();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const requestedNext = String(formData.get("next") ?? "");
+  const nextPath =
+    requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/dashboard";
 
   if (!email || !password) {
     return { success: false, error: dict.auth.errors.emailPassword };
@@ -64,7 +69,7 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     }
   }
 
-  redirect("/dashboard");
+  redirect(nextPath);
 }
 
 export async function signOut() {
