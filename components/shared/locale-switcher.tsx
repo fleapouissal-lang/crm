@@ -62,7 +62,7 @@ export function LocaleSwitcher({
         onValueChange={(v) => changeLocale((v ?? locale) as Locale)}
       >
         <SelectTrigger
-          className="fusion-locale-select fl-select-trigger"
+          className="fusion-locale-select"
           aria-label={dict.common.language}
         >
           <Languages className="fusion-locale-select__icon size-4 shrink-0" strokeWidth={1.75} />

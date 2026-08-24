@@ -992,14 +992,33 @@
   width: 100% !important;
   min-width: 0 !important;
   max-width: none;
-  height: 36px !important;
-  border-radius: 10px !important;
-  background: color-mix(in oklch, var(--sb-text-hi) 6%, transparent);
-  border: 1px solid var(--sb-line);
-  color: var(--sb-text-hi);
+  height: 42px !important;
+  padding-inline: 12px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.fusion-sidebar-locale .fusion-locale-select:hover,
+.fusion-sidebar-locale .fusion-locale-select:focus-visible,
+.fusion-sidebar-locale .fusion-locale-select[data-popup-open] {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  color: #ffffff !important;
 }
 .fusion-sidebar-locale .fusion-locale-select__icon {
-  color: var(--sb-text);
+  color: rgba(255, 255, 255, 0.72);
+}
+.fusion-sidebar-locale .fusion-locale-select__value {
+  flex: 1;
+  overflow: hidden;
+  color: #ffffff;
+}
+.fusion-sidebar-locale .fusion-locale-select__value > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .fusion-sidebar-locale .fusion-icon-btn {
   width: 42px;

@@ -5,7 +5,6 @@ import { AuroraBackground } from "@/components/layout/aurora-background";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
-import { CursorGlow } from "@/components/layout/cursor-glow";
 import { VerticalModuleGuard } from "@/components/layout/vertical-module-guard";
 import { NotificationsProvider, useNotificationsOptional } from "@/components/notifications/notifications-provider";
 import { OrgIssuerProvider } from "@/components/finance/org-issuer-provider";
@@ -129,7 +128,6 @@ export function FusionShell({
         organizationId={platformAdmin ? null : profile.organization_id}
         enabled={loadNotifications && !platformAdmin}
       >
-        <CursorGlow />
         <AuroraBackground />
         {!platformAdmin ? (
           <VerticalModuleGuard activityDomain={activityDomain} enabled />
