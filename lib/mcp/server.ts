@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   canAccessClients,
+  canAccessLeads,
   canAccessProjects,
   canAccessTasks,
   canCreateTask,
@@ -9,10 +10,11 @@ import {
   canViewAllTasks,
   isLeadership,
 } from "@/lib/permissions";
+import { dispatchOutreachMessage } from "@/lib/outreach/dispatch";
 import { memberTaskOrFilter } from "@/lib/tasks/visibility";
 import { isTaskDoneStatus } from "@/lib/tasks/status";
 import type { McpAuthContext } from "@/lib/mcp/auth";
-import type { ActivityType, TaskPriority, TaskStatus } from "@/types/database";
+import type { ActivityType, LeadStage, TaskPriority, TaskStatus } from "@/types/database";
 
 const taskStatusSchema = z.enum([
   "backlog",
@@ -23,6 +25,27 @@ const taskStatusSchema = z.enum([
 ]);
 const taskPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
 const uuidSchema = z.string().uuid();
+const leadStageSchema = z.enum([
+  "new",
+  "contacted",
+  "qualified",
+  "proposal",
+  "negotiation",
+  "won",
+  "lost",
+]);
+const contactPermissionSchema = z.enum([
+  "unknown",
+  "legitimate_interest",
+  "consented",
+  "opted_out",
+]);
+const outreachChannelSchema = z.enum(["whatsapp", "email", "sms"]);
+
+function normalizePhone(value?: string | null) {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  return digits || null;
+}
 
 function jsonResult(value: unknown) {
   return {
@@ -323,6 +346,267 @@ export function createFusionLeapMcpServer(
       });
 
       return jsonResult({ task: { ...data, url: appUrl(baseUrl, `/tasks/${task_id}`) } });
+    }
+  );
+
+  server.registerTool(
+    "list_sales_leads",
+    {
+      title: "List sales prospects",
+      description: "List prospects in the CRM Kanban, including AI score and follow-up state.",
+      inputSchema: {
+        stage: leadStageSchema.optional(),
+        query: z.string().max(120).optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+      },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ stage, query, limit }) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      let request = context.supabase
+        .from("leads")
+        .select("id, title, company, contact_name, email, phone, website, city, country, source, source_url, ai_score, ai_summary, contact_permission, stage, last_contacted_at, next_follow_up_at, assigned_to, created_at, updated_at")
+        .eq("organization_id", context.profile.organization_id!)
+        .order("ai_score", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (stage) request = request.eq("stage", stage);
+      if (query?.trim()) {
+        const safe = query.trim().replace(/[,%()]/g, " ");
+        request = request.or(`company.ilike.%${safe}%,contact_name.ilike.%${safe}%,title.ilike.%${safe}%`);
+      }
+      const { data, error } = await request;
+      if (error) return errorResult(error.message);
+      return jsonResult({
+        leads: (data ?? []).map((lead) => ({
+          ...lead,
+          url: appUrl(baseUrl, `/leads/${lead.id}`),
+        })),
+      });
+    }
+  );
+
+  server.registerTool(
+    "upsert_sales_lead",
+    {
+      title: "Add or enrich a sales prospect",
+      description: "Create a prospect or enrich an existing match. Deduplicates by normalized phone, email, then source URL.",
+      inputSchema: {
+        company: z.string().min(1).max(200),
+        contact_name: z.string().max(200).optional(),
+        email: z.string().email().optional(),
+        phone: z.string().max(50).optional(),
+        website: z.string().url().max(500).optional(),
+        city: z.string().max(120).optional(),
+        country: z.string().max(120).default("Morocco"),
+        source: z.string().max(120).default("ai_prospecting"),
+        source_url: z.string().url().max(1000).optional(),
+        ai_score: z.number().int().min(0).max(100).optional(),
+        ai_summary: z.string().max(3000).optional(),
+        contact_permission: contactPermissionSchema.default("unknown"),
+        next_follow_up_at: z.string().datetime().nullable().optional(),
+        assigned_to: uuidSchema.nullable().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async (values) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      if (values.assigned_to && !(await validateOrgAssignees(context, [values.assigned_to]))) {
+        return errorResult("Assignee must belong to the current organization");
+      }
+      const organizationId = context.profile.organization_id!;
+      const phoneNormalized = normalizePhone(values.phone);
+      const emailNormalized = values.email?.trim().toLowerCase() || null;
+      let existing: { id: string } | null = null;
+      if (phoneNormalized) {
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("phone_normalized", phoneNormalized).limit(1);
+        existing = data?.[0] ?? null;
+      }
+      if (!existing && emailNormalized) {
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("email_normalized", emailNormalized).limit(1);
+        existing = data?.[0] ?? null;
+      }
+      if (!existing && values.source_url) {
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("source_url", values.source_url).limit(1);
+        existing = data?.[0] ?? null;
+      }
+
+      const createPayload = {
+        title: values.company,
+        company: values.company,
+        contact_name: values.contact_name?.trim() || null,
+        email: values.email?.trim() || null,
+        phone: values.phone?.trim() || null,
+        phone_normalized: phoneNormalized,
+        email_normalized: emailNormalized,
+        website: values.website ?? null,
+        city: values.city?.trim() || null,
+        country: values.country,
+        source: values.source,
+        source_url: values.source_url ?? null,
+        ai_score: values.ai_score ?? null,
+        ai_summary: values.ai_summary?.trim() || null,
+        contact_permission: values.contact_permission,
+        next_follow_up_at: values.next_follow_up_at ?? null,
+        assigned_to: values.assigned_to ?? null,
+      };
+
+      const updatePayload = Object.fromEntries(
+        Object.entries({
+          title: values.company,
+          company: values.company,
+          contact_name: values.contact_name?.trim(),
+          email: values.email?.trim(),
+          phone: values.phone?.trim(),
+          phone_normalized: values.phone === undefined ? undefined : phoneNormalized,
+          email_normalized: values.email === undefined ? undefined : emailNormalized,
+          website: values.website,
+          city: values.city?.trim(),
+          country: values.country,
+          source: values.source,
+          source_url: values.source_url,
+          ai_score: values.ai_score,
+          ai_summary: values.ai_summary?.trim(),
+          contact_permission: values.contact_permission,
+          next_follow_up_at: values.next_follow_up_at,
+          assigned_to: values.assigned_to,
+        }).filter(([, value]) => value !== undefined)
+      );
+
+      const result = existing
+        ? await context.supabase.from("leads").update(updatePayload).eq("id", existing.id).eq("organization_id", organizationId).select().single()
+        : await context.supabase.from("leads").insert({ ...createPayload, organization_id: organizationId, stage: "new" as LeadStage, value: 0, created_by: context.profile.id }).select().single();
+      if (result.error) return errorResult(result.error.message);
+
+      await context.supabase.from("activities").insert({
+        organization_id: organizationId,
+        type: (existing ? "lead_updated" : "lead_created") as ActivityType,
+        entity_type: "lead",
+        entity_id: result.data.id,
+        message: `${existing ? "Enriched" : "Created"} prospect "${result.data.title}" via AI agent`,
+        user_id: context.profile.id,
+      });
+      return jsonResult({ lead: { ...result.data, deduplicated: Boolean(existing), url: appUrl(baseUrl, `/leads/${result.data.id}`) } });
+    }
+  );
+
+  server.registerTool(
+    "move_sales_lead",
+    {
+      title: "Move prospect on sales Kanban",
+      description: "Move a prospect to another sales stage and optionally schedule the next follow-up.",
+      inputSchema: {
+        lead_id: uuidSchema,
+        stage: leadStageSchema,
+        next_follow_up_at: z.string().datetime().nullable().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ lead_id, stage, next_follow_up_at }) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      const { data, error } = await context.supabase
+        .from("leads")
+        .update({ stage, ...(next_follow_up_at !== undefined ? { next_follow_up_at } : {}) })
+        .eq("id", lead_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .select("id, title, stage, next_follow_up_at, updated_at")
+        .maybeSingle();
+      if (error || !data) return errorResult(error?.message || "Lead not found or cannot be modified");
+      return jsonResult({ lead: { ...data, url: appUrl(baseUrl, `/leads/${lead_id}`) } });
+    }
+  );
+
+  server.registerTool(
+    "queue_outreach_message",
+    {
+      title: "Draft personalized outreach",
+      description: "Prepare an auditable WhatsApp, email, or SMS message for human approval. This does not send it.",
+      inputSchema: {
+        lead_id: uuidSchema,
+        channel: outreachChannelSchema,
+        subject: z.string().max(200).optional(),
+        body: z.string().min(1).max(5000),
+        scheduled_for: z.string().datetime().nullable().optional(),
+        idempotency_key: z.string().max(200).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async (values) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      const organizationId = context.profile.organization_id!;
+      const { data: lead } = await context.supabase
+        .from("leads")
+        .select("id, title, phone, email, contact_permission")
+        .eq("id", values.lead_id)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (!lead) return errorResult("Lead not found");
+      if (lead.contact_permission === "opted_out") return errorResult("This contact opted out");
+      if (values.channel === "email" && !lead.email) return errorResult("Lead has no email address");
+      if (values.channel !== "email" && !lead.phone) return errorResult("Lead has no phone number");
+
+      const { data, error } = await context.supabase
+        .from("outreach_messages")
+        .insert({
+          organization_id: organizationId,
+          lead_id: values.lead_id,
+          channel: values.channel,
+          status: "draft",
+          subject: values.subject?.trim() || null,
+          body: values.body.trim(),
+          scheduled_for: values.scheduled_for ?? null,
+          idempotency_key: values.idempotency_key ?? null,
+          created_by: context.profile.id,
+        })
+        .select()
+        .single();
+      if (error) return errorResult(error.message);
+      return jsonResult({ message: data, approval_required: true, workspace_url: appUrl(baseUrl, "/leads") });
+    }
+  );
+
+  server.registerTool(
+    "list_outreach_queue",
+    {
+      title: "List outreach queue",
+      description: "List drafted, approved, sent, and failed prospect messages.",
+      inputSchema: {
+        status: z.enum(["draft", "approved", "queued", "sending", "sent", "delivered", "replied", "failed", "cancelled"]).optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+      },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ status, limit }) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      let request = context.supabase
+        .from("outreach_messages")
+        .select("*, lead:leads(id, title, company, contact_name, phone, email, contact_permission)")
+        .eq("organization_id", context.profile.organization_id!)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (status) request = request.eq("status", status);
+      const { data, error } = await request;
+      if (error) return errorResult(error.message);
+      return jsonResult({ messages: data ?? [], workspace_url: appUrl(baseUrl, "/leads") });
+    }
+  );
+
+  server.registerTool(
+    "send_approved_outreach_message",
+    {
+      title: "Send an approved outreach message",
+      description: "Send one previously approved message through the configured provider webhook. Never sends drafts or opted-out contacts.",
+      inputSchema: { message_id: uuidSchema },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    },
+    async ({ message_id }) => {
+      if (!isLeadership(context.profile)) return errorResult("Only leadership can send outreach");
+      const result = await dispatchOutreachMessage(
+        context.supabase,
+        context.profile.organization_id!,
+        message_id
+      );
+      if (!result.success) return errorResult(result.error);
+      return jsonResult({ message_id, status: "sent", provider_message_id: result.providerMessageId });
     }
   );
 

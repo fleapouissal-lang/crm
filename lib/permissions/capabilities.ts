@@ -109,9 +109,22 @@ export function canAccessCalendar(profile: Profile): boolean {
   return canAccessTasks(profile);
 }
 
-/** Leads page removed from the product — keep helper for legacy callers. */
-export function canAccessLeads(_profile: Profile): boolean {
-  return false;
+/** Sales workspace for leadership and commercial team members. */
+export function canAccessLeads(profile: Profile): boolean {
+  if (isLeadership(profile)) return true;
+  const custom = stagiaireAllowsPage(profile, "clients");
+  if (custom !== null) return custom;
+  const slug = getJobSlug(profile);
+  return (
+    slug === "commercial" ||
+    Boolean(
+      slug &&
+        (slug.includes("marketing") ||
+          slug.includes("markete") ||
+          slug.includes("تسويق") ||
+          slug.includes("مسوق"))
+    )
+  );
 }
 
 export function canAccessProjects(profile: Profile): boolean {
@@ -234,7 +247,7 @@ export function canAccessNavItem(profile: Profile, itemId: string): boolean {
     case "notifications":
       return true;
     case "leads":
-      return false;
+      return canAccessLeads(profile);
     case "clients":
       return canAccessClients(profile);
     case "projects":

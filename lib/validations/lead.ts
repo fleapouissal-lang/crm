@@ -10,6 +10,17 @@ export const leadSchema = z.object({
     .optional()
     .or(z.literal("")),
   phone: z.string().max(50).optional().or(z.literal("")),
+  website: z.string().url("Invalid website").max(500).optional().or(z.literal("")),
+  city: z.string().max(120).optional().or(z.literal("")),
+  country: z.string().max(120).optional().or(z.literal("")),
+  source: z.string().max(120).optional().or(z.literal("")),
+  source_url: z.string().url("Invalid source URL").max(1000).optional().or(z.literal("")),
+  ai_score: z.number().int().min(0).max(100).optional().nullable(),
+  ai_summary: z.string().max(3000).optional().or(z.literal("")),
+  contact_permission: z
+    .enum(["unknown", "legitimate_interest", "consented", "opted_out"])
+    .optional(),
+  next_follow_up_at: z.string().datetime().optional().nullable().or(z.literal("")),
   value: z.number().min(0, "Value must be positive"),
   stage: z.enum([
     "new",

@@ -13,6 +13,24 @@ export type LeadStage =
   | "won"
   | "lost";
 
+export type ContactPermission =
+  | "unknown"
+  | "legitimate_interest"
+  | "consented"
+  | "opted_out";
+
+export type OutreachChannel = "whatsapp" | "email" | "sms";
+export type OutreachStatus =
+  | "draft"
+  | "approved"
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "replied"
+  | "failed"
+  | "cancelled";
+
 export type TaskStatus =
   | "testing"
   | "review"
@@ -164,6 +182,18 @@ export interface Lead {
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  website: string | null;
+  city: string | null;
+  country: string | null;
+  source: string | null;
+  source_url: string | null;
+  phone_normalized: string | null;
+  email_normalized: string | null;
+  ai_score: number | null;
+  ai_summary: string | null;
+  contact_permission: ContactPermission;
+  last_contacted_at: string | null;
+  next_follow_up_at: string | null;
   value: number;
   stage: LeadStage;
   notes: string | null;
@@ -172,6 +202,30 @@ export interface Lead {
   created_at: string;
   updated_at: string;
   assigned_profile?: Profile | null;
+}
+
+export interface OutreachMessage {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  channel: OutreachChannel;
+  status: OutreachStatus;
+  subject: string | null;
+  body: string;
+  scheduled_for: string | null;
+  provider: string | null;
+  provider_message_id: string | null;
+  idempotency_key: string | null;
+  error_message: string | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+  lead?: Pick<Lead, "id" | "title" | "company" | "contact_name" | "phone" | "email"> | null;
 }
 
 export interface Task {

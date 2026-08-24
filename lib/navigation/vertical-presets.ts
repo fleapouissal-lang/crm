@@ -64,6 +64,7 @@ export type VerticalNavPreset = {
 
 const DEFAULT_VISIBLE: readonly VerticalNavId[] = [
   "dashboard",
+  "leads",
   "clients",
   "projects",
   "tasks",
@@ -88,6 +89,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     key: "digital",
     visibleIds: [
       "dashboard",
+      "leads",
       "clients",
       "projects",
       "tasks",
@@ -122,6 +124,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     key: "finance_insurance",
     visibleIds: [
       "dashboard",
+      "leads",
       "clients",
       "finance",
       "quotes",
@@ -155,6 +158,7 @@ export const VERTICAL_PRESETS: Record<VerticalPresetKey, VerticalNavPreset> = {
     key: "real_estate",
     visibleIds: [
       "dashboard",
+      "leads",
       "clients",
       "projects",
       "calendar",

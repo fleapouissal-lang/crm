@@ -13,6 +13,21 @@ import type {
 } from "@/types/database";
 import { LEAD_STAGE_LABELS } from "@/types/database";
 
+function normalizePhone(value: string | null | undefined) {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  return digits || null;
+}
+
+function normalizedLeadFields(values: {
+  phone?: string | null;
+  email?: string | null;
+}) {
+  return {
+    phone_normalized: normalizePhone(values.phone),
+    email_normalized: values.email?.trim().toLowerCase() || null,
+  };
+}
+
 async function logActivity(
   orgId: string,
   userId: string,
@@ -96,6 +111,16 @@ export async function createLead(
       contact_name: values.contact_name || null,
       email: values.email || null,
       phone: values.phone || null,
+      website: values.website || null,
+      city: values.city || null,
+      country: values.country || null,
+      source: values.source || null,
+      source_url: values.source_url || null,
+      ai_score: values.ai_score ?? null,
+      ai_summary: values.ai_summary || null,
+      contact_permission: values.contact_permission,
+      next_follow_up_at: values.next_follow_up_at || null,
+      ...normalizedLeadFields(values),
       value: values.value,
       stage: values.stage as LeadStage,
       notes: values.notes || null,
@@ -151,6 +176,7 @@ export async function updateLead(
       contact_name: values.contact_name || null,
       email: values.email || null,
       phone: values.phone || null,
+      ...normalizedLeadFields(values),
       value: values.value,
       stage: values.stage as LeadStage,
       notes: values.notes || null,

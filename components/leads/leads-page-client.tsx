@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, LayoutGrid, List, Search } from "lucide-react";
-import type { Lead, Profile, Role } from "@/types/database";
+import type { Lead, OutreachMessage, Profile, Role } from "@/types/database";
 import { LEAD_STAGES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { Input } from "@/components/ui/input";
@@ -19,17 +19,20 @@ import { LeadFormDialog } from "@/components/leads/lead-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CrmKpiRow, CrmPipelineExtras } from "@/components/crm/crm-extras";
 import { cn } from "@/lib/utils";
+import { OutreachCommandCenter } from "@/components/leads/outreach-command-center";
 
 export function LeadsPageClient({
   leads,
   profiles,
   organizationId,
   role,
+  outreachMessages,
 }: {
   leads: Lead[];
   profiles: Profile[];
   organizationId: string;
   role: Role;
+  outreachMessages: OutreachMessage[];
 }) {
   const dict = useDict();
   const [formOpen, setFormOpen] = useState(false);
@@ -48,6 +51,7 @@ export function LeadsPageClient({
 
   return (
     <div className="space-y-4">
+      <OutreachCommandCenter initialMessages={outreachMessages} role={role} />
       <CrmKpiRow leads={leads} />
 
       <div className="fl-card overflow-hidden">

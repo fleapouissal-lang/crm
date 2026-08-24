@@ -91,15 +91,34 @@ Les outils MCP utilisent le jeton OAuth de l'utilisateur et les politiques RLS d
 Supabase. La clé `SUPABASE_SERVICE_ROLE_KEY` n'est jamais envoyée à ChatGPT et
 n'est pas utilisée par le serveur MCP.
 
-Outils disponibles dans la première version :
+Outils disponibles :
 
 - profil CRM courant ;
 - membres de l'équipe ;
 - comptes clients, projets et tâches ;
 - création de tâches ;
 - changement du statut d'une tâche.
+- lecture et enrichissement dédupliqué des prospects ;
+- déplacement des prospects dans le Kanban commercial ;
+- création de brouillons WhatsApp, e-mail et SMS ;
+- lecture de la file d'outreach et envoi des messages déjà approuvés.
 
-Les suppressions et les actions financières ne sont pas exposées.
+Les suppressions et les actions financières ne sont pas exposées. Un agent ne
+peut jamais envoyer un brouillon : un admin ou manager doit d'abord l'approuver
+dans `/leads`. Les contacts `unknown` ou `opted_out` sont bloqués à l'envoi.
+
+### Passerelle d'envoi
+
+L'envoi effectif utilise une passerelle HTTP configurée côté serveur :
+
+```env
+OUTREACH_WEBHOOK_URL=https://automation.example.com/send
+OUTREACH_WEBHOOK_SECRET=replace-with-a-long-random-secret
+```
+
+La passerelle reçoit `message_id`, `organization_id`, `lead`, `channel`,
+`destination`, `subject` et `body`. Elle doit répondre en JSON avec
+`message_id` (ou `id`) fourni par WhatsApp, l'outil e-mail ou le fournisseur SMS.
 
 ### Configuration Supabase obligatoire
 

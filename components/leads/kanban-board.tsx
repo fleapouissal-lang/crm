@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
+import { CalendarClock, MapPin, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { updateLeadStage } from "@/lib/actions/leads";
 import type { Lead, LeadStage } from "@/types/database";
@@ -28,11 +29,18 @@ import { useDict } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("fr-MA", {
     style: "currency",
-    currency: "USD",
+    currency: "MAD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatFollowUp(value: string) {
+  return new Intl.DateTimeFormat("fr-MA", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(value));
 }
 
 const STAGE_DOT: Record<LeadStage, string> = {
@@ -59,9 +67,16 @@ function LeadCard({
         isDragging && "opacity-90 ring-2 ring-[var(--iris)]/40"
       )}
     >
-      {lead.company && (
-        <span className="fl-badge b-gray text-[10px]">{lead.company}</span>
-      )}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {lead.company && (
+          <span className="fl-badge b-gray text-[10px]">{lead.company}</span>
+        )}
+        {lead.ai_score !== null && lead.ai_score !== undefined ? (
+          <span className="fl-badge b-iris text-[10px]">
+            <Sparkles className="size-3" /> {lead.ai_score}/100
+          </span>
+        ) : null}
+      </div>
       <h4>
         <Link
           href={`/leads/${lead.id}`}
@@ -71,6 +86,17 @@ function LeadCard({
           {lead.title}
         </Link>
       </h4>
+      {(lead.city || lead.source || lead.next_follow_up_at) && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] fl-faint">
+          {lead.city ? <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{lead.city}</span> : null}
+          {lead.source ? <span>{lead.source}</span> : null}
+          {lead.next_follow_up_at ? (
+            <span className="inline-flex items-center gap-1 text-[var(--gold)]">
+              <CalendarClock className="size-3" />{formatFollowUp(lead.next_follow_up_at)}
+            </span>
+          ) : null}
+        </div>
+      )}
       <div className="kmeta">
         <div className="kl">
           <span className="fl-mono">{formatCurrency(Number(lead.value))}</span>
@@ -160,6 +186,8 @@ export function KanbanBoard({
   const [, startTransition] = useTransition();
 
   useEffect(() => {
+    // Server refreshes replace the canonical lead list after actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLeads(initialLeads);
   }, [initialLeads]);
 
