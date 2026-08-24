@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { Plus, Search, X, Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
@@ -469,9 +468,10 @@ export function ProjectsPageClient({
                   return (
                     <tr key={proj.id}>
                       <td>
-                        <Link
-                          href={`/tasks?project_id=${encodeURIComponent(proj.id)}`}
-                          className="flex items-center gap-3 rounded-lg outline-none transition hover:text-[var(--iris)] focus-visible:ring-2 focus-visible:ring-[var(--iris)]/40"
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/tasks?project_id=${encodeURIComponent(proj.id)}`)}
+                          className="flex w-full items-center gap-3 rounded-lg text-start outline-none transition hover:text-[var(--iris)] focus-visible:ring-2 focus-visible:ring-[var(--iris)]/40"
                           aria-label={`${proj.title} — ${dict.nav.tasks}`}
                         >
                           <span
@@ -488,7 +488,7 @@ export function ProjectsPageClient({
                               </span>
                             ) : null}
                           </div>
-                        </Link>
+                        </button>
                       </td>
                       <td className="fl-muted">{phaseLabels[proj.phase]}</td>
                       <td>
