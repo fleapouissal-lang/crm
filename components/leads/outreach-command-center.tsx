@@ -106,7 +106,7 @@ export function OutreachCommandCenter({
           {visible.map((message) => {
             const pending = activeId === message.id;
             return (
-              <article key={message.id} className="grid gap-3 p-4 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(20rem,2fr)_auto] lg:items-center">
+              <article key={message.id} className="grid gap-3 p-4 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(20rem,2fr)_auto] lg:items-start">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {message.channel === "email" ? <Mail className="size-4" /> : <MessageCircle className="size-4" />}
@@ -114,7 +114,7 @@ export function OutreachCommandCenter({
                   </div>
                   <span className={cn("fl-badge mt-2 text-[10px]", STATUS_CLASS[message.status])}>{message.status}</span>
                 </div>
-                <p className="line-clamp-2 text-sm leading-6 text-[var(--text-muted)]">{message.body}</p>
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[var(--text-muted)]">{message.body}</p>
                 <div className="flex flex-wrap justify-end gap-2">
                   {leadership && message.status === "draft" ? (
                     <button className="fl-btn sm" disabled={pending} onClick={() => run(message.id, "approve")}>
