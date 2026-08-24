@@ -206,12 +206,13 @@ export function createFusionLeapMcpServer(
         status: taskStatusSchema.optional(),
         due_date: z.string().date().optional(),
         assignee_id: uuidSchema.optional(),
+        project_id: uuidSchema.optional(),
         task_phase: z.string().regex(/^P\d+$/).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       },
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
-    async ({ status, due_date, assignee_id, task_phase, limit }) => {
+    async ({ status, due_date, assignee_id, project_id, task_phase, limit }) => {
       if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
       let request = context.supabase
         .from("tasks")
@@ -227,6 +228,7 @@ export function createFusionLeapMcpServer(
       if (status) request = request.eq("status", status);
       if (due_date) request = request.eq("due_date", due_date);
       if (assignee_id) request = request.contains("assignee_ids", [assignee_id]);
+      if (project_id) request = request.eq("project_id", project_id);
       if (task_phase) request = request.eq("task_phase", task_phase.toUpperCase());
       const { data, error } = await request;
       if (error) return errorResult(error.message);
@@ -236,6 +238,104 @@ export function createFusionLeapMcpServer(
           url: appUrl(baseUrl, `/tasks/${task.id}`),
         })),
       });
+    }
+  );
+
+  server.registerTool(
+    "update_task",
+    {
+      title: "Update CRM task",
+      description:
+        "Update a task title, description, due date, priority, project, delivery phase, or assignees. Unspecified fields stay unchanged.",
+      inputSchema: {
+        task_id: uuidSchema,
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().max(5000).nullable().optional(),
+        priority: taskPrioritySchema.optional(),
+        due_date: z.string().date().nullable().optional(),
+        assignee_ids: z.array(uuidSchema).max(25).optional(),
+        project_id: uuidSchema.nullable().optional(),
+        task_phase: z.string().regex(/^P\d+$/).nullable().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ task_id, ...values }) => {
+      if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
+      if (Object.values(values).every((value) => value === undefined)) {
+        return errorResult("Provide at least one field to update");
+      }
+
+      const { data: existing, error: findError } = await context.supabase
+        .from("tasks")
+        .select(
+          "id, title, assigned_to, assignee_ids, created_by, organization_id, project_id, task_phase"
+        )
+        .eq("id", task_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .maybeSingle();
+      if (findError || !existing) return errorResult("Task not found");
+      if (!canModifyTask(context.profile, existing)) {
+        return errorResult("The current user cannot modify this task");
+      }
+
+      const update: Record<string, unknown> = {};
+      if (values.title !== undefined) update.title = values.title.trim();
+      if (values.description !== undefined) {
+        update.description = values.description?.trim() || null;
+      }
+      if (values.priority !== undefined) update.priority = values.priority;
+      if (values.due_date !== undefined) update.due_date = values.due_date;
+      if (values.task_phase !== undefined) {
+        update.task_phase = normalizeTaskPhase(values.task_phase);
+      }
+
+      if (values.project_id !== undefined) {
+        if (values.project_id) {
+          const { data: project } = await context.supabase
+            .from("projects")
+            .select("id")
+            .eq("id", values.project_id)
+            .eq("organization_id", context.profile.organization_id!)
+            .maybeSingle();
+          if (!project) return errorResult("Project not found in the current organization");
+        }
+        update.project_id = values.project_id;
+      }
+
+      if (values.assignee_ids !== undefined) {
+        let assigneeIds = [...new Set(values.assignee_ids)];
+        if (!isLeadership(context.profile) && !assigneeIds.includes(context.profile.id)) {
+          assigneeIds.push(context.profile.id);
+        }
+        if (!assigneeIds.length) assigneeIds = [context.profile.id];
+        if (!(await validateOrgAssignees(context, assigneeIds))) {
+          return errorResult("Every assignee must belong to the current organization");
+        }
+        update.assignee_ids = assigneeIds;
+        update.assigned_to = assigneeIds[0];
+      }
+
+      const { data, error } = await context.supabase
+        .from("tasks")
+        .update(update)
+        .eq("id", task_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .select(
+          "id, title, description, status, priority, due_date, assigned_to, assignee_ids, project_id, task_phase, created_by, created_at, updated_at"
+        )
+        .single();
+      if (error) return errorResult(error.message);
+
+      await context.supabase.from("activities").insert({
+        organization_id: context.profile.organization_id!,
+        type: "task_updated" as ActivityType,
+        entity_type: "task",
+        entity_id: task_id,
+        message: `Updated task "${data.title}" via ChatGPT`,
+        user_id: context.profile.id,
+      });
+
+      return jsonResult({ task: { ...data, url: appUrl(baseUrl, `/tasks/${data.id}`) } });
     }
   );
 
