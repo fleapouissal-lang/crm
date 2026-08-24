@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, LayoutGrid, List, Search } from "lucide-react";
 import type { Lead, OutreachMessage, Profile, Role } from "@/types/database";
 import { LEAD_STAGES } from "@/types/database";
@@ -41,10 +41,29 @@ export function LeadsPageClient({
   const searchParams = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const stage = searchParams.get("stage") ?? "all";
+  const project = searchParams.get("project") ?? "Fusion Leap";
+  const projects = useMemo(
+    () =>
+      Array.from(
+        new Set(["Fusion Leap", "Autolog", ...leads.map((lead) => lead.sales_project).filter(Boolean)])
+      ),
+    [leads]
+  );
+  const filteredLeads = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return leads.filter((lead) => {
+      if (project !== "all" && lead.sales_project !== project) return false;
+      if (stage !== "all" && lead.stage !== stage) return false;
+      if (!needle) return true;
+      return [lead.title, lead.company, lead.contact_name, lead.phone, lead.email]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(needle));
+    });
+  }, [leads, project, q, stage]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (!value || value === "all") params.delete(key);
+    if (!value || (value === "all" && key !== "project")) params.delete(key);
     else params.set(key, value);
     router.push(`/leads?${params.toString()}`);
   }
@@ -52,9 +71,22 @@ export function LeadsPageClient({
   return (
     <div className="space-y-4">
       <OutreachCommandCenter initialMessages={outreachMessages} role={role} />
-      <CrmKpiRow leads={leads} />
+      <CrmKpiRow leads={filteredLeads} />
 
       <div className="fl-card overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3">
+          <span className="mr-1 text-xs font-semibold fl-faint">{dict.leads.salesProject}</span>
+          {[...projects, "all"].map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={cn("fl-btn sm", project === name && "primary")}
+              onClick={() => updateFilter("project", name)}
+            >
+              {name === "all" ? dict.leads.allProjects : name}
+            </button>
+          ))}
+        </div>
         <div className="fl-filter-bar fl-filter-bar--card">
           <div className="fl-filter-bar__head">
             <div className="fl-seg shrink-0">
@@ -131,19 +163,24 @@ export function LeadsPageClient({
 
         {view === "kanban" ? (
           <div className="fl-kanban-body">
-            <KanbanBoard initialLeads={leads} organizationId={organizationId} />
+            <KanbanBoard
+              initialLeads={filteredLeads}
+              organizationId={organizationId}
+              salesProject={project}
+            />
           </div>
         ) : (
-          <LeadTable leads={leads} profiles={profiles} role={role} />
+          <LeadTable leads={filteredLeads} profiles={profiles} role={role} />
         )}
       </div>
 
-      <CrmPipelineExtras leads={leads} />
+      <CrmPipelineExtras leads={filteredLeads} />
 
       <LeadFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         profiles={profiles}
+        defaultSalesProject={project === "all" ? "Fusion Leap" : project}
       />
     </div>
   );

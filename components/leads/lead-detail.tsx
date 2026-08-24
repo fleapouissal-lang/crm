@@ -30,7 +30,7 @@ import { useDict } from "@/components/shared/i18n-provider";
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "MAD",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -66,6 +66,7 @@ export function LeadDetailClient({
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{lead.title}</h1>
+            <span className="fl-badge b-blue">{lead.sales_project}</span>
             <LeadStageBadge stage={lead.stage} />
           </div>
           {lead.company && (
@@ -124,6 +125,18 @@ export function LeadDetailClient({
                   {formatCurrency(Number(lead.value))}
                 </p>
               </div>
+              {lead.stage === "contacted" && lead.last_contact_method ? (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">{ld.contactMethod}</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {lead.last_contact_method === "phone"
+                      ? ld.contactByPhone
+                      : lead.last_contact_method === "email"
+                        ? ld.contactByEmail
+                        : ld.contactByVisit}
+                  </p>
+                </div>
+              ) : null}
               {lead.email && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">{c.email}</p>

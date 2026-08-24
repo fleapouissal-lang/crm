@@ -31,7 +31,7 @@ import {
 function formatCurrency(value: number, locale: string) {
   return new Intl.NumberFormat(getIntlLocale(locale as import("@/lib/i18n/types").Locale), {
     style: "currency",
-    currency: "USD",
+    currency: "MAD",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -145,6 +145,7 @@ export function LeadTable({
             <thead>
               <tr>
                 <th>{dict.common.title}</th>
+                <th>{dict.leads.salesProject}</th>
                 <th>{dict.common.contact}</th>
                 <th>{dict.common.stage}</th>
                 <th>{dict.common.assignee}</th>
@@ -163,14 +164,27 @@ export function LeadTable({
                       <p className="fl-faint text-[11.5px]">{lead.company}</p>
                     )}
                   </td>
+                  <td><span className="fl-badge b-blue text-[10px]">{lead.sales_project}</span></td>
                   <td>
                     <div className="text-sm">{lead.contact_name ?? "—"}</div>
+                    {lead.phone && (
+                      <div className="fl-faint text-xs">{lead.phone}</div>
+                    )}
                     {lead.email && (
                       <div className="fl-faint text-xs">{lead.email}</div>
                     )}
                   </td>
                   <td>
                     <LeadStageBadge stage={lead.stage} />
+                    {lead.stage === "contacted" && lead.last_contact_method ? (
+                      <p className="mt-1 text-[10px] fl-faint">
+                        {lead.last_contact_method === "phone"
+                          ? dict.leads.contactByPhone
+                          : lead.last_contact_method === "email"
+                            ? dict.leads.contactByEmail
+                            : dict.leads.contactByVisit}
+                      </p>
+                    ) : null}
                   </td>
                   <td>
                     {lead.assigned_profile ? (
@@ -211,6 +225,7 @@ export function LeadTable({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{lead.title}</p>
+                    <span className="fl-badge b-blue mt-1 text-[10px]">{lead.sales_project}</span>
                     {lead.company && (
                       <p className="fl-faint text-xs">{lead.company}</p>
                     )}
@@ -220,6 +235,7 @@ export function LeadTable({
                 <div className="flex justify-between text-sm">
                   <span className="fl-muted">
                     {lead.contact_name ?? dict.leads.noContact}
+                    {lead.phone ? ` · ${lead.phone}` : ""}
                   </span>
                   <span className="fl-mono font-medium">
                     {formatCurrency(Number(lead.value), locale)}

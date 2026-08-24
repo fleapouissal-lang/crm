@@ -9,6 +9,7 @@ import type {
   ActionResult,
   ActivityType,
   Lead,
+  LeadContactMethod,
   LeadStage,
 } from "@/types/database";
 import { LEAD_STAGE_LABELS } from "@/types/database";
@@ -100,6 +101,9 @@ export async function createLead(
   }
 
   const values = parsed.data;
+  if (values.stage === "contacted" && !values.last_contact_method) {
+    return { success: false, error: "Select how the client was contacted" };
+  }
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -116,9 +120,11 @@ export async function createLead(
       country: values.country || null,
       source: values.source || null,
       source_url: values.source_url || null,
+      sales_project: values.sales_project,
       ai_score: values.ai_score ?? null,
       ai_summary: values.ai_summary || null,
       contact_permission: values.contact_permission,
+      last_contact_method: values.last_contact_method ?? null,
       next_follow_up_at: values.next_follow_up_at || null,
       ...normalizedLeadFields(values),
       value: values.value,
@@ -160,6 +166,9 @@ export async function updateLead(
   }
 
   const values = parsed.data;
+  if (values.stage === "contacted" && !values.last_contact_method) {
+    return { success: false, error: "Select how the client was contacted" };
+  }
   const supabase = await createClient();
 
   const { data: existing } = await supabase
@@ -176,6 +185,8 @@ export async function updateLead(
       contact_name: values.contact_name || null,
       email: values.email || null,
       phone: values.phone || null,
+      sales_project: values.sales_project,
+      last_contact_method: values.last_contact_method ?? null,
       ...normalizedLeadFields(values),
       value: values.value,
       stage: values.stage as LeadStage,
@@ -214,7 +225,8 @@ export async function updateLead(
 
 export async function updateLeadStage(
   id: string,
-  stage: LeadStage
+  stage: LeadStage,
+  contactMethod?: LeadContactMethod
 ): Promise<ActionResult<Lead>> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id) {
@@ -222,9 +234,17 @@ export async function updateLeadStage(
   }
 
   const supabase = await createClient();
+  if (stage === "contacted" && !contactMethod) {
+    return { success: false, error: "Select how the client was contacted" };
+  }
+  const contactedAt = stage === "contacted" ? new Date().toISOString() : undefined;
   const { data, error } = await supabase
     .from("leads")
-    .update({ stage })
+    .update({
+      stage,
+      ...(contactMethod ? { last_contact_method: contactMethod } : {}),
+      ...(contactedAt ? { last_contacted_at: contactedAt } : {}),
+    })
     .eq("id", id)
     .select()
     .single();
@@ -236,7 +256,7 @@ export async function updateLeadStage(
     profile.id,
     "lead_stage_changed",
     id,
-    `Moved "${data.title}" to ${LEAD_STAGE_LABELS[stage]}`
+    `Moved "${data.title}" to ${LEAD_STAGE_LABELS[stage]}${contactMethod ? ` via ${contactMethod}` : ""}`
   );
 
   revalidatePath("/leads");

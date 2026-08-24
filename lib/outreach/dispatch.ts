@@ -81,7 +81,11 @@ export async function dispatchOutreachMessage(
       .eq("organization_id", organizationId);
     await supabase
       .from("leads")
-      .update({ last_contacted_at: sentAt, stage: "contacted" })
+      .update({
+        last_contacted_at: sentAt,
+        last_contact_method: data.channel === "email" ? "email" : "phone",
+        stage: "contacted",
+      })
       .eq("id", data.lead.id)
       .eq("organization_id", organizationId);
 

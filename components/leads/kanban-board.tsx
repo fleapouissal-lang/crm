@@ -20,13 +20,19 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import { CalendarClock, MapPin, Sparkles } from "lucide-react";
+import { Building2, CalendarClock, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { updateLeadStage } from "@/lib/actions/leads";
-import type { Lead, LeadStage } from "@/types/database";
+import type { Lead, LeadContactMethod, LeadStage } from "@/types/database";
 import { LEAD_STAGES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("fr-MA", {
@@ -68,9 +74,7 @@ function LeadCard({
       )}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        {lead.company && (
-          <span className="fl-badge b-gray text-[10px]">{lead.company}</span>
-        )}
+        <span className="fl-badge b-blue text-[10px]">{lead.sales_project}</span>
         {lead.ai_score !== null && lead.ai_score !== undefined ? (
           <span className="fl-badge b-iris text-[10px]">
             <Sparkles className="size-3" /> {lead.ai_score}/100
@@ -83,9 +87,17 @@ function LeadCard({
           className="hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
-          {lead.title}
+          {lead.contact_name || lead.title}
         </Link>
       </h4>
+      {lead.contact_name && lead.title !== lead.contact_name ? (
+        <p className="text-xs fl-faint">{lead.title}</p>
+      ) : null}
+      <div className="space-y-1 text-[11px] text-[var(--text-muted)]">
+        {lead.company ? <span className="flex items-center gap-1.5"><Building2 className="size-3" />{lead.company}</span> : null}
+        {lead.phone ? <span className="flex items-center gap-1.5"><Phone className="size-3" />{lead.phone}</span> : null}
+        {lead.email ? <span className="flex items-center gap-1.5 break-all"><Mail className="size-3" />{lead.email}</span> : null}
+      </div>
       {(lead.city || lead.source || lead.next_follow_up_at) && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] fl-faint">
           {lead.city ? <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{lead.city}</span> : null}
@@ -97,6 +109,15 @@ function LeadCard({
           ) : null}
         </div>
       )}
+      {lead.stage === "contacted" && lead.last_contact_method ? (
+        <span className="fl-badge b-green w-fit text-[10px]">
+          {lead.last_contact_method === "phone"
+            ? "Téléphone"
+            : lead.last_contact_method === "email"
+              ? "E-mail"
+              : "Visite"}
+        </span>
+      ) : null}
       <div className="kmeta">
         <div className="kl">
           <span className="fl-mono">{formatCurrency(Number(lead.value))}</span>
@@ -177,12 +198,16 @@ function PipelineColumn({
 export function KanbanBoard({
   initialLeads,
   organizationId,
+  salesProject,
 }: {
   initialLeads: Lead[];
   organizationId: string;
+  salesProject: string;
 }) {
+  const dict = useDict();
   const [leads, setLeads] = useState(initialLeads);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [contactMove, setContactMove] = useState<Lead | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -205,18 +230,21 @@ export function KanbanBoard({
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
+            if (salesProject !== "all" && (payload.new as Lead).sales_project !== salesProject) return;
             setLeads((prev) => {
               if (prev.some((l) => l.id === (payload.new as Lead).id)) return prev;
               return [payload.new as Lead, ...prev];
             });
           } else if (payload.eventType === "UPDATE") {
-            setLeads((prev) =>
-              prev.map((l) =>
-                l.id === (payload.new as Lead).id
-                  ? { ...l, ...(payload.new as Lead) }
-                  : l
-              )
-            );
+            const nextLead = payload.new as Lead;
+            setLeads((prev) => {
+              if (salesProject !== "all" && nextLead.sales_project !== salesProject) {
+                return prev.filter((lead) => lead.id !== nextLead.id);
+              }
+              return prev.some((lead) => lead.id === nextLead.id)
+                ? prev.map((lead) => lead.id === nextLead.id ? { ...lead, ...nextLead } : lead)
+                : [nextLead, ...prev];
+            });
           } else if (payload.eventType === "DELETE") {
             setLeads((prev) =>
               prev.filter((l) => l.id !== (payload.old as { id: string }).id)
@@ -229,7 +257,7 @@ export function KanbanBoard({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [organizationId]);
+  }, [organizationId, salesProject]);
 
   const byStage = useMemo(() => {
     const map = Object.fromEntries(
@@ -269,6 +297,11 @@ export function KanbanBoard({
 
     if (!newStage || newStage === lead.stage) return;
 
+    if (newStage === "contacted") {
+      setContactMove(lead);
+      return;
+    }
+
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, stage: newStage! } : l))
     );
@@ -280,6 +313,27 @@ export function KanbanBoard({
         setLeads((prev) =>
           prev.map((l) => (l.id === leadId ? { ...l, stage: lead.stage } : l))
         );
+      }
+    });
+  }
+
+  function confirmContact(method: LeadContactMethod) {
+    const lead = contactMove;
+    if (!lead) return;
+    setContactMove(null);
+    const contactedAt = new Date().toISOString();
+    setLeads((prev) =>
+      prev.map((item) =>
+        item.id === lead.id
+          ? { ...item, stage: "contacted", last_contact_method: method, last_contacted_at: contactedAt }
+          : item
+      )
+    );
+    startTransition(async () => {
+      const result = await updateLeadStage(lead.id, "contacted", method);
+      if (!result.success) {
+        toast.error(result.error);
+        setLeads((prev) => prev.map((item) => item.id === lead.id ? lead : item));
       }
     });
   }
@@ -299,6 +353,19 @@ export function KanbanBoard({
       <DragOverlay>
         {activeLead ? <LeadCard lead={activeLead} isDragging /> : null}
       </DragOverlay>
+      <Dialog open={!!contactMove} onOpenChange={(open) => !open && setContactMove(null)}>
+        <DialogContent className="fl-dialog-content ring-0 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dict.leads.chooseContactMethod}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm fl-faint">{contactMove?.contact_name || contactMove?.title}</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button className="fl-btn" onClick={() => confirmContact("phone")}><Phone className="size-4" />{dict.leads.contactByPhone}</button>
+            <button className="fl-btn" onClick={() => confirmContact("email")}><Mail className="size-4" />{dict.leads.contactByEmail}</button>
+            <button className="fl-btn" onClick={() => confirmContact("visit")}><MapPin className="size-4" />{dict.leads.contactByVisit}</button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DndContext>
   );
 }

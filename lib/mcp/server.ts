@@ -41,6 +41,7 @@ const contactPermissionSchema = z.enum([
   "opted_out",
 ]);
 const outreachChannelSchema = z.enum(["whatsapp", "email", "sms"]);
+const leadContactMethodSchema = z.enum(["phone", "email", "visit"]);
 
 function normalizePhone(value?: string | null) {
   const digits = value?.replace(/\D/g, "") ?? "";
@@ -356,20 +357,22 @@ export function createFusionLeapMcpServer(
       description: "List prospects in the CRM Kanban, including AI score and follow-up state.",
       inputSchema: {
         stage: leadStageSchema.optional(),
+        sales_project: z.string().max(120).optional(),
         query: z.string().max(120).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       },
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
-    async ({ stage, query, limit }) => {
+    async ({ stage, sales_project, query, limit }) => {
       if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
       let request = context.supabase
         .from("leads")
-        .select("id, title, company, contact_name, email, phone, website, city, country, source, source_url, ai_score, ai_summary, contact_permission, stage, last_contacted_at, next_follow_up_at, assigned_to, created_at, updated_at")
+        .select("id, title, company, contact_name, email, phone, website, city, country, source, source_url, sales_project, ai_score, ai_summary, contact_permission, stage, last_contact_method, last_contacted_at, next_follow_up_at, assigned_to, created_at, updated_at")
         .eq("organization_id", context.profile.organization_id!)
         .order("ai_score", { ascending: false, nullsFirst: false })
         .limit(limit);
       if (stage) request = request.eq("stage", stage);
+      if (sales_project?.trim()) request = request.eq("sales_project", sales_project.trim());
       if (query?.trim()) {
         const safe = query.trim().replace(/[,%()]/g, " ");
         request = request.or(`company.ilike.%${safe}%,contact_name.ilike.%${safe}%,title.ilike.%${safe}%`);
@@ -400,6 +403,7 @@ export function createFusionLeapMcpServer(
         country: z.string().max(120).default("Morocco"),
         source: z.string().max(120).default("ai_prospecting"),
         source_url: z.string().url().max(1000).optional(),
+        sales_project: z.string().min(1).max(120).optional(),
         ai_score: z.number().int().min(0).max(100).optional(),
         ai_summary: z.string().max(3000).optional(),
         contact_permission: contactPermissionSchema.default("unknown"),
@@ -414,19 +418,20 @@ export function createFusionLeapMcpServer(
         return errorResult("Assignee must belong to the current organization");
       }
       const organizationId = context.profile.organization_id!;
+      const salesProject = values.sales_project?.trim() || "Fusion Leap";
       const phoneNormalized = normalizePhone(values.phone);
       const emailNormalized = values.email?.trim().toLowerCase() || null;
       let existing: { id: string } | null = null;
       if (phoneNormalized) {
-        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("phone_normalized", phoneNormalized).limit(1);
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("sales_project", salesProject).eq("phone_normalized", phoneNormalized).limit(1);
         existing = data?.[0] ?? null;
       }
       if (!existing && emailNormalized) {
-        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("email_normalized", emailNormalized).limit(1);
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("sales_project", salesProject).eq("email_normalized", emailNormalized).limit(1);
         existing = data?.[0] ?? null;
       }
       if (!existing && values.source_url) {
-        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("source_url", values.source_url).limit(1);
+        const { data } = await context.supabase.from("leads").select("id").eq("organization_id", organizationId).eq("sales_project", salesProject).eq("source_url", values.source_url).limit(1);
         existing = data?.[0] ?? null;
       }
 
@@ -443,6 +448,7 @@ export function createFusionLeapMcpServer(
         country: values.country,
         source: values.source,
         source_url: values.source_url ?? null,
+        sales_project: salesProject,
         ai_score: values.ai_score ?? null,
         ai_summary: values.ai_summary?.trim() || null,
         contact_permission: values.contact_permission,
@@ -464,6 +470,7 @@ export function createFusionLeapMcpServer(
           country: values.country,
           source: values.source,
           source_url: values.source_url,
+          sales_project: values.sales_project,
           ai_score: values.ai_score,
           ai_summary: values.ai_summary?.trim(),
           contact_permission: values.contact_permission,
@@ -497,18 +504,27 @@ export function createFusionLeapMcpServer(
       inputSchema: {
         lead_id: uuidSchema,
         stage: leadStageSchema,
+        contact_method: leadContactMethodSchema.optional(),
         next_follow_up_at: z.string().datetime().nullable().optional(),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ lead_id, stage, next_follow_up_at }) => {
+    async ({ lead_id, stage, contact_method, next_follow_up_at }) => {
       if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      if (stage === "contacted" && !contact_method) {
+        return errorResult("contact_method is required when moving a lead to contacted");
+      }
       const { data, error } = await context.supabase
         .from("leads")
-        .update({ stage, ...(next_follow_up_at !== undefined ? { next_follow_up_at } : {}) })
+        .update({
+          stage,
+          ...(contact_method ? { last_contact_method: contact_method } : {}),
+          ...(stage === "contacted" ? { last_contacted_at: new Date().toISOString() } : {}),
+          ...(next_follow_up_at !== undefined ? { next_follow_up_at } : {}),
+        })
         .eq("id", lead_id)
         .eq("organization_id", context.profile.organization_id!)
-        .select("id, title, stage, next_follow_up_at, updated_at")
+        .select("id, title, sales_project, stage, last_contact_method, last_contacted_at, next_follow_up_at, updated_at")
         .maybeSingle();
       if (error || !data) return errorResult(error?.message || "Lead not found or cannot be modified");
       return jsonResult({ lead: { ...data, url: appUrl(baseUrl, `/leads/${lead_id}`) } });

@@ -30,6 +30,7 @@ export type OutreachStatus =
   | "replied"
   | "failed"
   | "cancelled";
+export type LeadContactMethod = "phone" | "email" | "visit";
 
 export type TaskStatus =
   | "testing"
@@ -192,6 +193,8 @@ export interface Lead {
   ai_score: number | null;
   ai_summary: string | null;
   contact_permission: ContactPermission;
+  sales_project: string;
+  last_contact_method: LeadContactMethod | null;
   last_contacted_at: string | null;
   next_follow_up_at: string | null;
   value: number;

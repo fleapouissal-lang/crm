@@ -12,7 +12,6 @@ import {
   Target,
   TrendingUp,
   User,
-  UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { leadSchema, type LeadFormValues } from "@/lib/validations/lead";
@@ -43,6 +42,7 @@ interface LeadFormDialogProps {
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
   profiles: Profile[];
+  defaultSalesProject?: string;
 }
 
 function profileLabel(p: Profile) {
@@ -54,6 +54,7 @@ export function LeadFormDialog({
   onOpenChange,
   lead,
   profiles,
+  defaultSalesProject = "Fusion Leap",
 }: LeadFormDialogProps) {
   const dict = useDict();
   const router = useRouter();
@@ -77,6 +78,8 @@ export function LeadFormDialog({
       contact_name: "",
       email: "",
       phone: "",
+      sales_project: defaultSalesProject,
+      last_contact_method: null,
       value: 0,
       stage: "new",
       notes: "",
@@ -96,13 +99,15 @@ export function LeadFormDialog({
         contact_name: lead?.contact_name ?? "",
         email: lead?.email ?? "",
         phone: lead?.phone ?? "",
+        sales_project: lead?.sales_project ?? defaultSalesProject,
+        last_contact_method: lead?.last_contact_method ?? null,
         value: Number(lead?.value ?? 0),
         stage: lead?.stage ?? "new",
         notes: lead?.notes ?? "",
         assigned_to: lead?.assigned_to ?? "",
       });
     }
-  }, [open, lead, reset]);
+  }, [open, lead, reset, defaultSalesProject]);
 
   function onSubmit(values: LeadFormValues) {
     startTransition(async () => {
@@ -175,6 +180,22 @@ export function LeadFormDialog({
                     placeholder={l.leadCompanyPlaceholder}
                     {...register("company")}
                   />
+                </div>
+                <div className="fl-field">
+                  <label className="fl-field-label" htmlFor="lead-sales-project">
+                    {l.salesProject}
+                  </label>
+                  <Input
+                    id="lead-sales-project"
+                    className="fl-input"
+                    placeholder="Fusion Leap / Autolog"
+                    {...register("sales_project")}
+                  />
+                  {errors.sales_project ? (
+                    <span className="fl-field-hint text-[var(--rose)]">
+                      {errors.sales_project.message}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="fl-field">
                   <label className="fl-field-label" htmlFor="lead-value">
@@ -316,6 +337,30 @@ export function LeadFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
+                {stage === "contacted" ? (
+                  <div className="fl-field">
+                    <label className="fl-field-label">{l.contactMethod}</label>
+                    <Select
+                      value={watch("last_contact_method") ?? "none"}
+                      onValueChange={(v) =>
+                        setValue(
+                          "last_contact_method",
+                          v === "none" ? null : (v as LeadFormValues["last_contact_method"])
+                        )
+                      }
+                    >
+                      <SelectTrigger className="fl-select-trigger fl-input w-full">
+                        <SelectValue placeholder={l.contactMethod} />
+                      </SelectTrigger>
+                      <SelectContent className="fl-select-panel">
+                        <SelectItem value="none">—</SelectItem>
+                        <SelectItem value="phone">{l.contactByPhone}</SelectItem>
+                        <SelectItem value="email">{l.contactByEmail}</SelectItem>
+                        <SelectItem value="visit">{l.contactByVisit}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div className="fl-field sm:col-span-2">
                   <label className="fl-field-label" htmlFor="lead-notes">
                     {c.notes}
