@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { todayKey } from "@/lib/tasks/due-filter";
+import { NATUS_TASK_PHASES } from "@/lib/tasks/phases";
 
 function FormField({
   label,
@@ -64,17 +65,21 @@ export function CreateTaskPageClient({
   currentUserId,
   defaultDueDate,
   defaultStatus,
+  defaultProjectId,
+  defaultTaskPhase,
 }: {
   profiles: Profile[];
   projects?: ProjectRecord[];
   currentUserId: string;
   defaultDueDate?: string;
   defaultStatus?: string;
+  defaultProjectId?: string;
+  defaultTaskPhase?: string;
 }) {
   const dict = useDict();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
 
   const {
@@ -95,12 +100,14 @@ export function CreateTaskPageClient({
       assigned_to: currentUserId,
       assignee_ids: [currentUserId],
       lead_id: "",
-      project_id: "",
+      project_id: defaultProjectId ?? "",
+      task_phase: /^P\d+$/.test(defaultTaskPhase ?? "") ? defaultTaskPhase : "",
     },
   });
 
   const status = watch("status");
   const priority = watch("priority");
+  const taskPhase = watch("task_phase") || "none";
 
   const projectLabel = projectId
     ? (projects.find((p) => p.id === projectId)?.title ??
@@ -256,6 +263,25 @@ export function CreateTaskPageClient({
                   </Select>
                 </FormField>
               </div>
+
+              <FormField label={dict.tasks.phase}>
+                <Select
+                  value={taskPhase}
+                  onValueChange={(v) => setValue("task_phase", !v || v === "none" ? "" : v)}
+                >
+                  <SelectTrigger className="fl-select-trigger fl-input w-full">
+                    <SelectValue>{taskPhase === "none" ? dict.tasks.allPhases : `${taskPhase} · ${dict.tasks.phaseLabels[taskPhase as keyof typeof dict.tasks.phaseLabels] ?? taskPhase}`}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="start">
+                    <SelectItem value="none">—</SelectItem>
+                    {NATUS_TASK_PHASES.map((phase) => (
+                      <SelectItem key={phase} value={phase}>
+                        {phase} · {dict.tasks.phaseLabels[phase]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
 
               <FormField label={dict.common.assignedTo}>
                 <Controller

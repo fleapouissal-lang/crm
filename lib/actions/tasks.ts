@@ -14,6 +14,7 @@ import {
 import { taskSchema, normalizeAssigneeIds } from "@/lib/validations/task";
 import { isTaskDoneStatus } from "@/lib/tasks/status";
 import { memberTaskOrFilter } from "@/lib/tasks/visibility";
+import { inferTaskPhase, normalizeTaskPhase } from "@/lib/tasks/phases";
 import type {
   ActionResult,
   ActivityType,
@@ -63,7 +64,7 @@ async function fetchTaskForAccess(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
-    .select("id, assigned_to, assignee_ids, created_by, organization_id, title")
+    .select("id, assigned_to, assignee_ids, created_by, organization_id, title, task_phase")
     .eq("id", id)
     .single();
   return data;
@@ -181,6 +182,7 @@ export async function createTask(
       assignee_ids: assigneeIds,
       lead_id: null,
       project_id: values.project_id || null,
+      task_phase: normalizeTaskPhase(values.task_phase) ?? inferTaskPhase(values.title),
       created_by: profile.id,
     })
     .select()
@@ -238,6 +240,11 @@ export async function updateTask(
       assigned_to: assignedTo,
       assignee_ids: assigneeIds,
       project_id: values.project_id || null,
+      task_phase:
+        normalizeTaskPhase(values.task_phase) ??
+        inferTaskPhase(values.title) ??
+        existing.task_phase ??
+        null,
     })
     .eq("id", id)
     .select()

@@ -244,6 +244,7 @@ export interface Task {
   assignee_ids?: string[];
   lead_id: string | null;
   project_id?: string | null;
+  task_phase?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

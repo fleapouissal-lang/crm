@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskList } from "@/components/tasks/task-list";
+import { NATUS_TASK_PHASES } from "@/lib/tasks/phases";
+import { cn } from "@/lib/utils";
 
 export function TasksPageClient({
   tasks,
@@ -38,6 +40,7 @@ export function TasksPageClient({
   const dict = useDict();
   const searchParams = useSearchParams();
   const projectFilter = searchParams.get("project_id") ?? "all";
+  const phaseFilter = searchParams.get("phase") ?? "all";
   const dueParam = searchParams.get("due");
   const dueFilter =
     dueParam && isIsoDateKey(dueParam) ? dueParam : "all";
@@ -47,6 +50,20 @@ export function TasksPageClient({
     : "all";
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
   const router = useRouter();
+  const selectedProject = projects.find((project) => project.id === projectFilter);
+  const phaseOptions = useMemo(() => {
+    if (selectedProject?.title.trim().toLowerCase() === "natus") {
+      return [...NATUS_TASK_PHASES];
+    }
+    return Array.from(
+      new Set(
+        tasks
+          .filter((task) => projectFilter === "all" || task.project_id === projectFilter)
+          .map((task) => task.task_phase)
+          .filter((phase): phase is string => Boolean(phase))
+      )
+    ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [projectFilter, selectedProject, tasks]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -58,6 +75,7 @@ export function TasksPageClient({
     } else {
       params.set(key, value);
     }
+    if (key === "project_id") params.delete("phase");
     params.delete("status");
     params.delete("q");
     params.delete("view");
@@ -176,6 +194,29 @@ export function TasksPageClient({
           </div>
         </div>
 
+        {phaseOptions.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3">
+            <span className="mr-1 text-xs font-semibold fl-faint">{dict.tasks.phase}</span>
+            <button
+              type="button"
+              className={cn("fl-btn sm", phaseFilter === "all" && "primary")}
+              onClick={() => updateFilter("phase", "all")}
+            >
+              {dict.tasks.allPhases}
+            </button>
+            {phaseOptions.map((phase) => (
+              <button
+                key={phase}
+                type="button"
+                className={cn("fl-btn sm", phaseFilter === phase && "primary")}
+                onClick={() => updateFilter("phase", phase)}
+              >
+                {phase} · {dict.tasks.phaseLabels[phase as keyof typeof dict.tasks.phaseLabels] ?? phase}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="fl-pad">
           <TaskList
             initialTasks={tasks}
@@ -187,6 +228,7 @@ export function TasksPageClient({
             projectFilter={projectFilter}
             memberFilter={memberFilter}
             dueFilter={dueFilter}
+            phaseFilter={phaseFilter}
           />
         </div>
       </div>

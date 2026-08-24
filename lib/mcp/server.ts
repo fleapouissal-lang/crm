@@ -13,6 +13,7 @@ import {
 import { dispatchOutreachMessage } from "@/lib/outreach/dispatch";
 import { memberTaskOrFilter } from "@/lib/tasks/visibility";
 import { isTaskDoneStatus } from "@/lib/tasks/status";
+import { inferTaskPhase, normalizeTaskPhase } from "@/lib/tasks/phases";
 import type { McpAuthContext } from "@/lib/mcp/auth";
 import type { ActivityType, LeadStage, TaskPriority, TaskStatus } from "@/types/database";
 
@@ -205,16 +206,17 @@ export function createFusionLeapMcpServer(
         status: taskStatusSchema.optional(),
         due_date: z.string().date().optional(),
         assignee_id: uuidSchema.optional(),
+        task_phase: z.string().regex(/^P\d+$/).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       },
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
-    async ({ status, due_date, assignee_id, limit }) => {
+    async ({ status, due_date, assignee_id, task_phase, limit }) => {
       if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
       let request = context.supabase
         .from("tasks")
         .select(
-          "id, title, description, status, priority, due_date, assigned_to, assignee_ids, project_id, created_by, created_at, updated_at"
+          "id, title, description, status, priority, due_date, assigned_to, assignee_ids, project_id, task_phase, created_by, created_at, updated_at"
         )
         .eq("organization_id", context.profile.organization_id!)
         .order("due_date", { ascending: true, nullsFirst: false })
@@ -225,6 +227,7 @@ export function createFusionLeapMcpServer(
       if (status) request = request.eq("status", status);
       if (due_date) request = request.eq("due_date", due_date);
       if (assignee_id) request = request.contains("assignee_ids", [assignee_id]);
+      if (task_phase) request = request.eq("task_phase", task_phase.toUpperCase());
       const { data, error } = await request;
       if (error) return errorResult(error.message);
       return jsonResult({
@@ -249,6 +252,7 @@ export function createFusionLeapMcpServer(
         due_date: z.string().date().nullable().optional(),
         assignee_ids: z.array(uuidSchema).max(25).default([]),
         project_id: uuidSchema.nullable().optional(),
+        task_phase: z.string().regex(/^P\d+$/).nullable().optional(),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
@@ -286,10 +290,11 @@ export function createFusionLeapMcpServer(
           assignee_ids: assigneeIds,
           lead_id: null,
           project_id: values.project_id ?? null,
+          task_phase: normalizeTaskPhase(values.task_phase) ?? inferTaskPhase(values.title),
           created_by: context.profile.id,
         })
         .select(
-          "id, title, description, status, priority, due_date, assigned_to, assignee_ids, project_id, created_by, created_at, updated_at"
+          "id, title, description, status, priority, due_date, assigned_to, assignee_ids, project_id, task_phase, created_by, created_at, updated_at"
         )
         .single();
       if (error) return errorResult(error.message);

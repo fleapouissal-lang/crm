@@ -11,6 +11,7 @@ export const taskSchema = z.object({
   assignee_ids: z.array(z.string().uuid()),
   lead_id: z.string().uuid().optional().nullable().or(z.literal("")),
   project_id: z.string().uuid().optional().nullable().or(z.literal("")),
+  task_phase: z.string().regex(/^P\d+$/).optional().nullable().or(z.literal("")),
 });
 
 export type TaskFormValues = z.infer<typeof taskSchema>;

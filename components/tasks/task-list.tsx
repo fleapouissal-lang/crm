@@ -237,6 +237,7 @@ export function TaskList({
   memberFilter = "all",
   searchQuery = "",
   dueFilter = "all",
+  phaseFilter = "all",
 }: {
   initialTasks: Task[];
   organizationId: string;
@@ -248,6 +249,7 @@ export function TaskList({
   memberFilter?: string;
   searchQuery?: string;
   dueFilter?: string;
+  phaseFilter?: string;
 }) {
   const dict = useDict();
   const { locale } = useI18n();
@@ -265,6 +267,8 @@ export function TaskList({
   }, [profiles]);
 
   useEffect(() => {
+    // Refresh the realtime-backed client copy after a server refresh.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTasks(initialTasks);
   }, [initialTasks]);
 
@@ -272,6 +276,8 @@ export function TaskList({
     try {
       const raw = sessionStorage.getItem(STATUS_ORDER_SESSION_KEY);
       if (!raw) return;
+      // Restore the user's saved presentation preference on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatusOrder(normalizeTaskStatusOrder(JSON.parse(raw)));
     } catch {
       /* ignore */
@@ -371,12 +377,22 @@ export function TaskList({
     );
   }
 
+  function newTaskHref(status: TaskStatus) {
+    const params = new URLSearchParams({ status });
+    if (projectFilter !== "all" && projectFilter !== "none") {
+      params.set("project_id", projectFilter);
+    }
+    if (phaseFilter !== "all") params.set("phase", phaseFilter);
+    return `/tasks/new?${params.toString()}`;
+  }
+
   const filteredTasks = useMemo(
     () =>
       tasks.filter((t) => {
         if (!taskMatchesProjectFilter(t, projectFilter)) return false;
         if (!taskMatchesAssigneeFilter(t, memberFilter)) return false;
         if (!taskMatchesDueFilter(t, dueFilter, today)) return false;
+        if (phaseFilter !== "all" && t.task_phase !== phaseFilter) return false;
         const query = searchQuery.trim().toLowerCase();
         if (!query) return true;
         const creator =
@@ -399,6 +415,7 @@ export function TaskList({
       memberFilter,
       searchQuery,
       dueFilter,
+      phaseFilter,
       profiles,
       today,
       teamById,
@@ -552,18 +569,26 @@ export function TaskList({
                               title={project?.title ?? dict.fusion.kanban.noProject}
                             >
                               {project?.title ?? dict.fusion.kanban.noProject}
+                              {task.task_phase ? ` · ${task.task_phase}` : ""}
                             </p>
                           </div>
                         </div>
 
                         <div className="fl-task-list__col fl-task-list__col--project">
                           {project ? (
-                            <span
-                              className="fl-task-row__project"
-                              title={project.title}
-                            >
-                              {project.title}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className="fl-task-row__project"
+                                title={project.title}
+                              >
+                                {project.title}
+                              </span>
+                              {task.task_phase ? (
+                                <span className="fl-badge b-iris text-[10px]" title={dict.tasks.phase}>
+                                  {task.task_phase}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : (
                             <span className="fl-task-row__empty">
                               {dict.fusion.kanban.noProject}
@@ -644,7 +669,7 @@ export function TaskList({
                   })}
 
                   <Link
-                    href={`/tasks/new?status=${status}`}
+                    href={newTaskHref(status)}
                     className="fl-task-group__add"
                   >
                     <Plus className="size-3.5" strokeWidth={2} />

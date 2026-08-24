@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { todayKey } from "@/lib/tasks/due-filter";
+import { NATUS_TASK_PHASES } from "@/lib/tasks/phases";
 
 function FormField({
   label,
@@ -102,6 +103,7 @@ export function TaskFormDialog({
       assignee_ids: [],
       lead_id: "",
       project_id: "",
+      task_phase: "",
     },
   });
 
@@ -117,6 +119,7 @@ export function TaskFormDialog({
         assignee_ids: task ? getTaskAssigneeIds(task) : [],
         lead_id: "",
         project_id: task?.project_id ?? "",
+        task_phase: task?.task_phase ?? "",
       });
       setProjectId(task?.project_id ?? "");
     }
@@ -124,6 +127,7 @@ export function TaskFormDialog({
 
   const status = watch("status");
   const priority = watch("priority");
+  const taskPhase = watch("task_phase") || "none";
 
   const projectLabel = projectId
     ? (projects.find((p) => p.id === projectId)?.title ??
@@ -263,6 +267,25 @@ export function TaskFormDialog({
                   </Select>
                 </FormField>
               </div>
+
+              <FormField label={dict.tasks.phase}>
+                <Select
+                  value={taskPhase}
+                  onValueChange={(v) => setValue("task_phase", !v || v === "none" ? "" : v)}
+                >
+                  <SelectTrigger className="fl-select-trigger w-full">
+                    <SelectValue>{taskPhase === "none" ? dict.tasks.allPhases : `${taskPhase} · ${dict.tasks.phaseLabels[taskPhase as keyof typeof dict.tasks.phaseLabels] ?? taskPhase}`}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="fl-select-panel" align="start">
+                    <SelectItem value="none">—</SelectItem>
+                    {NATUS_TASK_PHASES.map((phase) => (
+                      <SelectItem key={phase} value={phase}>
+                        {phase} · {dict.tasks.phaseLabels[phase]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
 
               <FormField label={dict.common.assignedTo}>
                 <Controller
