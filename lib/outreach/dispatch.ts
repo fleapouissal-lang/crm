@@ -1,9 +1,5 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OutreachMessage } from "@/types/database";
-
-const execFileAsync = promisify(execFile);
 
 type DispatchResult =
   | { success: true; providerMessageId: string | null }
@@ -36,8 +32,8 @@ export async function dispatchOutreachMessage(
   if (!destination) return { success: false, error: `Lead has no ${data.channel} destination` };
 
   const webhookUrl = process.env.OUTREACH_WEBHOOK_URL;
-  const useOpenClaw = process.env.OUTREACH_PROVIDER === "openclaw" && data.channel === "whatsapp";
-  if (!webhookUrl && !useOpenClaw) {
+  const useEasyTouch = process.env.OUTREACH_PROVIDER === "easytouch" && data.channel === "whatsapp";
+  if (!webhookUrl && !useEasyTouch) {
     return {
       success: false,
       error: data.channel === "email"
@@ -54,29 +50,28 @@ export async function dispatchOutreachMessage(
 
   try {
     let providerMessageId: string | null = null;
-    if (useOpenClaw) {
-      const { stdout } = await execFileAsync(
-        "openclaw",
-        [
-          "message",
-          "send",
-          "--channel",
-          "whatsapp",
-          "--target",
-          destination,
-          "--message",
-          data.body,
-          "--json",
-        ],
-        { timeout: 45_000, maxBuffer: 1024 * 1024 }
-      );
-      const payload = JSON.parse(stdout) as {
-        message_id?: string;
-        id?: string;
-        result?: { messageId?: string; id?: string };
-      };
-      providerMessageId =
-        payload.message_id || payload.id || payload.result?.messageId || payload.result?.id || null;
+    if (useEasyTouch) {
+      const bridgeUrl = process.env.WA_BRIDGE_URL?.replace(/\/$/, "");
+      const bridgeSecret = process.env.WA_BRIDGE_SECRET;
+      const instanceId = process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+      if (!bridgeUrl || !bridgeSecret) {
+        throw new Error("EasyTouch WhatsApp bridge is not configured");
+      }
+
+      const response = await fetch(`${bridgeUrl}/instance/${encodeURIComponent(instanceId)}/send`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          apikey: bridgeSecret,
+        },
+        body: JSON.stringify({ number: destination, text: data.body }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { messageId?: string; error?: string }
+        | null;
+      if (!response.ok) throw new Error(payload?.error || `WhatsApp bridge returned ${response.status}`);
+      providerMessageId = payload?.messageId || null;
     } else {
       const response = await fetch(webhookUrl!, {
         method: "POST",
@@ -108,7 +103,7 @@ export async function dispatchOutreachMessage(
       .from("outreach_messages")
       .update({
         status: "sent",
-        provider: useOpenClaw ? "openclaw" : "webhook",
+        provider: useEasyTouch ? "easytouch_qr" : "webhook",
         provider_message_id: providerMessageId,
         sent_at: sentAt,
         error_message: null,
