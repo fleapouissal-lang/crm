@@ -1,0 +1,9 @@
+[Unit]
+Description=Fusion Leap automated WhatsApp relances
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/adk-crm
+EnvironmentFile=/var/www/adk-crm/.env.local
+ExecStart=/usr/bin/node /var/www/adk-crm/scripts/process-relances.mjs

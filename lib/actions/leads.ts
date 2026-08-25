@@ -58,7 +58,7 @@ export async function getLeads(filters?: {
 
   let query = supabase
     .from("leads")
-    .select("*, assigned_profile:profiles!leads_assigned_to_fkey(*)")
+    .select("*, assigned_profile:profiles!leads_assigned_to_fkey(*), relances:outreach_relances(sequence,status,scheduled_for,sent_at)")
     .eq("organization_id", profile.organization_id)
     .order("created_at", { ascending: false });
 

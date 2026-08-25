@@ -125,6 +125,16 @@ function LeadCard({
               : "Visite"}
         </span>
       ) : null}
+      {lead.relances?.length ? (
+        <div className="flex flex-wrap gap-1 pt-1" aria-label="Relances">
+          {[1, 2, 3].map((sequence) => {
+            const relance = lead.relances?.find((item) => item.sequence === sequence);
+            if (!relance) return null;
+            const completed = ["sent", "replied", "lost"].includes(relance.status);
+            return <span key={sequence} title={`Relance ${sequence} · ${relance.status}`} className={cn("fl-badge text-[10px]", completed ? "b-green" : "b-gold")}><MessageCircle className="size-3" /> R{sequence}</span>;
+          })}
+        </div>
+      ) : null}
       <div className="kmeta">
         <div className="kl">
           {lead.phone && whatsappUrl(lead.phone) ? (

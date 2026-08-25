@@ -208,6 +208,7 @@ export interface Lead {
   created_at: string;
   updated_at: string;
   assigned_profile?: Profile | null;
+  relances?: Array<{ sequence: number; status: string; scheduled_for: string; sent_at?: string | null }>;
 }
 
 export interface OutreachMessage {

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { getLeads } from "@/lib/actions/leads";
-import { getOutreachMessages } from "@/lib/actions/outreach";
+import { getOutreachMessages, getOutreachRelances } from "@/lib/actions/outreach";
 import { canAccessLeads } from "@/lib/permissions";
 import { LeadsPageClient } from "@/components/leads/leads-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,10 +12,11 @@ async function SalesWorkspace() {
   if (!profile?.organization_id) redirect("/login");
   if (!canAccessLeads(profile)) redirect("/dashboard");
 
-  const [leads, profiles, outreachMessages] = await Promise.all([
+  const [leads, profiles, outreachMessages, relances] = await Promise.all([
     getLeads(),
     getOrgProfiles(),
     getOutreachMessages(),
+    getOutreachRelances(),
   ]);
 
   return (
@@ -25,6 +26,7 @@ async function SalesWorkspace() {
       outreachMessages={outreachMessages}
       organizationId={profile.organization_id}
       role={profile.role}
+      relances={relances}
     />
   );
 }

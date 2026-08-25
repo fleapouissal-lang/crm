@@ -124,6 +124,10 @@ export async function POST(request: Request) {
       last_contact_method: "phone",
       last_contacted_at: new Date().toISOString(),
     };
+    await supabase.from("outreach_relances").update({ status: "cancelled", response_received_at: new Date().toISOString() })
+      .eq("organization_id", organizationId).eq("lead_id", lead.id).eq("status", "planned");
+    await supabase.from("outreach_relances").update({ status: "replied", response_received_at: new Date().toISOString() })
+      .eq("organization_id", organizationId).eq("lead_id", lead.id).eq("status", "sent");
     if (replySentiment === "positive") {
       leadUpdate.stage = "qualified";
       if (qualifiedAssigneeId) leadUpdate.assigned_to = qualifiedAssigneeId;

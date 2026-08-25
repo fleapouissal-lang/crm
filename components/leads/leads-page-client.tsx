@@ -20,6 +20,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CrmKpiRow, CrmPipelineExtras } from "@/components/crm/crm-extras";
 import { cn } from "@/lib/utils";
 import { OutreachCommandCenter } from "@/components/leads/outreach-command-center";
+import { RelanceTable } from "@/components/leads/relance-table";
 
 export function LeadsPageClient({
   leads,
@@ -27,12 +28,14 @@ export function LeadsPageClient({
   organizationId,
   role,
   outreachMessages,
+  relances,
 }: {
   leads: Lead[];
   profiles: Profile[];
   organizationId: string;
   role: Role;
   outreachMessages: OutreachMessage[];
+  relances: Array<Record<string, unknown>>;
 }) {
   const dict = useDict();
   const [formOpen, setFormOpen] = useState(false);
@@ -71,6 +74,7 @@ export function LeadsPageClient({
   return (
     <div className="space-y-4">
       <OutreachCommandCenter initialMessages={outreachMessages} role={role} project={project} />
+      <RelanceTable rows={relances as never} />
       <CrmKpiRow leads={filteredLeads} />
 
       <div className="fl-card overflow-hidden">

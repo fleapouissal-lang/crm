@@ -23,6 +23,19 @@ export async function getOutreachMessages(limit = 100): Promise<OutreachMessage[
   return (data as OutreachMessage[]) ?? [];
 }
 
+export async function getOutreachRelances() {
+  const profile = await getCurrentProfile();
+  if (!profile?.organization_id || !canAccessLeads(profile)) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("outreach_relances")
+    .select("id,lead_id,sequence,status,scheduled_for,sent_at,lost_at,lead:leads(title,contact_name,sales_project)")
+    .eq("organization_id", profile.organization_id)
+    .order("scheduled_for", { ascending: true })
+    .limit(100);
+  return data ?? [];
+}
+
 export async function approveOutreachMessage(id: string): Promise<ActionResult<OutreachMessage>> {
   const parsed = idSchema.safeParse(id);
   if (!parsed.success) return { success: false, error: "Invalid message id" };

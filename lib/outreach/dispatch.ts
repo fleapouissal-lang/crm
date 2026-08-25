@@ -141,6 +141,18 @@ export async function dispatchOutreachMessage(
       })
       .eq("id", data.lead.id)
       .eq("organization_id", organizationId);
+    if (data.channel === "whatsapp") {
+      const delayHours = 6 + Math.random() * 6;
+      const followUp = new Date(Date.now() + delayHours * 60 * 60 * 1000).toISOString();
+      await supabase.from("outreach_relances").upsert({
+        organization_id: organizationId,
+        lead_id: data.lead.id,
+        sequence: 1,
+        status: "planned",
+        body: "Bonjour, je me permets de revenir vers vous. Souhaitez-vous que je vous montre rapidement comment Autolog peut simplifier votre suivi ?",
+        scheduled_for: followUp,
+      }, { onConflict: "lead_id,sequence", ignoreDuplicates: true });
+    }
 
     return { success: true, providerMessageId };
   } catch (dispatchError) {
