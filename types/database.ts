@@ -233,7 +233,7 @@ export interface OutreachMessage {
   replied_at: string | null;
   created_at: string;
   updated_at: string;
-    lead?: Pick<Lead, "id" | "title" | "company" | "contact_name" | "phone" | "email" | "sales_project"> | null;
+    lead?: Pick<Lead, "id" | "title" | "company" | "contact_name" | "phone" | "email" | "city" | "sales_project"> | null;
 }
 
 export interface Task {
@@ -250,12 +250,73 @@ export interface Task {
   lead_id: string | null;
   project_id?: string | null;
   task_phase?: string | null;
+  acceptance_criteria?: string | null;
+  estimated_minutes?: number | null;
+  tracked_minutes?: number;
+  next_step?: string | null;
+  last_modified_by?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   assigned_profile?: Profile | null;
   created_profile?: Profile | null;
   lead?: Lead | null;
+}
+
+export type TaskDependencyRelation = "depends_on" | "blocks" | "relates_to";
+export type TaskResourceKind = "link" | "github" | "document" | "design" | "file";
+
+export interface TaskSubtask {
+  id: string;
+  organization_id: string;
+  task_id: string;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskDependency {
+  id: string;
+  organization_id: string;
+  task_id: string;
+  related_task_id: string;
+  relation: TaskDependencyRelation;
+  created_by: string | null;
+  created_at: string;
+  related_task?: Pick<Task, "id" | "title" | "status"> | null;
+}
+
+export interface TaskResource {
+  id: string;
+  organization_id: string;
+  task_id: string;
+  label: string;
+  url: string;
+  kind: TaskResourceKind;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface TaskComment {
+  id: string;
+  organization_id: string;
+  task_id: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+  profile?: Profile | null;
+}
+
+export interface TaskWorkspaceData {
+  subtasks: TaskSubtask[];
+  dependencies: TaskDependency[];
+  resources: TaskResource[];
+  comments: TaskComment[];
+  activities: Activity[];
+  availableTasks: Pick<Task, "id" | "title" | "status">[];
 }
 
 export interface Activity {

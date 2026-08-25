@@ -12,6 +12,10 @@ export const taskSchema = z.object({
   lead_id: z.string().uuid().optional().nullable().or(z.literal("")),
   project_id: z.string().uuid().optional().nullable().or(z.literal("")),
   task_phase: z.string().regex(/^P\d+$/).optional().nullable().or(z.literal("")),
+  acceptance_criteria: z.string().max(10000).optional().nullable().or(z.literal("")),
+  estimated_minutes: z.number().int().min(0).max(100000).optional().nullable(),
+  tracked_minutes: z.number().int().min(0).max(100000).optional(),
+  next_step: z.string().max(1000).optional().nullable().or(z.literal("")),
 });
 
 export type TaskFormValues = z.infer<typeof taskSchema>;

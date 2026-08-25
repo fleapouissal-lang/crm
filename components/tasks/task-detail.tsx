@@ -8,10 +8,11 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckSquare,
+  Save,
   Loader2,
   Trash2,
 } from "lucide-react";
-import type { Profile, Task, TaskPriority, TaskStatus } from "@/types/database";
+import type { Profile, Task, TaskPriority, TaskStatus, TaskWorkspaceData } from "@/types/database";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/types/database";
 import { isTaskDoneStatus } from "@/lib/tasks/status";
 import {
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { TaskWorkspace } from "@/components/tasks/task-workspace";
 
 function Field({
   label,
@@ -63,11 +65,13 @@ export function TaskDetailClient({
   profiles,
   projects = [],
   profile,
+  workspace,
 }: {
   task: Task;
   profiles: Profile[];
   projects?: ProjectRecord[];
   profile: Profile;
+  workspace: TaskWorkspaceData;
 }) {
   const dict = useDict();
   const c = dict.common;
@@ -84,6 +88,10 @@ export function TaskDetailClient({
     getTaskAssigneeIds(initialTask)
   );
   const [projectId, setProjectId] = useState(initialTask.project_id ?? "");
+  const [acceptanceCriteria, setAcceptanceCriteria] = useState(initialTask.acceptance_criteria ?? "");
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(initialTask.estimated_minutes ?? null);
+  const [trackedMinutes, setTrackedMinutes] = useState(initialTask.tracked_minutes ?? 0);
+  const [nextStep, setNextStep] = useState(initialTask.next_step ?? "");
 
   const canEdit = canModifyTask(profile, task);
   const teamOptions = useMemo(() => buildTeamOptions(profiles), [profiles]);
@@ -97,7 +105,24 @@ export function TaskDetailClient({
     setPriority(initialTask.priority);
     setAssigneeIds(getTaskAssigneeIds(initialTask));
     setProjectId(initialTask.project_id ?? "");
+    setAcceptanceCriteria(initialTask.acceptance_criteria ?? "");
+    setEstimatedMinutes(initialTask.estimated_minutes ?? null);
+    setTrackedMinutes(initialTask.tracked_minutes ?? 0);
+    setNextStep(initialTask.next_step ?? "");
   }, [initialTask]);
+
+  const isDirty =
+    title !== task.title ||
+    description !== (task.description ?? "") ||
+    dueDate !== (task.due_date ?? "") ||
+    status !== task.status ||
+    priority !== task.priority ||
+    projectId !== (task.project_id ?? "") ||
+    JSON.stringify(assigneeIds) !== JSON.stringify(getTaskAssigneeIds(task)) ||
+    acceptanceCriteria !== (task.acceptance_criteria ?? "") ||
+    estimatedMinutes !== (task.estimated_minutes ?? null) ||
+    trackedMinutes !== (task.tracked_minutes ?? 0) ||
+    nextStep !== (task.next_step ?? "");
 
   const today = new Date().toISOString().slice(0, 10);
   const overdue =
@@ -125,6 +150,10 @@ export function TaskDetailClient({
       assignee_ids: assigneeIds,
       lead_id: "",
       project_id: projectId || null,
+      acceptance_criteria: acceptanceCriteria,
+      estimated_minutes: estimatedMinutes,
+      tracked_minutes: trackedMinutes,
+      next_step: nextStep,
       ...patch,
     };
   }
@@ -154,6 +183,10 @@ export function TaskDetailClient({
         });
         setAssigneeIds(getTaskAssigneeIds(result.data));
         setProjectId(result.data.project_id ?? "");
+        setAcceptanceCriteria(result.data.acceptance_criteria ?? "");
+        setEstimatedMinutes(result.data.estimated_minutes ?? null);
+        setTrackedMinutes(result.data.tracked_minutes ?? 0);
+        setNextStep(result.data.next_step ?? "");
       }
       toast.success(td.updatedTask);
       router.refresh();
@@ -179,6 +212,15 @@ export function TaskDetailClient({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={cn("fl-btn sm", isDirty ? "primary" : "ghost")}
+              disabled={!canEdit || pending || !isDirty}
+              onClick={() => save()}
+            >
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {isDirty ? "Sauvegarder les modifications" : "Modifications enregistrées"}
+            </button>
             <Link href="/tasks?view=list" className="fl-btn sm ghost">
               <ArrowLeft className="size-4" />
               {td.backToTasks}
@@ -255,6 +297,37 @@ export function TaskDetailClient({
                   if ((description || "") !== (task.description || "")) {
                     save({ description });
                   }
+                }}
+              />
+            </Field>
+
+            <Field label="Critères d’acceptation" htmlFor="task-detail-acceptance">
+              <Textarea
+                id="task-detail-acceptance"
+                rows={5}
+                className="fl-inp min-h-[120px] resize-y"
+                value={acceptanceCriteria}
+                disabled={!canEdit || pending}
+                placeholder="Quand considérons-nous cette tâche terminée ?"
+                onChange={(e) => setAcceptanceCriteria(e.target.value)}
+                onBlur={() => {
+                  if (acceptanceCriteria !== (task.acceptance_criteria ?? "")) {
+                    save({ acceptance_criteria: acceptanceCriteria });
+                  }
+                }}
+              />
+            </Field>
+
+            <Field label="Étape suivante" htmlFor="task-detail-next-step">
+              <Input
+                id="task-detail-next-step"
+                className="fl-inp"
+                value={nextStep}
+                disabled={!canEdit || pending}
+                placeholder="Ex. Tester le checkout sur Casablanca"
+                onChange={(e) => setNextStep(e.target.value)}
+                onBlur={() => {
+                  if (nextStep !== (task.next_step ?? "")) save({ next_step: nextStep });
                 }}
               />
             </Field>
@@ -392,6 +465,41 @@ export function TaskDetailClient({
               </Select>
             </Field>
 
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Temps estimé (min)" htmlFor="task-detail-estimate">
+                <Input
+                  id="task-detail-estimate"
+                  type="number"
+                  min={0}
+                  className="fl-inp"
+                  value={estimatedMinutes ?? ""}
+                  disabled={!canEdit || pending}
+                  onChange={(e) => setEstimatedMinutes(e.target.value === "" ? null : Number(e.target.value))}
+                  onBlur={() => {
+                    if (estimatedMinutes !== (task.estimated_minutes ?? null)) {
+                      save({ estimated_minutes: estimatedMinutes });
+                    }
+                  }}
+                />
+              </Field>
+              <Field label="Temps consommé (min)" htmlFor="task-detail-tracked">
+                <Input
+                  id="task-detail-tracked"
+                  type="number"
+                  min={0}
+                  className="fl-inp"
+                  value={trackedMinutes}
+                  disabled={!canEdit || pending}
+                  onChange={(e) => setTrackedMinutes(Math.max(0, Number(e.target.value) || 0))}
+                  onBlur={() => {
+                    if (trackedMinutes !== (task.tracked_minutes ?? 0)) {
+                      save({ tracked_minutes: trackedMinutes });
+                    }
+                  }}
+                />
+              </Field>
+            </div>
+
             <p className="text-[11px] fl-faint">
               {c.createdBy}:{" "}
               <span className="font-medium text-[var(--text-dim)]">
@@ -401,9 +509,24 @@ export function TaskDetailClient({
               {c.created}:{" "}
               {format(new Date(task.created_at), "d MMM yyyy · HH:mm")}
             </p>
+            <p className="text-[11px] fl-faint">
+              Dernière modification : {format(new Date(task.updated_at), "d MMM yyyy · HH:mm")}
+            </p>
           </div>
         </section>
       </div>
+
+      <TaskWorkspace
+        taskId={task.id}
+        workspace={workspace}
+        profiles={profiles}
+        canEdit={canEdit}
+        status={status}
+        onMoveToStatus={(next) => {
+          setStatus(next);
+          save({ status: next });
+        }}
+      />
     </div>
   );
 }

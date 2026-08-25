@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getTask } from "@/lib/actions/tasks";
+import { getTask, getTaskWorkspace } from "@/lib/actions/tasks";
 import { getProjects } from "@/lib/actions/projects";
 import { getCurrentProfile, getOrgProfiles } from "@/lib/actions/auth";
 import { canAccessTasks, isLeadership } from "@/lib/permissions";
@@ -15,10 +15,11 @@ export default async function TaskDetailPage({
   if (!profile) redirect("/login");
   if (!canAccessTasks(profile)) redirect("/dashboard");
 
-  const [task, profiles, projects] = await Promise.all([
+  const [task, profiles, projects, workspace] = await Promise.all([
     getTask(id),
     getOrgProfiles(),
     isLeadership(profile) ? getProjects() : Promise.resolve([]),
+    getTaskWorkspace(id),
   ]);
 
   if (!task) notFound();
@@ -29,6 +30,7 @@ export default async function TaskDetailPage({
       profiles={profiles}
       projects={projects}
       profile={profile}
+      workspace={workspace}
     />
   );
 }
