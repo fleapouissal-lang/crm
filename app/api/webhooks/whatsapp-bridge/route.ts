@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 type BridgeMessage = {
   key?: { id?: string; remoteJid?: string; remoteJidAlt?: string; participantAlt?: string; fromMe?: boolean };
+  _mediaType?: string;
   message?: {
     conversation?: string;
     extendedTextMessage?: { text?: string };
@@ -13,19 +14,6 @@ type BridgeMessage = {
     videoMessage?: { caption?: string };
   };
 };
-
-const NEGATIVE_PATTERNS = [
-  /\b(non|no|stop|jamais)\b/i,
-  /pas\s+int[eé]ress[eé]/i,
-  /ne\s+(me\s+)?contactez\s+plus/i,
-  /غير\s+مهتم|ما\s+مهتم|لا\s+تتصل|ماتعاودش|حبس/i,
-];
-
-const POSITIVE_PATTERNS = [
-  /\b(oui|yes|ok|okay|d['’]?accord|int[eé]ress[eé]e?|possible|disponible)\b/i,
-  /d[eé]mo(nstration)?|rendez[ -]?vous|appelez|contactez|envoyez/i,
-  /نعم|مهتم|موافق|واخا|مرحبا|تواصل|اتصل|موعد|ديمو|بغيت|ممكن/i,
-];
 
 function messageText(message: BridgeMessage): string {
   return (
@@ -46,12 +34,6 @@ function sameMoroccanPhone(a: string, b: string): boolean {
   const right = digits(b);
   if (!left || !right) return false;
   return left === right || left.slice(-9) === right.slice(-9);
-}
-
-function sentiment(text: string): "positive" | "neutral" | "negative" {
-  if (NEGATIVE_PATTERNS.some((pattern) => pattern.test(text))) return "negative";
-  if (POSITIVE_PATTERNS.some((pattern) => pattern.test(text))) return "positive";
-  return "neutral";
 }
 
 export async function POST(request: Request) {
@@ -79,7 +61,8 @@ export async function POST(request: Request) {
     if (incoming.key?.fromMe) continue;
     const text = messageText(incoming);
     const remotePhone = (incoming.key?.remoteJid || "").replace(/@.+$/, "");
-    if (!text || !remotePhone) continue;
+    const replyBody = text || (incoming._mediaType === "audio" ? "رسالة صوتية مستلمة" : "رد وارد مستلم");
+    if (!remotePhone || (!text && !incoming._mediaType)) continue;
 
     const { data: leads } = await supabase
       .from("leads")
@@ -91,7 +74,9 @@ export async function POST(request: Request) {
     );
     if (!lead) continue;
 
-    const replySentiment = sentiment(text);
+    // Any inbound response is a qualified human interaction. This includes
+    // positive/negative text and audio: Dalal should review every reply.
+    const replySentiment = "positive" as const;
     const { data: latestOutreach } = await supabase
       .from("outreach_messages")
       .select("id")
@@ -110,7 +95,7 @@ export async function POST(request: Request) {
         lead_id: lead.id,
         outreach_message_id: latestOutreach?.id || null,
         provider_message_id: providerMessageId,
-        body: text,
+        body: replyBody,
         sentiment: replySentiment,
         received_at: new Date().toISOString(),
       },
@@ -141,10 +126,7 @@ export async function POST(request: Request) {
       entity_type: "lead",
       entity_id: lead.id,
       user_id: replySentiment === "positive" ? qualifiedAssigneeId || null : null,
-      message:
-        replySentiment === "positive"
-          ? `Positive WhatsApp reply detected; lead qualified and assigned to Dalal: ${text.slice(0, 240)}`
-          : `WhatsApp reply received (${replySentiment}): ${text.slice(0, 240)}`,
+        message: `WhatsApp reply detected (${incoming._mediaType === "audio" ? "audio" : "text"}); lead qualified and assigned to Dalal: ${replyBody.slice(0, 240)}`,
     });
   }
 
