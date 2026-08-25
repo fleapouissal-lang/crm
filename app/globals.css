@@ -56,6 +56,7 @@
 :root {
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-arabic: var(--font-el-messiri), var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --r-xs: 8px;
   --r-sm: 12px;
@@ -213,7 +214,7 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  body {
+body {
     font-family: var(--font-body);
     background: var(--bg);
     color: var(--text);
@@ -1000,6 +1001,10 @@
   color: #ffffff !important;
   box-shadow: none !important;
 }
+
+html[dir="rtl"] body {
+  font-family: var(--font-arabic);
+}
 .fusion-sidebar-locale .fusion-locale-select:hover,
 .fusion-sidebar-locale .fusion-locale-select:focus-visible,
 .fusion-sidebar-locale .fusion-locale-select[data-popup-open] {
@@ -1474,8 +1479,12 @@ a.fusion-user-card:hover .fusion-user-meta b {
   min-width: 0;
 }
 .fusion-locale-select__flag {
-  font-size: 14px;
-  line-height: 1;
+  display: inline-block;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  object-fit: cover;
 }
 .fusion-locale-select__code {
   margin-left: auto;
@@ -1908,6 +1917,22 @@ a.fusion-user-card:hover .fusion-user-meta b {
   padding: 6px 11px;
   font-size: 12px;
   border-radius: 9px;
+}
+
+/* Task workspace actions use a quieter accent so repeated controls stay easy on the eyes. */
+.task-workspace .fl-btn.primary {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  color: var(--brand-purple);
+  box-shadow: none;
+}
+
+.task-workspace .fl-btn.primary:hover {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.52);
+  color: var(--brand-purple);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.12);
+  filter: none;
 }
 
 .fl-badge {

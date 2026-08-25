@@ -124,7 +124,7 @@ export function TaskWorkspace({
   ].sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
   return (
-    <div className="grid gap-[18px] lg:grid-cols-[1.3fr_1fr]">
+    <div className="task-workspace grid gap-[18px] lg:grid-cols-[1.3fr_1fr]">
       <section className="fl-card">
         <div className="fl-card-head">
           <div>
