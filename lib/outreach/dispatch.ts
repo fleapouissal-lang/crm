@@ -58,20 +58,31 @@ export async function dispatchOutreachMessage(
         throw new Error("EasyTouch WhatsApp bridge is not configured");
       }
 
-      const response = await fetch(`${bridgeUrl}/instance/${encodeURIComponent(instanceId)}/send`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          apikey: bridgeSecret,
-        },
-        body: JSON.stringify({ number: destination, text: data.body }),
-        signal: AbortSignal.timeout(45_000),
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | { messageId?: string; error?: string }
-        | null;
-      if (!response.ok) throw new Error(payload?.error || `WhatsApp bridge returned ${response.status}`);
-      providerMessageId = payload?.messageId || null;
+      const parts = Array.isArray(data.message_parts) && data.message_parts.length
+        ? data.message_parts.slice(0, 2).map(String).filter((part: string) => part.trim())
+        : [data.body];
+      const providerIds: string[] = [];
+      for (let index = 0; index < parts.length; index += 1) {
+        if (index > 0) {
+          const humanPause = Math.min(4_000, 1_500 + parts[index]!.length * 18);
+          await new Promise((resolve) => setTimeout(resolve, humanPause));
+        }
+        const response = await fetch(`${bridgeUrl}/instance/${encodeURIComponent(instanceId)}/send`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            apikey: bridgeSecret,
+          },
+          body: JSON.stringify({ number: destination, text: parts[index] }),
+          signal: AbortSignal.timeout(45_000),
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | { messageId?: string; error?: string }
+          | null;
+        if (!response.ok) throw new Error(payload?.error || `WhatsApp bridge returned ${response.status}`);
+        if (payload?.messageId) providerIds.push(payload.messageId);
+      }
+      providerMessageId = providerIds.join(",") || null;
     } else {
       const response = await fetch(webhookUrl!, {
         method: "POST",

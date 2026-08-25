@@ -10,6 +10,8 @@ import {
   Mail,
   Phone,
   Building2,
+  Bot,
+  ExternalLink,
   Pencil,
   Trash2,
   Plus,
@@ -107,6 +109,36 @@ export function LeadDetailClient({
           )}
         </div>
       </div>
+
+      {lead.research_notes ? (
+        <Card className="border-primary/20 bg-primary/[0.025] shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="size-4 text-primary" />
+              Recherche IA sur le prospect
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="whitespace-pre-wrap text-sm leading-6">{lead.research_notes}</p>
+            {Array.isArray(lead.research_sources) && lead.research_sources.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {lead.research_sources.map((source, index) => (
+                  <a
+                    key={`${source}-${index}`}
+                    href={source}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Source {index + 1}
+                    <ExternalLink className="size-3" />
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-2 border-border/60 shadow-sm">

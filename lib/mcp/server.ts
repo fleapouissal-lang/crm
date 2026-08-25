@@ -472,7 +472,7 @@ export function createFusionLeapMcpServer(
       if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
       let request = context.supabase
         .from("leads")
-        .select("id, title, company, contact_name, email, phone, website, city, country, source, source_url, sales_project, ai_score, ai_summary, contact_permission, stage, last_contact_method, last_contacted_at, next_follow_up_at, assigned_to, created_at, updated_at")
+        .select("id, title, company, contact_name, email, phone, website, city, country, source, source_url, sales_project, ai_score, ai_summary, research_notes, research_sources, researched_at, contact_permission, stage, last_contact_method, last_contacted_at, next_follow_up_at, assigned_to, created_at, updated_at")
         .eq("organization_id", context.profile.organization_id!)
         .order("ai_score", { ascending: false, nullsFirst: false })
         .limit(limit);
@@ -602,6 +602,87 @@ export function createFusionLeapMcpServer(
   );
 
   server.registerTool(
+    "list_leads_needing_research",
+    {
+      title: "Find prospects that need research",
+      description: "Return prospects that do not yet have a sourced research brief. Research each company on the public web before drafting outreach.",
+      inputSchema: {
+        sales_project: z.string().min(1).max(120).default("Autolog"),
+        limit: z.number().int().min(1).max(20).default(20),
+      },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ sales_project, limit }) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      const { data, error } = await context.supabase
+        .from("leads")
+        .select("id, title, company, contact_name, website, city, country, source, source_url, sales_project, ai_summary, research_notes, researched_at")
+        .eq("organization_id", context.profile.organization_id!)
+        .eq("sales_project", sales_project.trim())
+        .is("researched_at", null)
+        .order("created_at", { ascending: true })
+        .limit(limit);
+      if (error) return errorResult(error.message);
+      return jsonResult({
+        leads: (data ?? []).map((lead) => ({ ...lead, url: appUrl(baseUrl, `/leads/${lead.id}`) })),
+        required_output: ["verified company snapshot", "observed opportunity", "specific value to offer", "personalization hook", "source URLs"],
+      });
+    }
+  );
+
+  server.registerTool(
+    "save_lead_research",
+    {
+      title: "Save a sourced prospect research brief",
+      description: "Save verified public-web research that a message writer can use. Never invent facts; every company-specific claim must be supported by one of the supplied source URLs.",
+      inputSchema: {
+        lead_id: uuidSchema,
+        company_snapshot: z.string().min(20).max(1200),
+        observed_opportunity: z.string().min(20).max(1200),
+        value_to_offer: z.string().min(20).max(1200),
+        personalization_hook: z.string().min(10).max(500),
+        confidence: z.enum(["high", "medium", "low"]),
+        sources: z.array(z.string().url().max(1000)).min(1).max(5),
+        ai_score: z.number().int().min(0).max(100).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ lead_id, company_snapshot, observed_opportunity, value_to_offer, personalization_hook, confidence, sources, ai_score }) => {
+      if (!canAccessLeads(context.profile)) return errorResult("Sales workspace access is not allowed");
+      const researchNotes = [
+        `Company snapshot: ${company_snapshot.trim()}`,
+        `Observed opportunity: ${observed_opportunity.trim()}`,
+        `Specific value to offer: ${value_to_offer.trim()}`,
+        `Personalization hook: ${personalization_hook.trim()}`,
+        `Research confidence: ${confidence}`,
+      ].join("\n");
+      const { data, error } = await context.supabase
+        .from("leads")
+        .update({
+          research_notes: researchNotes,
+          research_sources: sources,
+          researched_at: new Date().toISOString(),
+          ai_summary: `${company_snapshot.trim()} ${observed_opportunity.trim()}`.slice(0, 3000),
+          ...(ai_score !== undefined ? { ai_score } : {}),
+        })
+        .eq("id", lead_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .select("id, title, research_notes, research_sources, researched_at, ai_score")
+        .maybeSingle();
+      if (error || !data) return errorResult(error?.message || "Lead not found");
+      await context.supabase.from("activities").insert({
+        organization_id: context.profile.organization_id!,
+        type: "lead_updated",
+        entity_type: "lead",
+        entity_id: lead_id,
+        message: `AI research brief completed for "${data.title}" with ${sources.length} source(s)`,
+        user_id: context.profile.id,
+      });
+      return jsonResult({ lead: data, ready_for_outreach: true });
+    }
+  );
+
+  server.registerTool(
     "move_sales_lead",
     {
       title: "Move prospect on sales Kanban",
@@ -640,12 +721,13 @@ export function createFusionLeapMcpServer(
     "queue_outreach_message",
     {
       title: "Draft personalized outreach",
-      description: "Prepare an auditable WhatsApp, email, or SMS message for human approval. This does not send it.",
+      description: "Prepare an auditable, natural and personalized WhatsApp, email, or SMS message for human approval. Vary the opening, value angle and question by lead. For WhatsApp, message_parts may contain one or two short messages. This does not send anything.",
       inputSchema: {
         lead_id: uuidSchema,
         channel: outreachChannelSchema,
         subject: z.string().max(200).optional(),
         body: z.string().min(1).max(5000),
+        message_parts: z.array(z.string().min(1).max(1000)).min(1).max(2).optional(),
         scheduled_for: z.string().datetime().nullable().optional(),
         idempotency_key: z.string().max(200).optional(),
       },
@@ -656,12 +738,15 @@ export function createFusionLeapMcpServer(
       const organizationId = context.profile.organization_id!;
       const { data: lead } = await context.supabase
         .from("leads")
-        .select("id, title, phone, email, contact_permission")
+        .select("id, title, phone, email, contact_permission, research_notes, research_sources, researched_at")
         .eq("id", values.lead_id)
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (!lead) return errorResult("Lead not found");
       if (lead.contact_permission === "opted_out") return errorResult("This contact opted out");
+      if (!lead.researched_at || !lead.research_notes || !Array.isArray(lead.research_sources) || lead.research_sources.length === 0) {
+        return errorResult("Complete sourced lead research before drafting outreach");
+      }
       if (values.channel === "email" && !lead.email) return errorResult("Lead has no email address");
       if (values.channel !== "email" && !lead.phone) return errorResult("Lead has no phone number");
 
@@ -674,6 +759,7 @@ export function createFusionLeapMcpServer(
           status: "draft",
           subject: values.subject?.trim() || null,
           body: values.body.trim(),
+          message_parts: values.message_parts?.map((part) => part.trim()) ?? null,
           scheduled_for: values.scheduled_for ?? null,
           idempotency_key: values.idempotency_key ?? null,
           created_by: context.profile.id,

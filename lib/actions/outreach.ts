@@ -10,13 +10,13 @@ import type { ActionResult, OutreachMessage } from "@/types/database";
 
 const idSchema = z.string().uuid();
 
-export async function getOutreachMessages(limit = 30): Promise<OutreachMessage[]> {
+export async function getOutreachMessages(limit = 100): Promise<OutreachMessage[]> {
   const profile = await getCurrentProfile();
   if (!profile?.organization_id || !canAccessLeads(profile)) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("outreach_messages")
-    .select("*, lead:leads(id, title, company, contact_name, phone, email)")
+    .select("*, lead:leads(id, title, company, contact_name, phone, email, sales_project)")
     .eq("organization_id", profile.organization_id)
     .order("created_at", { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 100));

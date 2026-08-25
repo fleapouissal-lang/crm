@@ -70,7 +70,7 @@ export function LeadsPageClient({
 
   return (
     <div className="space-y-4">
-      <OutreachCommandCenter initialMessages={outreachMessages} role={role} />
+      <OutreachCommandCenter initialMessages={outreachMessages} role={role} project={project} />
       <CrmKpiRow leads={filteredLeads} />
 
       <div className="fl-card overflow-hidden">

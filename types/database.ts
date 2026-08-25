@@ -191,7 +191,10 @@ export interface Lead {
   phone_normalized: string | null;
   email_normalized: string | null;
   ai_score: number | null;
-  ai_summary: string | null;
+    ai_summary: string | null;
+    research_notes: string | null;
+    research_sources: string[] | null;
+    researched_at: string | null;
   contact_permission: ContactPermission;
   sales_project: string;
   last_contact_method: LeadContactMethod | null;
@@ -213,8 +216,9 @@ export interface OutreachMessage {
   lead_id: string;
   channel: OutreachChannel;
   status: OutreachStatus;
-  subject: string | null;
-  body: string;
+    subject: string | null;
+    body: string;
+    message_parts: string[] | null;
   scheduled_for: string | null;
   provider: string | null;
   provider_message_id: string | null;
@@ -228,7 +232,7 @@ export interface OutreachMessage {
   replied_at: string | null;
   created_at: string;
   updated_at: string;
-  lead?: Pick<Lead, "id" | "title" | "company" | "contact_name" | "phone" | "email"> | null;
+    lead?: Pick<Lead, "id" | "title" | "company" | "contact_name" | "phone" | "email" | "sales_project"> | null;
 }
 
 export interface Task {

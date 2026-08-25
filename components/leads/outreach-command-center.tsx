@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Bot, Check, Mail, MessageCircle, Send, X } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Bot, Check, ChevronLeft, ChevronRight, Mail, MessageCircle, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import type { OutreachMessage, Role } from "@/types/database";
 import {
@@ -27,17 +27,34 @@ const STATUS_CLASS: Record<OutreachMessage["status"], string> = {
 export function OutreachCommandCenter({
   initialMessages,
   role,
+  project,
 }: {
   initialMessages: OutreachMessage[];
   role: Role;
+  project: string;
 }) {
   const dict = useDict();
   const labels = dict.leads;
   const [messages, setMessages] = useState(initialMessages);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [, startTransition] = useTransition();
   const leadership = role === "admin" || role === "manager";
-  const visible = messages.filter((message) => message.status !== "cancelled").slice(0, 8);
+  const pageSize = 8;
+  const filtered = messages.filter(
+    (message) =>
+      message.status !== "cancelled" &&
+      (project === "all" || message.lead?.sales_project === project)
+  );
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * pageSize;
+  const visible = filtered.slice(pageStart, pageStart + pageSize);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timer);
+  }, [project]);
 
   function run(
     id: string,
@@ -103,18 +120,31 @@ export function OutreachCommandCenter({
         <p className="p-6 text-center text-sm fl-faint">{labels.outreachEmpty}</p>
       ) : (
         <div className="divide-y divide-[var(--border)]">
-          {visible.map((message) => {
+          {visible.map((message, index) => {
             const pending = activeId === message.id;
+            const parts = message.message_parts?.length ? message.message_parts : [message.body];
             return (
               <article key={message.id} className="grid gap-3 p-4 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(20rem,2fr)_auto] lg:items-start">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+                    <span className="fl-mono text-[11px] fl-faint">#{pageStart + index + 1}</span>
                     {message.channel === "email" ? <Mail className="size-4" /> : <MessageCircle className="size-4" />}
                     <strong className="truncate text-sm">{message.lead?.company || message.lead?.title || "Lead"}</strong>
                   </div>
                   <span className={cn("fl-badge mt-2 text-[10px]", STATUS_CLASS[message.status])}>{message.status}</span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[var(--text-muted)]">{message.body}</p>
+                <div className="space-y-2">
+                  {parts.map((part, partIndex) => (
+                    <div key={partIndex} className="rounded-xl bg-[var(--surface-soft)] px-3 py-2.5 text-sm leading-6 text-[var(--text-muted)]">
+                      {parts.length > 1 ? (
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide fl-faint">
+                          Message {partIndex + 1}/{parts.length}
+                        </span>
+                      ) : null}
+                      <p className="whitespace-pre-wrap break-words">{part}</p>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex flex-wrap justify-end gap-2">
                   {leadership && message.status === "draft" ? (
                     <button className="fl-btn sm" disabled={pending} onClick={() => run(message.id, "approve")}>
@@ -135,6 +165,34 @@ export function OutreachCommandCenter({
               </article>
             );
           })}
+          {pageCount > 1 ? (
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="text-xs fl-faint">
+                {pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)} / {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="fl-btn sm"
+                  disabled={safePage === 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="min-w-16 text-center text-xs font-medium">{safePage} / {pageCount}</span>
+                <button
+                  type="button"
+                  className="fl-btn sm"
+                  disabled={safePage === pageCount}
+                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </section>
