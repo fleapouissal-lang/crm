@@ -368,6 +368,8 @@ export function HrPageClient({
                             gradient={`linear-gradient(135deg,${member.color},#71717a)`}
                             title={member.name}
                             sub={profile.roleTitle}
+                            avatarUrl={crmProfile?.avatar_url}
+                            userId={member.id}
                           />
                         </Link>
                       </td>

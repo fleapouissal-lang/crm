@@ -83,15 +83,21 @@ export function CellMain({
   gradient,
   title,
   sub,
+  avatarUrl,
+  userId,
 }: {
   initials: string;
   gradient: string;
   title: string;
   sub?: string;
+  avatarUrl?: string | null;
+  userId?: string;
 }) {
   return (
     <div className="cell-main flex items-center gap-[11px]">
-      <FlAva style={{ background: gradient }}>{initials}</FlAva>
+      <FlAva style={{ background: gradient }} className="relative overflow-hidden p-0">
+        {avatarUrl ? <img src={`/api/avatars/${userId}?v=${encodeURIComponent(avatarUrl.slice(-12))}`} alt="" className="absolute inset-0 size-full object-cover" /> : initials}
+      </FlAva>
       <div>
         <div className="font-medium">{title}</div>
         {sub && <div className="cell-sub text-[11.5px] fl-faint">{sub}</div>}

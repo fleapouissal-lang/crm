@@ -1,0 +1,13 @@
+import "dotenv/config";
+import fs from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
+const orgId = "8d7e5761-68e0-49df-bf6c-3afcc50b7fca";
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const bytes = await fs.readFile(process.argv[2]);
+const path = `${orgId}/logo.png`;
+const { error: uploadError } = await supabase.storage.from("org-logos").upload(path, bytes, { upsert: true, contentType: "image/png" });
+if (uploadError) throw uploadError;
+const { data } = supabase.storage.from("org-logos").getPublicUrl(path);
+const { error } = await supabase.from("organizations").update({ logo_url: `${data.publicUrl}?v=${Date.now()}` }).eq("id", orgId);
+if (error) throw error;
+console.log("Organization logo updated");
