@@ -135,6 +135,12 @@ export function TaskDetailClient({
     profiles.find((p) => p.id === task.created_by)?.email ||
     "—";
 
+  const lastEditor = task.last_modified_by
+    ? profiles.find((p) => p.id === task.last_modified_by)
+    : null;
+  const lastEditorLabel =
+    lastEditor?.full_name?.trim() || lastEditor?.email || creatorLabel;
+
   const projectLabel =
     projects.find((p) => p.id === projectId)?.title ??
     dict.fusion.kanban.noProject;
@@ -510,7 +516,9 @@ export function TaskDetailClient({
               {format(new Date(task.created_at), "d MMM yyyy · HH:mm")}
             </p>
             <p className="text-[11px] fl-faint">
-              Dernière modification : {format(new Date(task.updated_at), "d MMM yyyy · HH:mm")}
+              Dernière modification : <span className="font-medium text-[var(--text-dim)]">{lastEditorLabel}</span>
+              {" · "}
+              {format(new Date(task.updated_at), "d MMM yyyy · HH:mm")}
             </p>
           </div>
         </section>
