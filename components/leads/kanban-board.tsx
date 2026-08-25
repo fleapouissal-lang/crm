@@ -189,14 +189,24 @@ function PipelineColumn({
   stage: LeadStage;
   leads: Lead[];
 }) {
+  // Keep a dedicated, full-height drop target inside every column. Without it,
+  // an empty (or nearly empty) adjacent column has no reliable collision box
+  // while the dragged card is crossing the horizontal board.
   const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const { setNodeRef: setDropZoneRef, isOver: isDropZoneOver } = useDroppable({
+    id: `${stage}::dropzone`,
+    data: { stage },
+  });
 
   const dict = useDict();
 
   return (
     <div
       ref={setNodeRef}
-      className={cn("fl-kcol", isOver && "ring-2 ring-[var(--iris)]/30")}
+      className={cn(
+        "fl-kcol",
+        (isOver || isDropZoneOver) && "ring-2 ring-[var(--iris)]/30"
+      )}
     >
       <div className="fl-kcol-head">
         <span className="kdot" style={{ background: STAGE_DOT[stage] }} />
@@ -207,7 +217,10 @@ function PipelineColumn({
         items={leads.map((l) => l.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="fl-kcards max-h-[calc(100vh-16rem)]">
+        <div
+          ref={setDropZoneRef}
+          className="fl-kcards min-h-24 max-h-[calc(100vh-16rem)]"
+        >
           {leads.map((lead) => (
             <SortableLeadCard key={lead.id} lead={lead} />
           ))}
@@ -310,10 +323,16 @@ export function KanbanBoard({
     if (!lead) return;
 
     let newStage: LeadStage | null = null;
-    if (LEAD_STAGES.includes(over.id as LeadStage)) {
-      newStage = over.id as LeadStage;
+    const overId = String(over.id);
+    const dropZoneStage = overId.endsWith("::dropzone")
+      ? overId.slice(0, -"::dropzone".length)
+      : null;
+    if (dropZoneStage && LEAD_STAGES.includes(dropZoneStage as LeadStage)) {
+      newStage = dropZoneStage as LeadStage;
+    } else if (LEAD_STAGES.includes(overId as LeadStage)) {
+      newStage = overId as LeadStage;
     } else {
-      const overLead = leads.find((l) => l.id === over.id);
+      const overLead = leads.find((l) => l.id === overId);
       if (overLead) newStage = overLead.stage;
     }
 
