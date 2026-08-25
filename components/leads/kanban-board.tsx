@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import { Building2, CalendarClock, Mail, MapPin, Phone, Sparkles } from "lucide-react";
+import { Building2, CalendarClock, Mail, MapPin, MessageCircle, Phone, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { updateLeadStage } from "@/lib/actions/leads";
 import type { Lead, LeadContactMethod, LeadStage } from "@/types/database";
@@ -47,6 +47,13 @@ function formatFollowUp(value: string) {
     day: "2-digit",
     month: "short",
   }).format(new Date(value));
+}
+
+function whatsappUrl(phone: string) {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = `212${digits.slice(1)}`;
+  return digits ? `https://wa.me/${digits}` : null;
 }
 
 const STAGE_DOT: Record<LeadStage, string> = {
@@ -120,7 +127,22 @@ function LeadCard({
       ) : null}
       <div className="kmeta">
         <div className="kl">
-          <span className="fl-mono">{formatCurrency(Number(lead.value))}</span>
+          {lead.phone && whatsappUrl(lead.phone) ? (
+            <a
+              href={whatsappUrl(lead.phone)!}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Ouvrir WhatsApp pour ${lead.contact_name || lead.title}`}
+              title="Ouvrir WhatsApp"
+              className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[var(--emerald)] transition-colors hover:bg-[var(--emerald)]/10"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MessageCircle className="size-4" />
+              <span className="text-[10px] font-medium">WhatsApp</span>
+            </a>
+          ) : (
+            <span className="fl-mono">{formatCurrency(Number(lead.value))}</span>
+          )}
         </div>
         {lead.assigned_profile && (
           <div

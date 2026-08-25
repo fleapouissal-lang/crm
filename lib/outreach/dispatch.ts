@@ -64,7 +64,16 @@ export async function dispatchOutreachMessage(
       const providerIds: string[] = [];
       for (let index = 0; index < parts.length; index += 1) {
         if (index > 0) {
-          const humanPause = Math.min(4_000, 1_500 + parts[index]!.length * 18);
+          const humanPause = 3_000 + Math.floor(Math.random() * 2_001);
+          await fetch(`${bridgeUrl}/instance/${encodeURIComponent(instanceId)}/typing`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              apikey: bridgeSecret,
+            },
+            body: JSON.stringify({ number: destination, durationMs: humanPause }),
+            signal: AbortSignal.timeout(10_000),
+          }).catch(() => undefined);
           await new Promise((resolve) => setTimeout(resolve, humanPause));
         }
         const response = await fetch(`${bridgeUrl}/instance/${encodeURIComponent(instanceId)}/send`, {

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type BridgeMessage = {
-  key?: { id?: string; remoteJid?: string; fromMe?: boolean };
+  key?: { id?: string; remoteJid?: string; remoteJidAlt?: string; participantAlt?: string; fromMe?: boolean };
   message?: {
     conversation?: string;
     extendedTextMessage?: { text?: string };
