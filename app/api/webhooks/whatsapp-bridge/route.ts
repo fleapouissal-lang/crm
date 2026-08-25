@@ -52,6 +52,14 @@ export async function POST(request: Request) {
 
   const organizationId = process.env.WA_BRIDGE_ORGANIZATION_ID;
   const qualifiedAssigneeId = process.env.OUTREACH_QUALIFIED_ASSIGNEE_ID;
+  const instanceId = body.instance || "";
+  const autologInstance = process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm";
+  const fusionLeapInstance = process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+  const projectFilter = instanceId === autologInstance
+    ? "Autolog"
+    : instanceId === fusionLeapInstance
+      ? "Fusion Leap"
+      : null;
   if (!organizationId) {
     return NextResponse.json({ error: "WhatsApp organization is not configured" }, { status: 503 });
   }
@@ -64,11 +72,13 @@ export async function POST(request: Request) {
     const replyBody = text || (incoming._mediaType === "audio" ? "رسالة صوتية مستلمة" : "رد وارد مستلم");
     if (!remotePhone || (!text && !incoming._mediaType)) continue;
 
-    const { data: leads } = await supabase
+    let leadsQuery = supabase
       .from("leads")
       .select("id, title, phone, phone_normalized, stage, assigned_to")
       .eq("organization_id", organizationId)
       .not("phone", "is", null);
+    if (projectFilter) leadsQuery = leadsQuery.eq("sales_project", projectFilter);
+    const { data: leads } = await leadsQuery;
     const lead = leads?.find((candidate) =>
       sameMoroccanPhone(remotePhone, candidate.phone_normalized || candidate.phone)
     );

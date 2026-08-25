@@ -9,14 +9,18 @@ export type WhatsAppBridgeStatus = {
   phone?: string | null;
 };
 
+export type WhatsAppProject = "Fusion Leap" | "Autolog";
+
 type QrResult =
   | { success: true; qr?: string; alreadyConnected?: boolean }
   | { success: false; error: string };
 
-function bridgeConfig() {
+function bridgeConfig(project: WhatsAppProject = "Fusion Leap") {
   const url = process.env.WA_BRIDGE_URL?.replace(/\/$/, "");
   const secret = process.env.WA_BRIDGE_SECRET;
-  const instanceId = process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+  const instanceId = project === "Autolog"
+    ? process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm"
+    : process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
   if (!url || !secret) throw new Error("WhatsApp bridge is not configured");
   return { url, secret, instanceId };
 }
@@ -42,9 +46,9 @@ async function bridgeFetch(path: string, init?: RequestInit) {
   });
 }
 
-export async function getWhatsAppBridgeStatus(): Promise<WhatsAppBridgeStatus> {
+export async function getWhatsAppBridgeStatus(project: WhatsAppProject = "Fusion Leap"): Promise<WhatsAppBridgeStatus> {
   await requireLeadership();
-  const { instanceId } = bridgeConfig();
+  const { instanceId } = bridgeConfig(project);
   const response = await bridgeFetch(`/instance/${encodeURIComponent(instanceId)}/status`);
   if (!response.ok) return { connected: false, status: "unavailable" };
   const payload = (await response.json()) as WhatsAppBridgeStatus;
@@ -55,10 +59,10 @@ export async function getWhatsAppBridgeStatus(): Promise<WhatsAppBridgeStatus> {
   };
 }
 
-export async function generateWhatsAppQr(): Promise<QrResult> {
+export async function generateWhatsAppQr(project: WhatsAppProject = "Fusion Leap"): Promise<QrResult> {
   try {
     await requireLeadership();
-    const { instanceId } = bridgeConfig();
+    const { instanceId } = bridgeConfig(project);
     const encodedId = encodeURIComponent(instanceId);
     const connectResponse = await bridgeFetch(`/instance/${encodedId}/connect`, {
       method: "POST",
@@ -84,10 +88,10 @@ export async function generateWhatsAppQr(): Promise<QrResult> {
   }
 }
 
-export async function disconnectWhatsAppBridge(): Promise<{ success: boolean; error?: string }> {
+export async function disconnectWhatsAppBridge(project: WhatsAppProject = "Fusion Leap"): Promise<{ success: boolean; error?: string }> {
   try {
     await requireLeadership();
-    const { instanceId } = bridgeConfig();
+    const { instanceId } = bridgeConfig(project);
     const response = await bridgeFetch(`/instance/${encodeURIComponent(instanceId)}/disconnect`, {
       method: "POST",
       body: "{}",

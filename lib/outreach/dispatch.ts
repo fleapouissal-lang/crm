@@ -12,7 +12,7 @@ export async function dispatchOutreachMessage(
 ): Promise<DispatchResult> {
   const { data, error } = await supabase
     .from("outreach_messages")
-    .select("*, lead:leads(id, title, company, contact_name, phone, email, contact_permission)")
+    .select("*, lead:leads(id, title, company, contact_name, phone, email, contact_permission, sales_project)")
     .eq("id", messageId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -53,7 +53,9 @@ export async function dispatchOutreachMessage(
     if (useEasyTouch) {
       const bridgeUrl = process.env.WA_BRIDGE_URL?.replace(/\/$/, "");
       const bridgeSecret = process.env.WA_BRIDGE_SECRET;
-      const instanceId = process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+      const instanceId = data.lead.sales_project === "Autolog"
+        ? process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm"
+        : process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
       if (!bridgeUrl || !bridgeSecret) {
         throw new Error("EasyTouch WhatsApp bridge is not configured");
       }

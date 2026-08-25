@@ -9,6 +9,7 @@ import {
   generateWhatsAppQr,
   getWhatsAppBridgeStatus,
   type WhatsAppBridgeStatus,
+  type WhatsAppProject,
 } from "@/lib/actions/whatsapp-bridge";
 import type { Locale } from "@/lib/i18n/types";
 
@@ -56,13 +57,14 @@ const copy = {
 
 export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
   const t = copy[locale];
+  const [project, setProject] = useState<WhatsAppProject>("Fusion Leap");
   const [status, setStatus] = useState<WhatsAppBridgeStatus>({ connected: false, status: "loading" });
   const [qr, setQr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const refreshStatus = useCallback(async () => {
     try {
-      const next = await getWhatsAppBridgeStatus();
+      const next = await getWhatsAppBridgeStatus(project);
       setStatus(next);
       if (next.connected) {
         setQr(null);
@@ -71,7 +73,7 @@ export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
     } catch {
       setStatus({ connected: false, status: "unavailable" });
     }
-  }, [t.connectedToast]);
+  }, [project, t.connectedToast]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshStatus(), 0);
@@ -86,7 +88,7 @@ export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
 
   function showQr() {
     startTransition(async () => {
-      const result = await generateWhatsAppQr();
+      const result = await generateWhatsAppQr(project);
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -102,7 +104,7 @@ export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
 
   function disconnect() {
     startTransition(async () => {
-      const result = await disconnectWhatsAppBridge();
+      const result = await disconnectWhatsAppBridge(project);
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -149,6 +151,24 @@ export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
               {qr ? t.refresh : t.generate}
             </button>
           )}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="WhatsApp project">
+          {(["Fusion Leap", "Autolog"] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={project === name}
+              className={`fl-btn sm ${project === name ? "primary" : ""}`}
+              onClick={() => {
+                setProject(name);
+                setQr(null);
+              }}
+            >
+              <MessageCircle className="size-4" />
+              WhatsApp · {name}
+            </button>
+          ))}
         </div>
       </section>
 
