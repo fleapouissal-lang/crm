@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, LayoutGrid, List, Search } from "lucide-react";
 import type { Lead, OutreachMessage, Profile, Role } from "@/types/database";
 import { LEAD_STAGES } from "@/types/database";
@@ -45,6 +45,16 @@ export function LeadsPageClient({
   const q = searchParams.get("q") ?? "";
   const stage = searchParams.get("stage") ?? "all";
   const project = searchParams.get("project") ?? "Fusion Leap";
+  useEffect(() => {
+    const remembered = window.localStorage.getItem("fusionleap:last-sales-project");
+    if (!searchParams.get("project") && (remembered === "Autolog" || remembered === "Fusion Leap")) {
+      router.replace(`/leads?project=${encodeURIComponent(remembered)}`);
+      return;
+    }
+    if (searchParams.get("project") === "Autolog" || searchParams.get("project") === "Fusion Leap") {
+      window.localStorage.setItem("fusionleap:last-sales-project", searchParams.get("project")!);
+    }
+  }, [router, searchParams]);
   const projects = useMemo(
     () =>
       Array.from(
