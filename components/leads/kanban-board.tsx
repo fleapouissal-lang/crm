@@ -81,7 +81,6 @@ function LeadCard({
       )}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="fl-badge b-blue text-[10px]">{lead.sales_project}</span>
         {lead.ai_score !== null && lead.ai_score !== undefined ? (
           <span className="fl-badge b-iris text-[10px]">
             <Sparkles className="size-3" /> {lead.ai_score}/100
@@ -169,7 +168,7 @@ function LeadCard({
   );
 }
 
-function SortableLeadCard({ lead }: { lead: Lead }) {
+function SortableLeadCard({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => void }) {
   const {
     attributes,
     listeners,
@@ -187,7 +186,7 @@ function SortableLeadCard({ lead }: { lead: Lead }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <LeadCard lead={lead} />
+      <div onClick={() => onOpen(lead)}><LeadCard lead={lead} /></div>
     </div>
   );
 }
@@ -195,9 +194,11 @@ function SortableLeadCard({ lead }: { lead: Lead }) {
 function PipelineColumn({
   stage,
   leads,
+  onOpen,
 }: {
   stage: LeadStage;
   leads: Lead[];
+  onOpen: (lead: Lead) => void;
 }) {
   // Keep a dedicated, full-height drop target inside every column. Without it,
   // an empty (or nearly empty) adjacent column has no reliable collision box
@@ -232,7 +233,7 @@ function PipelineColumn({
           className="fl-kcards min-h-24 max-h-[calc(100vh-16rem)]"
         >
           {leads.map((lead) => (
-            <SortableLeadCard key={lead.id} lead={lead} />
+            <SortableLeadCard key={lead.id} lead={lead} onOpen={onOpen} />
           ))}
         </div>
       </SortableContext>
@@ -253,6 +254,7 @@ export function KanbanBoard({
   const [leads, setLeads] = useState(initialLeads);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [contactMove, setContactMove] = useState<Lead | null>(null);
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -398,7 +400,7 @@ export function KanbanBoard({
     >
       <div className="fl-kanban fl-kanban--7">
         {LEAD_STAGES.map((stage) => (
-          <PipelineColumn key={stage} stage={stage} leads={byStage[stage]} />
+          <PipelineColumn key={stage} stage={stage} leads={byStage[stage]} onOpen={setDetailLead} />
         ))}
       </div>
       <DragOverlay>
@@ -415,6 +417,12 @@ export function KanbanBoard({
             <button className="fl-btn" onClick={() => confirmContact("email")}><Mail className="size-4" />{dict.leads.contactByEmail}</button>
             <button className="fl-btn" onClick={() => confirmContact("visit")}><MapPin className="size-4" />{dict.leads.contactByVisit}</button>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!detailLead} onOpenChange={(open) => !open && setDetailLead(null)}>
+        <DialogContent className="fl-dialog-content ring-0 sm:max-w-lg">
+          <DialogHeader><DialogTitle>{detailLead?.contact_name || detailLead?.title}</DialogTitle></DialogHeader>
+          {detailLead ? <div className="grid gap-2 text-sm"><p><strong>الشركة:</strong> {detailLead.company || detailLead.title}</p><p><strong>الهاتف:</strong> {detailLead.phone || "—"}</p><p><strong>البريد:</strong> {detailLead.email || "—"}</p><p><strong>المدينة:</strong> {detailLead.city || "—"}</p><p><strong>المصدر:</strong> {detailLead.source || "—"}</p><p><strong>ملاحظات:</strong> {detailLead.notes || detailLead.research_notes || "—"}</p></div> : null}
         </DialogContent>
       </Dialog>
     </DndContext>

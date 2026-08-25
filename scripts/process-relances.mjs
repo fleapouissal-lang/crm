@@ -33,7 +33,7 @@ const { data: due, error } = await supabase.from("outreach_relances")
   .eq("status", "planned").lte("scheduled_for", now.toISOString()).limit(50);
 if (error) throw error;
 for (const row of due || []) {
-  if (!row.lead?.phone || ["opted_out", "unknown"].includes(row.lead.contact_permission) || ["qualified", "won", "lost"].includes(row.lead.stage) || await hasReply(row.organization_id, row.lead_id)) {
+  if (!row.lead?.phone || row.lead.contact_permission === "opted_out" || ["qualified", "won", "lost"].includes(row.lead.stage) || await hasReply(row.organization_id, row.lead_id)) {
     await supabase.from("outreach_relances").update({ status: "cancelled", response_received_at: now.toISOString() }).eq("id", row.id);
     continue;
   }
