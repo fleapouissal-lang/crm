@@ -46,15 +46,23 @@ async function handleMcpRequest(request: Request) {
   const auth = await authenticateMcpRequest(request);
   if (!auth.ok) return authFailure(request, auth.status, auth.message);
 
-  const baseUrl = getPublicOrigin(request);
-  const transport = new WebStandardStreamableHTTPServerTransport();
-  const server = createFusionLeapMcpServer(auth.context, baseUrl);
-  await server.connect(transport);
-
   try {
+    const baseUrl = getPublicOrigin(request);
+    // MCP clients use request/response semantics for tool calls. Returning a
+    // JSON response avoids keeping a per-request SSE stream alive in Next.js
+    // and is compatible with clients that advertise application/json.
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      enableJsonResponse: true,
+    });
+    const server = createFusionLeapMcpServer(auth.context, baseUrl);
+    await server.connect(transport);
     return withCors(await transport.handleRequest(request));
   } catch (error) {
-    console.error("[mcp] request failed", error);
+    console.error("[mcp] request failed", {
+      method: request.method,
+      path: new URL(request.url).pathname,
+      error,
+    });
     return Response.json(
       {
         jsonrpc: "2.0",

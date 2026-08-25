@@ -203,16 +203,18 @@ export function createFusionLeapMcpServer(
       title: "List CRM tasks",
       description: "List tasks allowed by the current user's CRM role and assignments.",
       inputSchema: {
+        task_id: uuidSchema.optional(),
         status: taskStatusSchema.optional(),
         due_date: z.string().date().optional(),
         assignee_id: uuidSchema.optional(),
         project_id: uuidSchema.optional(),
         task_phase: z.string().regex(/^P\d+$/).optional(),
+        query: z.string().max(200).optional(),
         limit: z.number().int().min(1).max(100).default(50),
       },
       annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
-    async ({ status, due_date, assignee_id, project_id, task_phase, limit }) => {
+    async ({ task_id, status, due_date, assignee_id, project_id, task_phase, query, limit }) => {
       if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
       let request = context.supabase
         .from("tasks")
@@ -226,10 +228,15 @@ export function createFusionLeapMcpServer(
         request = request.or(memberTaskOrFilter(context.profile.id));
       }
       if (status) request = request.eq("status", status);
+      if (task_id) request = request.eq("id", task_id);
       if (due_date) request = request.eq("due_date", due_date);
       if (assignee_id) request = request.contains("assignee_ids", [assignee_id]);
       if (project_id) request = request.eq("project_id", project_id);
       if (task_phase) request = request.eq("task_phase", task_phase.toUpperCase());
+      if (query?.trim()) {
+        const safe = query.trim().replace(/[,%()]/g, " ");
+        request = request.ilike("title", `%${safe}%`);
+      }
       const { data, error } = await request;
       if (error) return errorResult(error.message);
       return jsonResult({
@@ -246,11 +253,12 @@ export function createFusionLeapMcpServer(
     {
       title: "Update CRM task",
       description:
-        "Update a task title, description, due date, priority, project, delivery phase, or assignees. Unspecified fields stay unchanged.",
+        "Update a task title, description, workflow status, due date, priority, project, delivery phase, or assignees. Unspecified fields stay unchanged.",
       inputSchema: {
         task_id: uuidSchema,
         title: z.string().min(1).max(200).optional(),
         description: z.string().max(5000).nullable().optional(),
+        status: taskStatusSchema.optional(),
         priority: taskPrioritySchema.optional(),
         due_date: z.string().date().nullable().optional(),
         assignee_ids: z.array(uuidSchema).max(25).optional(),
@@ -283,6 +291,7 @@ export function createFusionLeapMcpServer(
       if (values.description !== undefined) {
         update.description = values.description?.trim() || null;
       }
+      if (values.status !== undefined) update.status = values.status;
       if (values.priority !== undefined) update.priority = values.priority;
       if (values.due_date !== undefined) update.due_date = values.due_date;
       if (values.task_phase !== undefined) {
@@ -328,10 +337,14 @@ export function createFusionLeapMcpServer(
 
       await context.supabase.from("activities").insert({
         organization_id: context.profile.organization_id!,
-        type: "task_updated" as ActivityType,
+        type: (values.status && isTaskDoneStatus(values.status)
+          ? "task_completed"
+          : "task_updated") as ActivityType,
         entity_type: "task",
         entity_id: task_id,
-        message: `Updated task "${data.title}" via ChatGPT`,
+        message: values.status
+          ? `Updated task "${data.title}" status to ${values.status} via ChatGPT`
+          : `Updated task "${data.title}" via ChatGPT`,
         user_id: context.profile.id,
       });
 
