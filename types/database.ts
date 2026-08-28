@@ -40,6 +40,10 @@ export type TaskStatus =
   | "backlog";
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type AiModel = "haiku" | "sonnet" | "opus" | "fable";
+export type AiModelMode = "auto" | "model" | "complexity";
+export type AiComplexity = "fast" | "balanced" | "deep";
+export type AiExecutionStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 export type ActivityType =
   | "lead_created"
@@ -255,12 +259,37 @@ export interface Task {
   tracked_minutes?: number;
   next_step?: string | null;
   last_modified_by?: string | null;
+  ai_agent_id?: string | null;
+  ai_model_mode?: AiModelMode | null;
+  ai_requested_model?: AiModel | null;
+  ai_complexity?: AiComplexity | null;
+  ai_selected_model?: AiModel | null;
+  ai_execution_status?: AiExecutionStatus | null;
+  ai_session_id?: string | null;
+  ai_run_id?: string | null;
+  ai_result?: string | null;
+  ai_error?: string | null;
+  ai_started_at?: string | null;
+  ai_completed_at?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   assigned_profile?: Profile | null;
   created_profile?: Profile | null;
   lead?: Lead | null;
+}
+
+export interface AiAgent {
+  id: string;
+  organization_id: string;
+  name: string;
+  provider: "anthropic";
+  is_enabled: boolean;
+  default_model_mode: AiModelMode;
+  default_model: AiModel | null;
+  default_complexity: AiComplexity;
+  created_at: string;
+  updated_at: string;
 }
 
 export type TaskDependencyRelation = "depends_on" | "blocks" | "relates_to";

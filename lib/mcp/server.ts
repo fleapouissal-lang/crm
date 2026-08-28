@@ -25,6 +25,16 @@ const taskStatusSchema = z.enum([
   "testing",
 ]);
 const taskPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
+const aiModelSchema = z.enum(["haiku", "sonnet", "opus", "fable"]);
+const aiModelModeSchema = z.enum(["auto", "model", "complexity"]);
+const aiComplexitySchema = z.enum(["fast", "balanced", "deep"]);
+const aiExecutionStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
 const uuidSchema = z.string().uuid();
 const leadStageSchema = z.enum([
   "new",
@@ -128,6 +138,205 @@ export function createFusionLeapMcpServer(
         .order("full_name");
       if (error) return errorResult(error.message);
       return jsonResult({ members: data ?? [] });
+    }
+  );
+
+  server.registerTool(
+    "list_claude_code_agents",
+    {
+      title: "List Claude Code agents",
+      description:
+        "List Claude Code employees configured for the current CRM organization, including their default model-routing settings.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async () => {
+      if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
+      const { data, error } = await context.supabase
+        .from("ai_agents")
+        .select("id, name, provider, is_enabled, default_model_mode, default_model, default_complexity, created_at, updated_at")
+        .eq("organization_id", context.profile.organization_id!)
+        .order("created_at");
+      if (error) return errorResult(error.message);
+      return jsonResult({ agents: data ?? [] });
+    }
+  );
+
+  server.registerTool(
+    "list_claude_code_tasks",
+    {
+      title: "List Claude Code tasks",
+      description:
+        "List tasks assigned to Claude Code in the current organization, including selected model, execution status, and linked CRM project.",
+      inputSchema: {
+        agent_id: uuidSchema.optional(),
+        execution_status: aiExecutionStatusSchema.optional(),
+        project_id: uuidSchema.optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+      },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ agent_id, execution_status, project_id, limit }) => {
+      if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
+      let request = context.supabase
+        .from("tasks")
+        .select("id, title, description, status, priority, due_date, project_id, ai_agent_id, ai_model_mode, ai_requested_model, ai_complexity, ai_selected_model, ai_execution_status, ai_session_id, ai_run_id, ai_result, ai_error, ai_started_at, ai_completed_at, created_at, updated_at")
+        .eq("organization_id", context.profile.organization_id!)
+        .not("ai_agent_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (agent_id) request = request.eq("ai_agent_id", agent_id);
+      if (execution_status) request = request.eq("ai_execution_status", execution_status);
+      if (project_id) request = request.eq("project_id", project_id);
+      const { data, error } = await request;
+      if (error) return errorResult(error.message);
+      return jsonResult({
+        tasks: (data ?? []).map((task) => ({ ...task, url: appUrl(baseUrl, `/tasks/${task.id}`) })),
+      });
+    }
+  );
+
+  server.registerTool(
+    "create_claude_code_task",
+    {
+      title: "Assign a task to Claude Code",
+      description:
+        "Create a CRM task for a Claude Code employee. Use model_mode=auto for routing, model for an explicit Haiku/Sonnet/Opus/Fable choice, or complexity for fast/balanced/deep routing.",
+      inputSchema: {
+        agent_id: uuidSchema,
+        title: z.string().min(1).max(200),
+        description: z.string().max(12000).optional(),
+        project_id: uuidSchema.nullable().optional(),
+        priority: taskPrioritySchema.default("medium"),
+        due_date: z.string().date().nullable().optional(),
+        model_mode: aiModelModeSchema.default("auto"),
+        requested_model: aiModelSchema.optional(),
+        complexity: aiComplexitySchema.optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async (values) => {
+      if (!canCreateTask(context.profile)) return errorResult("Task creation is not allowed");
+      if (values.model_mode === "model" && !values.requested_model) {
+        return errorResult("requested_model is required when model_mode is model");
+      }
+      if (values.model_mode === "complexity" && !values.complexity) {
+        return errorResult("complexity is required when model_mode is complexity");
+      }
+      const organizationId = context.profile.organization_id!;
+      const { data: agent } = await context.supabase
+        .from("ai_agents")
+        .select("id, name, is_enabled")
+        .eq("id", values.agent_id)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (!agent) return errorResult("Claude Code agent not found in the current organization");
+      if (!agent.is_enabled) return errorResult("This Claude Code agent is disabled");
+      if (values.project_id) {
+        const { data: project } = await context.supabase
+          .from("projects")
+          .select("id")
+          .eq("id", values.project_id)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+        if (!project) return errorResult("Project not found in the current organization");
+      }
+      const { data, error } = await context.supabase
+        .from("tasks")
+        .insert({
+          organization_id: organizationId,
+          title: values.title.trim(),
+          description: values.description?.trim() || null,
+          status: "todo" as TaskStatus,
+          priority: values.priority as TaskPriority,
+          due_date: values.due_date ?? null,
+          assigned_to: context.profile.id,
+          assignee_ids: [context.profile.id],
+          created_by: context.profile.id,
+          project_id: values.project_id ?? null,
+          ai_agent_id: agent.id,
+          ai_model_mode: values.model_mode,
+          ai_requested_model: values.requested_model ?? null,
+          ai_complexity: values.complexity ?? null,
+          ai_execution_status: "queued",
+        })
+        .select("id, title, project_id, ai_agent_id, ai_model_mode, ai_requested_model, ai_complexity, ai_execution_status, created_at")
+        .single();
+      if (error) return errorResult(error.message);
+      await context.supabase.from("activities").insert({
+        organization_id: organizationId,
+        type: "task_created" as ActivityType,
+        entity_type: "task",
+        entity_id: data.id,
+        message: `Assigned task "${data.title}" to ${agent.name} via ChatGPT`,
+        user_id: context.profile.id,
+      });
+      return jsonResult({ task: { ...data, url: appUrl(baseUrl, `/tasks/${data.id}`) } });
+    }
+  );
+
+  server.registerTool(
+    "update_claude_code_task_execution",
+    {
+      title: "Update Claude Code task execution",
+      description:
+        "Record a Claude Code run in the CRM task: chosen model, execution status, session/run identifiers, output, error, and timestamps. Use running before execution and completed or failed after it finishes.",
+      inputSchema: {
+        task_id: uuidSchema,
+        execution_status: aiExecutionStatusSchema,
+        selected_model: aiModelSchema.optional(),
+        session_id: z.string().max(500).nullable().optional(),
+        run_id: z.string().max(500).nullable().optional(),
+        result: z.string().max(50000).nullable().optional(),
+        error: z.string().max(10000).nullable().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ task_id, execution_status, selected_model, session_id, run_id, result, error }) => {
+      if (!canAccessTasks(context.profile)) return errorResult("Tasks access is not allowed");
+      const { data: existing } = await context.supabase
+        .from("tasks")
+        .select("id, title, organization_id, ai_agent_id, assigned_to, assignee_ids, created_by")
+        .eq("id", task_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .maybeSingle();
+      if (!existing?.ai_agent_id) return errorResult("Claude Code task not found");
+      if (!canModifyTask(context.profile, existing)) {
+        return errorResult("The current user cannot modify this Claude Code task");
+      }
+      const now = new Date().toISOString();
+      const update: Record<string, unknown> = {
+        ai_execution_status: execution_status,
+        last_modified_by: context.profile.id,
+      };
+      if (selected_model !== undefined) update.ai_selected_model = selected_model;
+      if (session_id !== undefined) update.ai_session_id = session_id;
+      if (run_id !== undefined) update.ai_run_id = run_id;
+      if (result !== undefined) update.ai_result = result;
+      if (error !== undefined) update.ai_error = error;
+      if (execution_status === "running") update.ai_started_at = now;
+      if (["completed", "failed", "cancelled"].includes(execution_status)) {
+        update.ai_completed_at = now;
+      }
+      if (execution_status === "completed") update.status = "review";
+
+      const { data, error: updateError } = await context.supabase
+        .from("tasks")
+        .update(update)
+        .eq("id", task_id)
+        .eq("organization_id", context.profile.organization_id!)
+        .select("id, title, status, ai_execution_status, ai_selected_model, ai_session_id, ai_run_id, ai_started_at, ai_completed_at, updated_at")
+        .single();
+      if (updateError) return errorResult(updateError.message);
+      await context.supabase.from("activities").insert({
+        organization_id: context.profile.organization_id!,
+        type: "task_updated" as ActivityType,
+        entity_type: "task",
+        entity_id: task_id,
+        message: `Claude Code task "${data.title}" is ${execution_status}`,
+        user_id: context.profile.id,
+      });
+      return jsonResult({ task: { ...data, url: appUrl(baseUrl, `/tasks/${task_id}`) } });
     }
   );
 
