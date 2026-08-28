@@ -282,6 +282,7 @@ export interface Task {
 export interface AiAgent {
   id: string;
   organization_id: string;
+  profile_id: string | null;
   name: string;
   provider: "anthropic";
   is_enabled: boolean;

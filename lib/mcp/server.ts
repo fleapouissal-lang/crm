@@ -226,12 +226,23 @@ export function createFusionLeapMcpServer(
       const organizationId = context.profile.organization_id!;
       const { data: agent } = await context.supabase
         .from("ai_agents")
-        .select("id, name, is_enabled")
+        .select("id, name, is_enabled, profile_id")
         .eq("id", values.agent_id)
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (!agent) return errorResult("Claude Code agent not found in the current organization");
       if (!agent.is_enabled) return errorResult("This Claude Code agent is disabled");
+      let assigneeId = context.profile.id;
+      if (agent.profile_id) {
+        const { data: agentProfile } = await context.supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", agent.profile_id)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+        if (!agentProfile) return errorResult("Claude Code service identity is not available in this organization");
+        assigneeId = agentProfile.id;
+      }
       if (values.project_id) {
         const { data: project } = await context.supabase
           .from("projects")
@@ -250,8 +261,8 @@ export function createFusionLeapMcpServer(
           status: "todo" as TaskStatus,
           priority: values.priority as TaskPriority,
           due_date: values.due_date ?? null,
-          assigned_to: context.profile.id,
-          assignee_ids: [context.profile.id],
+          assigned_to: assigneeId,
+          assignee_ids: [assigneeId],
           created_by: context.profile.id,
           project_id: values.project_id ?? null,
           ai_agent_id: agent.id,
@@ -403,6 +414,59 @@ export function createFusionLeapMcpServer(
           url: appUrl(baseUrl, "/projects"),
         })),
       });
+    }
+  );
+
+  server.registerTool(
+    "create_project",
+    {
+      title: "Create delivery project",
+      description:
+        "Create a delivery project in the current organization. Intended for leadership users; does not delete or overwrite data.",
+      inputSchema: {
+        title: z.string().min(1).max(200),
+        subtitle: z.string().max(500).optional(),
+        phase: z.string().max(50).default("inProgress"),
+        status_key: z.string().max(50).default("onTrack"),
+        team_member_ids: z.array(uuidSchema).max(50).default([]),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async (values) => {
+      if (!isLeadership(context.profile)) {
+        return errorResult("Project creation is restricted to leadership users");
+      }
+      const teamMemberIds = [...new Set(values.team_member_ids)];
+      if (!(await validateOrgAssignees(context, teamMemberIds))) {
+        return errorResult("Every team member must belong to the current organization");
+      }
+
+      const { data, error } = await context.supabase
+        .from("projects")
+        .insert({
+          organization_id: context.profile.organization_id!,
+          title: values.title.trim(),
+          subtitle: values.subtitle?.trim() || "",
+          phase: values.phase.trim(),
+          status_key: values.status_key.trim(),
+          team_member_ids: teamMemberIds,
+        })
+        .select(
+          "id, title, subtitle, progress, status_key, team_member_ids, phase, delivery_phases, created_at, updated_at"
+        )
+        .single();
+      if (error) return errorResult(error.message);
+
+      await context.supabase.from("activities").insert({
+        organization_id: context.profile.organization_id!,
+        type: "project_created" as ActivityType,
+        entity_type: "project",
+        entity_id: data.id,
+        message: `Created project "${data.title}" via MCP`,
+        user_id: context.profile.id,
+      });
+
+      return jsonResult({ project: { ...data, url: appUrl(baseUrl, "/projects") } });
     }
   );
 
