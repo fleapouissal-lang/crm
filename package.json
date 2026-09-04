@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:mcp": "tsx --test lib/mcp/session.test.ts",
     "db:migrate": "tsx lib/db/migrate-cli.ts",
     "db:seed": "tsx lib/db/seed-cli.ts",
     "predev": "npm run db:migrate",

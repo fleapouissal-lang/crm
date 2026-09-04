@@ -1,7 +1,11 @@
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpRequest } from "@/lib/mcp/auth";
 import { getPublicOrigin } from "@/lib/mcp/origin";
-import { createFusionLeapMcpServer } from "@/lib/mcp/server";
+import {
+  createMcpSession,
+  getMcpSession,
+  pruneExpiredMcpSessions,
+  removeMcpSession,
+} from "@/lib/mcp/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,21 +46,62 @@ function authFailure(request: Request, status: 401 | 403, message: string) {
   );
 }
 
+function protocolFailure(status: 400 | 403 | 404, message: string) {
+  return Response.json(
+    { jsonrpc: "2.0", error: { code: -32000, message }, id: null },
+    { status, headers: corsHeaders }
+  );
+}
+
+function isInitializationRequest(body: unknown) {
+  const messages = Array.isArray(body) ? body : [body];
+  return messages.some(
+    (message) =>
+      message !== null &&
+      typeof message === "object" &&
+      "method" in message &&
+      message.method === "initialize"
+  );
+}
+
 async function handleMcpRequest(request: Request) {
   const auth = await authenticateMcpRequest(request);
   if (!auth.ok) return authFailure(request, auth.status, auth.message);
 
   try {
+    await pruneExpiredMcpSessions();
     const baseUrl = getPublicOrigin(request);
-    // MCP clients use request/response semantics for tool calls. Returning a
-    // JSON response avoids keeping a per-request SSE stream alive in Next.js
-    // and is compatible with clients that advertise application/json.
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      enableJsonResponse: true,
-    });
-    const server = createFusionLeapMcpServer(auth.context, baseUrl);
-    await server.connect(transport);
-    return withCors(await transport.handleRequest(request));
+    const sessionId = request.headers.get("mcp-session-id");
+    let session = sessionId
+      ? getMcpSession(sessionId, auth.context)
+      : null;
+
+    if (sessionId && !session) {
+      return protocolFailure(404, "MCP session not found");
+    }
+
+    if (!session && request.method === "POST") {
+      let body: unknown;
+      try {
+        body = await request.clone().json();
+      } catch {
+        return protocolFailure(400, "Invalid JSON-RPC request body");
+      }
+      if (!isInitializationRequest(body)) {
+        return protocolFailure(400, "MCP session must be initialized first");
+      }
+      session = await createMcpSession(auth.context, baseUrl);
+    }
+
+    if (!session) {
+      return protocolFailure(400, "MCP session id is required");
+    }
+
+    const response = withCors(await session.transport.handleRequest(request));
+    if (request.method === "DELETE" && sessionId) {
+      removeMcpSession(sessionId);
+    }
+    return response;
   } catch (error) {
     console.error("[mcp] request failed", {
       method: request.method,

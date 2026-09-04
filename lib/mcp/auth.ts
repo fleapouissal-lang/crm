@@ -1,7 +1,6 @@
 import {
   createClient as createSupabaseClient,
   type SupabaseClient,
-  type User,
 } from "@supabase/supabase-js";
 import type { Profile } from "@/types/database";
 
@@ -10,7 +9,7 @@ export type McpAuthContext = {
   clientId: string;
   profile: Profile;
   supabase: SupabaseClient;
-  user: User;
+  user: { id: string };
 };
 
 export type McpAuthResult =
@@ -49,21 +48,23 @@ export async function authenticateMcpRequest(
     },
   });
 
-  const [{ data: claimsData, error: claimsError }, { data: userData, error: userError }] =
-    await Promise.all([
-      supabase.auth.getClaims(accessToken),
-      supabase.auth.getUser(accessToken),
-    ]);
+  const { data: claimsData, error: claimsError } =
+    await supabase.auth.getClaims(accessToken);
 
   const clientId = claimsData?.claims?.client_id;
-  if (claimsError || userError || !userData.user || typeof clientId !== "string") {
+  const userId = claimsData?.claims?.sub;
+  if (
+    claimsError ||
+    typeof userId !== "string" ||
+    typeof clientId !== "string"
+  ) {
     return { ok: false, status: 401, message: "Invalid OAuth access token" };
   }
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*, job_role:org_job_roles(*)")
-    .eq("id", userData.user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   if (profileError || !profile?.organization_id || profile.role === "platform_admin") {
@@ -87,7 +88,7 @@ export async function authenticateMcpRequest(
       clientId,
       profile: profile as Profile,
       supabase,
-      user: userData.user,
+      user: { id: userId },
     },
   };
 }
