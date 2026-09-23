@@ -7,7 +7,7 @@ export type ProspectLanguage =
   | "mixed";
 
 const DARIJA_LATIN =
-  /\b(wach|wash|kifach|kifash|bghit|bghiti|3andak|3ndi|chno|chhal|makaynch|mzyan|safi|wakha|bzzaf|lah|rjal|l3ibat|fin|foin|wen|wayn|win|kayn|kaynin|kaynin|ina|mnin|daba|ghir|hna|hnta|nta|nti|yallah|sba7|mskin|bghina|bghit|ach|ash|3lach|3lach|fayn|fein)\b/i;
+  /\b(wach|wash|kifach|kifash|bghit|bghiti|bghito|bghina|3andak|3ndi|chno|ach|ash|chhal|makaynch|mzyan|safi|wakha|bzzaf|bzaf|lah|fin|foin|wen|wayn|win|kayn|kaynin|ina|mnin|daba|ghir|hna|hnta|nta|nti|yallah|sba7|mskin|3lach|fayn|fein|ste|sté|cest|barra|kaml|kamal|tqado|nqado|hotel|hôtel|reserv|réserv|site|app|crm|ai|ia)\b/i;
 
 const DARIJA_AR =
   /واش|كيفاش|بغيت|عندك|شحال|ماكاينش|مزيان|صافي|واخا|بزاف|يلاه|دابا|غير|هنا|نتا|نتي/;
@@ -163,8 +163,34 @@ export function normalizeDarijaLatin(text: string): string {
     .replace(/\bsté\b/gi, "c'est")
     .replace(/\bcest\b/gi, "c'est")
     .replace(/\bc est\b/gi, "c'est")
+    .replace(/\bbghito\b/gi, "bghiti")
+    .replace(/\btqado\b/gi, "nqado")
+    .replace(/\bkaml\b/gi, "kamel")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Short FR gloss to help the model understand latin-darija before answering.
+ * Not shown to the prospect — only injected in the LLM prompt.
+ */
+export function glossProspectMessage(text: string): string {
+  const raw = normalizeDarijaLatin(text);
+  const hints: string[] = [];
+  if (isLocationAsk(raw)) hints.push("demande OÙ on est basé / quelle ville");
+  if (/\b(chno|ach|ash)\b/i.test(raw)) hints.push("demande QUOI / quel besoin");
+  if (/\b(wach|wash)\b/i.test(raw)) hints.push("question oui/non (wach…)");
+  if (/\b(chhal|ثمن|prix|tarif|combien|budget)\b/i.test(raw))
+    hints.push("demande de PRIX → pas de montant, brief ou RDV");
+  if (/\b(bghit|bghiti|bghina)\b/i.test(raw)) hints.push("exprime un SOUHAIT / besoin");
+  if (/\b(rdv|rendez|meeting|visio|appel)\b/i.test(raw)) hints.push("parle de RDV / appel");
+  if (/\b(site|lpage|page|app|crm|ai|ia|automat)\b/i.test(raw))
+    hints.push("besoin digital / outil");
+  if (/\b(hotel|hôtel|immo|agence|reservation|réserv)\b/i.test(raw))
+    hints.push("contexte hôtel / immobilier");
+  if (/\b(merci|ok|safi|mzyan|wakha)\b/i.test(raw)) hints.push("accusé positif / accord");
+  if (!hints.length) hints.push("lire le message littéralement et répondre à la question posée");
+  return `Message normalisé: « ${raw} ». Lecture probable: ${hints.join(" · ")}.`;
 }
 
 /** Prospect asks where we / the business is based. */
