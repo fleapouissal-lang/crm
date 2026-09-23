@@ -123,7 +123,13 @@ export function briefOrMeetingPrompt(lang: ProspectLanguage): string {
 export function languageInstruction(lang: ProspectLanguage): string {
   switch (lang) {
     case "darija":
-      return "Réponds UNIQUEMENT en darija marocaine (arabe dialectal). Style WhatsApp naturel, pas classique MSA. Tu peux écrire en alphabet arabe OU en latin (franco-arabe) en suivant le style du prospect.";
+      return [
+        "Réponds UNIQUEMENT en darija marocaine franco-arabe (latin), style WhatsApp terrain.",
+        "Naturel, court, humain — PAS un mélange bizarre français littéraire + darija + emoji.",
+        "Évite : « Ah d'accord ! 😊 », phrases trop longues, franglais cassé.",
+        "Préfère : 2 phrases max + 1 question. Exemple de ton : « Hna Fusion Leap f Marrakech. Kankhdmo digital o AI m3a des entreprises f Maroc o barra. Chno bghiti n3awno fik ? »",
+        "« ste / sté / cest » = « c'est », JAMAIS une société appelée STE.",
+      ].join(" ");
     case "ar":
       return "أجب بالعربية الفصحى البسيطة الواضحة فقط، بأسلوب واتساب قصير وطبيعي.";
     case "es":
@@ -131,7 +137,12 @@ export function languageInstruction(lang: ProspectLanguage): string {
     case "en":
       return "Reply ONLY in English, short natural WhatsApp tone.";
     case "fr":
-      return "Réponds UNIQUEMENT en français, ton WhatsApp naturel et court.";
+      return [
+        "Réponds UNIQUEMENT en français WhatsApp pro, court et naturel.",
+        "Pas d’emoji excessifs, pas de darija mélangé si le prospect écrit en français.",
+        "2–3 phrases max + une question.",
+        "« ste » en message mixte = souvent « c’est », pas une entreprise STE.",
+      ].join(" ");
     default:
       return "Détecte la langue dominante du dernier message prospect et réponds STRICTEMENT dans cette même langue (darija / arabe / français / espagnol / anglais). Ne mélange pas les langues.";
   }
@@ -147,6 +158,11 @@ export function normalizeDarijaLatin(text: string): string {
     .replace(/\bwen\b/gi, "fin")
     .replace(/\bwin\b/gi, "fin")
     .replace(/\bkayn\b/gi, "kaynin")
+    // "ste" / "sté" / "cest" = c'est (PAS un nom d'entreprise)
+    .replace(/\bste\b/gi, "c'est")
+    .replace(/\bsté\b/gi, "c'est")
+    .replace(/\bcest\b/gi, "c'est")
+    .replace(/\bc est\b/gi, "c'est")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -175,11 +191,11 @@ export function locationAnswer(
         : "";
   switch (lang) {
     case "darija":
-      return `Hna Fusion Leap, société digitale f Marrakech, Maroc. Kankhdmo m3a les entreprises f Maroc o international. Digital + AI (sites, apps, CRM, automatisation…). Evana o Autolog projets mn bin les projets dyalna.${cityBit} chno bghiti n3awno fik ?`;
+      return `Hna Fusion Leap, société digitale f Marrakech. Kankhdmo m3a les entreprises f Maroc o international (digital + AI). Evana o Autolog = projets dyalna.${cityBit} Chno bghiti n3awno fik ?`;
     case "ar":
-      return `نحن Fusion Leap، شركة رقمية في مراكش، المغرب. نعمل مع شركات في المغرب وعلى المستوى الدولي. الرقمي والذكاء الاصطناعي. Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف يمكننا مساعدتكم؟`;
+      return `نحن Fusion Leap في مراكش. نعمل مع شركات في المغرب وعلى المستوى الدولي (رقمي + ذكاء اصطناعي). Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف نقدر نساعدكم؟`;
     default:
-      return `On est Fusion Leap — société digitale basée à Marrakech, Maroc. On travaille avec des entreprises au Maroc et à l’international. Digital + IA. Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi concrètement ?`;
+      return `Fusion Leap — société digitale à Marrakech. On accompagne des entreprises au Maroc et à l’international (digital + IA). Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Sur quoi puis-je vous aider concrètement ?`;
   }
 }
 

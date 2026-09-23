@@ -115,6 +115,7 @@ export const DARIJA_GLOSSARY: Array<{ term: string; meaning: string }> = [
   { term: "صونيك / sonic / soniq", meaning: "souvent « site » (déformation)" },
   { term: "أبليكاسيون / appli", meaning: "application mobile ou web" },
   { term: "ستوك / stock", meaning: "stock / inventaire (souvent e-com ou gestion)" },
+  { term: "ste / sté / cest / c est", meaning: "c'est (conjonction) — JAMAIS une entreprise nommée STE" },
   { term: "فين / fin / foin / wen / wayn kaynin", meaning: "où êtes-vous / où se trouve → répondre clairement (ville / remote Maroc), PAS clarify" },
   { term: "ina ville / quelle ville", meaning: "quelle ville → dire où on est basé + demander leur ville si besoin" },
   { term: "كلي / kli / client", meaning: "client / prospect" },
