@@ -163,7 +163,7 @@ export function isLocationAsk(text: string): boolean {
 
 export function locationAnswer(
   lang: ProspectLanguage,
-  project: string,
+  _project: string,
   prospectCity?: string | null
 ): string {
   const city = (prospectCity || "").trim();
@@ -173,29 +173,13 @@ export function locationAnswer(
       : city && lang === "fr"
         ? ` Vous êtes à ${city} —`
         : "";
-  if (project === "Evana") {
-    switch (lang) {
-      case "darija":
-        return `Hna Evana, kan khdmo online 3la Maghreb kamel (Casa, Marrakech…).${cityBit} bghiti n3awno l’hôtel f réservations / site / visibilité ?`;
-      case "ar":
-        return `نحن Evana، نعمل عن بُعد في المغرب كله.${city ? ` أنتم في ${city}.` : ""} هل تريدون مساعدة للفندق في الحجوزات أو الموقع؟`;
-      default:
-        return `On est Evana — équipe digitale, on travaille à distance partout au Maroc (Casa, Marrakech…).${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur réservations / site / visibilité de l’hôtel ?`;
-    }
-  }
-  if (project === "Autolog") {
-    switch (lang) {
-      case "darija":
-        return `Hna Autolog, kan khdmo 3la Maghreb.${cityBit} bghiti n3awno 3la flotte / location ?`;
-      default:
-        return `Autolog — on accompagne les flottes / locations au Maroc.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi exactement ?`;
-    }
-  }
   switch (lang) {
     case "darija":
-      return `Hna Fusion Leap (IT), base Casa o kan khdmo 3la distance f Maghreb.${cityBit} chno bghiti digitally (site, app, CRM…) ?`;
+      return `Hna Fusion Leap, société digitale f Marrakech, Maroc. Kankhdmo 3la digital o kolchi li 3ando 3alaqa b AI (sites, apps, CRM, automatisation…). Evana o Autolog projets mn bin les projets dyalna.${cityBit} chno bghiti n3awno fik ?`;
+    case "ar":
+      return `نحن Fusion Leap، شركة رقمية في مراكش، المغرب. نعمل في الرقمي وكل ما يتعلق بالذكاء الاصطناعي. Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف يمكننا مساعدتكم؟`;
     default:
-      return `Fusion Leap (IT) — basés à Casablanca, on travaille partout au Maroc.${city ? ` Vous êtes à ${city}.` : ""} Quel besoin digital vous intéresse ?`;
+      return `On est Fusion Leap — société digitale basée à Marrakech, Maroc. On travaille le digital et tout ce qui touche à l’IA. Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi concrètement ?`;
   }
 }
 

@@ -332,17 +332,19 @@ export async function generateFirstTouchMessage(
     const project = ctx.lead.sales_project || "Fusion Leap";
     const offerLine =
       project === "Evana"
-        ? "Accroche Evana immobilier : te présenter brièvement, montrer que tu peux aider l’hôtel / l’immobilier (visibilité, réservations, site, CRM prospects…), et poser UNE question pour comprendre."
+        ? "Accroche Fusion Leap : te présenter comme Fusion Leap (digitale, Marrakech), expliquer qu’Evana est un de vos projets immo/hôtel, et poser UNE question sur leur besoin (visibilité, réservations, site…)."
         : project === "Autolog"
-          ? "Accroche Autolog : te présenter brièvement (flotte / location véhicules), montrer que tu peux aider sur la gestion du parc, et poser UNE question."
-          : "Accroche Fusion Leap / IT : te présenter brièvement, montrer que tu peux aider sur leur besoin digital/informatique, et poser UNE question pour comprendre.";
+          ? "Accroche Fusion Leap : te présenter comme Fusion Leap (digitale, Marrakech), expliquer qu’Autolog est un de vos projets flotte/location, et poser UNE question."
+          : "Accroche Fusion Leap : te présenter (digitale / IA, Marrakech), montrer que vous couvrez le digital et l’IA, et poser UNE question pour comprendre.";
     const body = await generateSalesAgentText({
       system: buildSystemPrompt(ctx),
       maxTokens: 2048,
       user: [
         "Rédige UNIQUEMENT le premier message WhatsApp personnalisé (pas de JSON).",
+        "Tu te présentes TOUJOURS comme Fusion Leap (jamais Evana ou Autolog comme marque qui parle).",
+        "Base : Marrakech, Maroc. Activité : digital + IA.",
         offerLine,
-        "Ne liste pas tous les services. Reste focus sur le projet « " + project + " ».",
+        "Ne liste pas tous les services. Reste focus sur le besoin du prospect.",
         "Utilise le brief prospect. Pas de template générique.",
         "Le message DOIT faire 2 à 4 phrases : salutation + pourquoi tu contactes + UNE question concrète.",
         "Varie l'accroche (seed=" + seed + ").",

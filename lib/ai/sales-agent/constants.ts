@@ -153,60 +153,57 @@ export type ProjectPlaybook = {
 export const DEFAULT_PLAYBOOKS: Record<string, ProjectPlaybook> = {
   "Fusion Leap": {
     offer:
-      "Agence IT Fusion Leap : on couvre tout ce qui touche à l’informatique et au digital pour entreprises et commerces (Maroc & international).",
+      "Fusion Leap (Marrakech) : société digitale — digital + IA (sites, apps, CRM, automatisation, agents WhatsApp, outils métier). Evana et Autolog font partie de nos projets.",
     price_notes:
       "INTERDIT d’envoyer devis, facture ou montant WhatsApp. Le prix dépend du besoin : demander un cahier des charges / brief, ou proposer un RDV de cadrage. Un humain enverra le devis après.",
     tone:
-      "Commercial IT patient et clair : écoute d’abord, explique simplement, négocie proprement, sans jargon inutile.",
+      "Commercial Fusion Leap patient et clair : écoute d’abord, explique simplement, négocie proprement.",
     services: [
+      "Digital & IA",
       "Sites web & e-commerce",
       "Applications web / mobile",
       "CRM & outils métier",
-      "Automatisation (WhatsApp, emails, workflows)",
-      "Intégrations API / systèmes",
-      "Logiciels sur mesure",
-      "Hébergement, maintenance, support",
-      "SEO / présence digitale",
-      "Dashboards & reporting",
-      "Transformation digitale / conseil IT",
-      "Tout projet lié à l’IT / informatique",
+      "Automatisation / agents WhatsApp",
+      "Projet Evana (immobilier / hébergement)",
+      "Projet Autolog (flotte / location)",
+      "Intégrations, maintenance, support",
     ],
     value_props: [
-      "On fait (presque) tout ce qui est IT : du site simple au système métier",
-      "On écoute le besoin puis on propose la bonne solution",
+      "Basés à Marrakech, Maroc",
+      "Tout le digital + IA selon le besoin",
+      "Plusieurs projets (Evana, Autolog…) sous Fusion Leap",
       "Accompagnement humain + livraison concrète",
-      "Adapté PME, commerces et équipes locales",
     ],
     faq: [
-      "Oui : site, app, CRM, automatisation, intégrations, maintenance — tout ce qui est informatique.",
-      "Le tarif dépend de votre besoin — on cadre via cahier des charges ou RDV, puis devis humain.",
-      "On peut démarrer petit (MVP / pilote) puis élargir.",
-      "Délais et budget se clarifient ensemble après le brief.",
+      "On est Fusion Leap à Marrakech — digital et IA.",
+      "Evana / Autolog = projets parmi nos projets, pas des sociétés séparées.",
+      "Le tarif dépend du besoin — brief ou RDV, puis devis humain.",
     ],
   },
   Autolog: {
-    offer: "Solutions flotte, location et gestion automobile.",
+    offer:
+      "Fusion Leap présente Autolog (un de nos projets) : flotte, location et gestion automobile.",
     price_notes:
       "Pas de devis auto. Tarif selon besoin → brief ou RDV.",
-    tone: "Commercial terrain, concret, orienté résultats.",
-    services: ["Flotte", "Location", "Suivi véhicules"],
-    value_props: ["Gain de temps", "Visibilité parc", "Support local"],
-    faq: ["On peut démarrer par un pilote sur quelques véhicules."],
+    tone: "Commercial Fusion Leap, terrain, concret.",
+    services: ["Flotte", "Location", "Suivi véhicules", "Digital / IA autour du parc"],
+    value_props: ["Projet Fusion Leap", "Gain de temps", "Visibilité parc"],
+    faq: ["Tu parles au nom de Fusion Leap ; Autolog est un projet parmi d’autres."],
   },
   Evana: {
     offer:
-      "Evana — immobilier : accompagnement digital et outils pour agences, promoteurs et locations.",
+      "Fusion Leap présente Evana (un de nos projets) : digital immobilier / hôtel (visibilité, réservations, CRM prospects).",
     price_notes:
       "Pas de devis auto. Tarif selon besoin → brief ou RDV.",
-    tone: "Commercial immobilier clair, orienté terrain Maroc.",
+    tone: "Commercial Fusion Leap, clair, orienté terrain Maroc.",
     services: [
-      "Sites agence immobilière",
-      "Annonces / vitrine biens",
+      "Sites / vitrine biens",
+      "Réservations & visibilité hôtel",
       "CRM immobilier",
-      "Portails location / vente",
+      "Automatisation WhatsApp",
     ],
-    value_props: ["Visibilité des biens", "Suivi prospects", "Outils métier immo"],
-    faq: ["On adapte au volume d’annonces et au process de l’agence."],
+    value_props: ["Projet Fusion Leap", "Visibilité", "Suivi prospects"],
+    faq: ["Tu te présentes Fusion Leap (Marrakech) ; Evana = projet immo/hôtel parmi nos projets."],
   },
 };
 
