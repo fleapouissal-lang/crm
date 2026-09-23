@@ -1,17 +1,27 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { handleInboundMessage } from "@/lib/ai/sales-agent/runtime";
+import { resolveInboundText } from "@/lib/ai/sales-agent/media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type BridgeMessage = {
-  key?: { id?: string; remoteJid?: string; remoteJidAlt?: string; participantAlt?: string; fromMe?: boolean };
+  key?: {
+    id?: string;
+    remoteJid?: string;
+    remoteJidAlt?: string;
+    participantAlt?: string;
+    fromMe?: boolean;
+  };
   _mediaType?: string;
   message?: {
     conversation?: string;
     extendedTextMessage?: { text?: string };
     imageMessage?: { caption?: string };
     videoMessage?: { caption?: string };
+    documentMessage?: { caption?: string; fileName?: string; mimetype?: string };
+    audioMessage?: { ptt?: boolean };
   };
 };
 
@@ -21,6 +31,7 @@ function messageText(message: BridgeMessage): string {
     message.message?.extendedTextMessage?.text ||
     message.message?.imageMessage?.caption ||
     message.message?.videoMessage?.caption ||
+    message.message?.documentMessage?.caption ||
     ""
   ).trim();
 }
@@ -38,7 +49,8 @@ function sameMoroccanPhone(a: string, b: string): boolean {
 
 export async function POST(request: Request) {
   const bridgeSecret = process.env.WA_BRIDGE_SECRET || "";
-  const requestSecret = request.headers.get("apikey") || request.headers.get("x-api-key") || "";
+  const requestSecret =
+    request.headers.get("apikey") || request.headers.get("x-api-key") || "";
   if (!bridgeSecret || requestSecret !== bridgeSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -51,17 +63,16 @@ export async function POST(request: Request) {
   }
 
   const organizationId = process.env.WA_BRIDGE_ORGANIZATION_ID;
-  const qualifiedAssigneeId = process.env.OUTREACH_QUALIFIED_ASSIGNEE_ID;
   const instanceId = body.instance || "";
-  const autologInstance = process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm";
-  const fusionLeapInstance = process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
-  const projectFilter = instanceId === autologInstance
-    ? "Autolog"
-    : instanceId === fusionLeapInstance
-      ? "Fusion Leap"
-      : null;
+  const { salesProjectsForWhatsAppInstance } = await import(
+    "@/lib/outreach/wa-instance"
+  );
+  const projectFilter = salesProjectsForWhatsAppInstance(instanceId);
   if (!organizationId) {
-    return NextResponse.json({ error: "WhatsApp organization is not configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "WhatsApp organization is not configured" },
+      { status: 503 }
+    );
   }
 
   const supabase = createAdminClient();
@@ -69,84 +80,131 @@ export async function POST(request: Request) {
     if (incoming.key?.fromMe) continue;
     const text = messageText(incoming);
     const remotePhone = (incoming.key?.remoteJid || "").replace(/@.+$/, "");
-    const replyBody = text || (incoming._mediaType === "audio" ? "رسالة صوتية مستلمة" : "رد وارد مستلم");
-    if (!remotePhone || (!text && !incoming._mediaType)) continue;
+    if (
+      !remotePhone ||
+      (!text &&
+        !incoming._mediaType &&
+        !incoming.message?.documentMessage &&
+        !incoming.message?.audioMessage &&
+        !incoming.message?.imageMessage &&
+        !incoming.message?.videoMessage)
+    ) {
+      continue;
+    }
+    const mediaType =
+      incoming._mediaType ||
+      (incoming.message?.documentMessage
+        ? incoming.message.documentMessage.mimetype || "document"
+        : incoming.message?.audioMessage
+          ? "audio"
+          : incoming.message?.imageMessage
+            ? "image"
+            : incoming.message?.videoMessage
+              ? "video"
+              : "");
+    const resolved = await resolveInboundText(text, {
+      type: mediaType,
+      messageId: incoming.key?.id || null,
+      instanceId,
+      caption: text,
+    });
+    const replyBody = resolved.text;
 
     let leadsQuery = supabase
       .from("leads")
-      .select("id, title, phone, phone_normalized, stage, assigned_to")
+      .select("id, title, phone, phone_normalized, stage, assigned_to, sales_project")
       .eq("organization_id", organizationId)
       .not("phone", "is", null);
-    if (projectFilter) leadsQuery = leadsQuery.eq("sales_project", projectFilter);
+    if (projectFilter?.length) {
+      leadsQuery = leadsQuery.in("sales_project", projectFilter);
+    }
     const { data: leads } = await leadsQuery;
     const lead = leads?.find((candidate) =>
       sameMoroccanPhone(remotePhone, candidate.phone_normalized || candidate.phone)
     );
     if (!lead) continue;
 
-    // Any inbound response is a qualified human interaction. This includes
-    // positive/negative text and audio: Dalal should review every reply.
-    const replySentiment = "positive" as const;
+    const providerMessageId = incoming.key?.id || null;
     const { data: latestOutreach } = await supabase
       .from("outreach_messages")
       .select("id")
       .eq("organization_id", organizationId)
       .eq("lead_id", lead.id)
       .eq("channel", "whatsapp")
-      .in("status", ["sent", "delivered", "replied"])
+      .in("status", ["sent", "delivered", "replied", "queued", "sending"])
       .order("sent_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const providerMessageId = incoming.key?.id || null;
-    const { error: replyError } = await supabase.from("outreach_replies").upsert(
-      {
-        organization_id: organizationId,
-        lead_id: lead.id,
-        outreach_message_id: latestOutreach?.id || null,
-        provider_message_id: providerMessageId,
-        body: replyBody,
-        sentiment: replySentiment,
-        received_at: new Date().toISOString(),
-      },
-      { onConflict: "organization_id,provider_message_id", ignoreDuplicates: true }
-    );
+    // Only WhatsApp threads we started (or queued) — ignore cold inbound from unknown CRM contacts
+    if (!latestOutreach?.id) {
+      continue;
+    }
+
+    const { data: replyRow, error: replyError } = await supabase
+      .from("outreach_replies")
+      .upsert(
+        {
+          organization_id: organizationId,
+          lead_id: lead.id,
+          outreach_message_id: latestOutreach.id,
+          provider_message_id: providerMessageId,
+          body: replyBody,
+          sentiment: "neutral",
+          received_at: new Date().toISOString(),
+        },
+        { onConflict: "organization_id,provider_message_id", ignoreDuplicates: false }
+      )
+      .select("id")
+      .maybeSingle();
     if (replyError) console.error("[whatsapp-bridge] reply log failed", replyError.message);
 
-    if (latestOutreach?.id) {
-      await supabase
-        .from("outreach_messages")
-        .update({ status: "replied", replied_at: new Date().toISOString() })
-        .eq("id", latestOutreach.id);
-    }
+    await supabase
+      .from("outreach_messages")
+      .update({ status: "replied", replied_at: new Date().toISOString() })
+      .eq("id", latestOutreach.id)
+      .in("status", ["sent", "delivered"]);
 
-    const leadUpdate: Record<string, string> = {
-      last_contact_method: "phone",
-      last_contacted_at: new Date().toISOString(),
-    };
-    await supabase.from("outreach_relances").update({ status: "cancelled", response_received_at: new Date().toISOString() })
-      .eq("organization_id", organizationId).eq("lead_id", lead.id).eq("status", "planned");
-    await supabase.from("outreach_relances").update({ status: "replied", response_received_at: new Date().toISOString() })
-      .eq("organization_id", organizationId).eq("lead_id", lead.id).eq("status", "sent");
-    if (replySentiment === "positive") {
-      leadUpdate.stage = "qualified";
-      if (qualifiedAssigneeId) leadUpdate.assigned_to = qualifiedAssigneeId;
-    }
-    await supabase.from("leads").update(leadUpdate).eq("id", lead.id).eq("organization_id", organizationId);
 
-    await supabase.from("activities").insert({
-      organization_id: organizationId,
-      type: replySentiment === "positive" ? "lead_stage_changed" : "lead_updated",
-      entity_type: "lead",
-      entity_id: lead.id,
-      user_id: replySentiment === "positive" ? qualifiedAssigneeId || null : null,
-        message: `WhatsApp reply detected (${incoming._mediaType === "audio" ? "audio" : "text"}); lead qualified and assigned to Dalal: ${replyBody.slice(0, 240)}`,
-    });
+    await supabase
+      .from("outreach_relances")
+      .update({
+        status: "cancelled",
+        response_received_at: new Date().toISOString(),
+      })
+      .eq("organization_id", organizationId)
+      .eq("lead_id", lead.id)
+      .eq("status", "planned");
+    await supabase
+      .from("outreach_relances")
+      .update({
+        status: "replied",
+        response_received_at: new Date().toISOString(),
+      })
+      .eq("organization_id", organizationId)
+      .eq("lead_id", lead.id)
+      .eq("status", "sent");
+
+    try {
+      await handleInboundMessage(supabase, organizationId, lead.id, replyBody, {
+        providerMessageId,
+        outreachReplyId: replyRow?.id ?? null,
+      });
+    } catch (error) {
+      console.error(
+        "[whatsapp-bridge] agent failed",
+        error instanceof Error ? error.message : error
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });
 }
 
 export async function GET() {
-  return NextResponse.json({ status: "ok", service: "fusionleap-whatsapp-replies" });
+  return NextResponse.json({
+    status: "ok",
+    service: "fusionleap-whatsapp-replies",
+    agent: "in-app",
+  });
 }

@@ -78,6 +78,10 @@ export function LeadFormDialog({
       contact_name: "",
       email: "",
       phone: "",
+      website: "",
+      city: "",
+      country: "",
+      source: "",
       sales_project: defaultSalesProject,
       last_contact_method: null,
       value: 0,
@@ -99,6 +103,10 @@ export function LeadFormDialog({
         contact_name: lead?.contact_name ?? "",
         email: lead?.email ?? "",
         phone: lead?.phone ?? "",
+        website: lead?.website ?? "",
+        city: lead?.city ?? "",
+        country: lead?.country ?? "",
+        source: lead?.source ?? "",
         sales_project: lead?.sales_project ?? defaultSalesProject,
         last_contact_method: lead?.last_contact_method ?? null,
         value: Number(lead?.value ?? 0),
@@ -188,7 +196,7 @@ export function LeadFormDialog({
                   <Input
                     id="lead-sales-project"
                     className="fl-input"
-                    placeholder="Fusion Leap / Autolog"
+                    placeholder="Fusion Leap / Autolog / Evana"
                     {...register("sales_project")}
                   />
                   {errors.sales_project ? (
@@ -272,6 +280,44 @@ export function LeadFormDialog({
                       {...register("phone")}
                     />
                   </div>
+                </div>
+                <div className="fl-field">
+                  <label className="fl-field-label" htmlFor="lead-website">
+                    Site web
+                  </label>
+                  <Input
+                    id="lead-website"
+                    className="fl-input"
+                    placeholder="exemple.ma"
+                    {...register("website")}
+                  />
+                  {errors.website ? (
+                    <span className="fl-field-hint text-[var(--rose)]">
+                      {errors.website.message}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="fl-field">
+                  <label className="fl-field-label" htmlFor="lead-city">
+                    Ville
+                  </label>
+                  <Input
+                    id="lead-city"
+                    className="fl-input"
+                    placeholder="Casablanca"
+                    {...register("city")}
+                  />
+                </div>
+                <div className="fl-field">
+                  <label className="fl-field-label" htmlFor="lead-source">
+                    Source
+                  </label>
+                  <Input
+                    id="lead-source"
+                    className="fl-input"
+                    placeholder="Instagram / referral / CSV…"
+                    {...register("source")}
+                  />
                 </div>
               </div>
             </section>

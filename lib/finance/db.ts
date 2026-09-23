@@ -36,6 +36,7 @@ export type QuoteRow = {
   template_id: string | null;
   notes: string;
   items: FinanceLineItem[] | string;
+  lead_id?: string | null;
   is_imported?: boolean | null;
   import_file_name?: string | null;
   import_file_mime?: string | null;
@@ -155,6 +156,7 @@ export function rowToQuote(row: QuoteRow): QuoteRecord {
     templateId: row.template_id,
     notes: row.notes ?? "",
     items: parseItems(row.items),
+    leadId: row.lead_id ?? null,
     isImported: Boolean(row.is_imported),
     importFileName: row.import_file_name ?? null,
     importFileMime: row.import_file_mime ?? null,
@@ -186,6 +188,7 @@ export function quoteToRow(
     template_id: normalized.templateId,
     notes: normalized.notes,
     items: normalized.items,
+    lead_id: normalized.leadId ?? null,
     is_imported: Boolean(normalized.isImported),
     import_file_name: normalized.importFileName ?? null,
     import_file_mime: normalized.importFileMime ?? null,

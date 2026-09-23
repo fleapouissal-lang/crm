@@ -2,6 +2,7 @@
 
 import { getCurrentProfile } from "@/lib/actions/auth";
 import { isLeadership } from "@/lib/permissions";
+import { whatsappInstanceIdForProject } from "@/lib/outreach/wa-instance";
 
 export type WhatsAppBridgeStatus = {
   connected: boolean;
@@ -9,6 +10,7 @@ export type WhatsAppBridgeStatus = {
   phone?: string | null;
 };
 
+/** UI tabs: Evana uses the Fusion Leap session (same number). */
 export type WhatsAppProject = "Fusion Leap" | "Autolog";
 
 type QrResult =
@@ -18,9 +20,7 @@ type QrResult =
 function bridgeConfig(project: WhatsAppProject = "Fusion Leap") {
   const url = process.env.WA_BRIDGE_URL?.replace(/\/$/, "");
   const secret = process.env.WA_BRIDGE_SECRET;
-  const instanceId = project === "Autolog"
-    ? process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm"
-    : process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+  const instanceId = whatsappInstanceIdForProject(project);
   if (!url || !secret) throw new Error("WhatsApp bridge is not configured");
   return { url, secret, instanceId };
 }

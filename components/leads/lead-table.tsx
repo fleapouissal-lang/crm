@@ -146,6 +146,7 @@ export function LeadTable({
               <tr>
                 <th>{dict.common.title}</th>
                 <th>{dict.leads.salesProject}</th>
+                <th>Score</th>
                 <th>{dict.common.contact}</th>
                 <th>{dict.common.stage}</th>
                 <th>{dict.common.assignee}</th>
@@ -165,6 +166,23 @@ export function LeadTable({
                     )}
                   </td>
                   <td><span className="fl-badge b-blue text-[10px]">{lead.sales_project}</span></td>
+                  <td>
+                    {lead.ai_score != null ? (
+                      <span
+                        className={
+                          lead.ai_score >= 60
+                            ? "fl-badge b-green text-[10px]"
+                            : lead.ai_score >= 40
+                              ? "fl-badge b-gold text-[10px]"
+                              : "fl-badge b-rose text-[10px]"
+                        }
+                      >
+                        {lead.ai_score}/100
+                      </span>
+                    ) : (
+                      <span className="text-xs fl-faint">—</span>
+                    )}
+                  </td>
                   <td>
                     <div className="text-sm">{lead.contact_name ?? "—"}</div>
                     {lead.phone && (
@@ -226,6 +244,11 @@ export function LeadTable({
                   <div>
                     <p className="font-medium">{lead.title}</p>
                     <span className="fl-badge b-blue mt-1 text-[10px]">{lead.sales_project}</span>
+                    {lead.ai_score != null ? (
+                      <span className="fl-badge b-iris mt-1 ml-1 text-[10px]">
+                        {lead.ai_score}/100
+                      </span>
+                    ) : null}
                     {lead.company && (
                       <p className="fl-faint text-xs">{lead.company}</p>
                     )}

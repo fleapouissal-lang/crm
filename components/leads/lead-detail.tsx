@@ -15,12 +15,16 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Search,
+  Loader2,
 } from "lucide-react";
 import type { Lead, Profile, Role, Task } from "@/types/database";
 import { canDeleteLead } from "@/lib/permissions";
 import { deleteLead } from "@/lib/actions/leads";
+import { researchLeadNow } from "@/lib/actions/sales-agent";
 import { LeadFormDialog } from "@/components/leads/lead-form";
-import { LeadStageBadge, TaskStatusBadge, TaskPriorityBadge } from "@/components/shared/status-badge";
+import { LeadConversationPanel } from "@/components/leads/lead-conversation-panel";
+import { SalesStatusBadge, TaskStatusBadge, TaskPriorityBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -69,7 +73,10 @@ export function LeadDetailClient({
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{lead.title}</h1>
             <span className="fl-badge b-blue">{lead.sales_project}</span>
-            <LeadStageBadge stage={lead.stage} />
+            {lead.ai_score != null ? (
+              <span className="fl-badge b-iris">Score {lead.ai_score}/100</span>
+            ) : null}
+            <SalesStatusBadge status={lead.sales_status} fallbackStage={lead.stage} />
           </div>
           {lead.company && (
             <p className="flex items-center gap-1.5 text-muted-foreground">
@@ -79,6 +86,30 @@ export function LeadDetailClient({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const result = await researchLeadNow(lead.id);
+                if (!result.success) {
+                  toast.error(result.error);
+                  return;
+                }
+                toast.success(
+                  result.data.notes ? "Recherche mise à jour" : "Aucune info trouvée"
+                );
+                router.refresh();
+              })
+            }
+          >
+            {pending ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Search className="mr-2 size-4" />
+            )}
+            Recherche IA
+          </Button>
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Pencil className="mr-2 size-4" />
             {c.edit}
@@ -109,6 +140,58 @@ export function LeadDetailClient({
           )}
         </div>
       </div>
+
+      <LeadConversationPanel
+        leadId={lead.id}
+        canControl={role === "admin" || role === "manager"}
+      />
+
+      {(lead.ai_summary ||
+        (lead.memory_facts && Object.keys(lead.memory_facts).length > 0) ||
+        lead.client) && (
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="size-4 text-primary" />
+              Mémoire IA
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {lead.client ? (
+              <div className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
+                <p className="text-xs font-medium text-muted-foreground">Client CRM lié</p>
+                <p className="mt-1 font-medium">
+                  {lead.client.name}
+                  {lead.client.status_key ? ` · ${lead.client.status_key}` : ""}
+                </p>
+                {(lead.client.location || lead.client.engagement) && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {[lead.client.location, lead.client.engagement].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {lead.ai_summary ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Mémo</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{lead.ai_summary}</p>
+              </div>
+            ) : null}
+            {lead.memory_facts && Object.keys(lead.memory_facts).length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(lead.memory_facts).map(([key, value]) => (
+                  <span
+                    key={key}
+                    className="rounded-full border bg-background px-2.5 py-1 text-xs"
+                  >
+                    <span className="text-muted-foreground">{key}:</span> {value}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       {lead.research_notes ? (
         <Card className="border-primary/20 bg-primary/[0.025] shadow-sm">

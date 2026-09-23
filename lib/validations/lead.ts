@@ -10,11 +10,11 @@ export const leadSchema = z.object({
     .optional()
     .or(z.literal("")),
   phone: z.string().max(50).optional().or(z.literal("")),
-  website: z.string().url("Invalid website").max(500).optional().or(z.literal("")),
+  website: z.string().max(500).optional().or(z.literal("")),
   city: z.string().max(120).optional().or(z.literal("")),
   country: z.string().max(120).optional().or(z.literal("")),
   source: z.string().max(120).optional().or(z.literal("")),
-  source_url: z.string().url("Invalid source URL").max(1000).optional().or(z.literal("")),
+  source_url: z.string().max(1000).optional().or(z.literal("")),
   sales_project: z.string().min(1, "Sales project is required").max(120),
   ai_score: z.number().int().min(0).max(100).optional().nullable(),
   ai_summary: z.string().max(3000).optional().or(z.literal("")),

@@ -53,9 +53,10 @@ export async function dispatchOutreachMessage(
     if (useEasyTouch) {
       const bridgeUrl = process.env.WA_BRIDGE_URL?.replace(/\/$/, "");
       const bridgeSecret = process.env.WA_BRIDGE_SECRET;
-      const instanceId = data.lead.sales_project === "Autolog"
-        ? process.env.WA_BRIDGE_INSTANCE_ID_AUTOLOG || "autolog_crm"
-        : process.env.WA_BRIDGE_INSTANCE_ID_FUSION_LEAP || process.env.WA_BRIDGE_INSTANCE_ID || "fusionleap_crm";
+      const { whatsappInstanceIdForProject } = await import(
+        "@/lib/outreach/wa-instance"
+      );
+      const instanceId = whatsappInstanceIdForProject(data.lead.sales_project);
       if (!bridgeUrl || !bridgeSecret) {
         throw new Error("EasyTouch WhatsApp bridge is not configured");
       }
@@ -138,18 +139,37 @@ export async function dispatchOutreachMessage(
         last_contacted_at: sentAt,
         last_contact_method: data.channel === "email" ? "email" : "phone",
         stage: "contacted",
+        sales_status: "message_sent",
       })
       .eq("id", data.lead.id)
       .eq("organization_id", organizationId);
     if (data.channel === "whatsapp") {
-      const delayHours = 6 + Math.random() * 6;
-      const followUp = new Date(Date.now() + delayHours * 60 * 60 * 1000).toISOString();
+      const { data: settings } = await supabase
+        .from("sales_agent_settings")
+        .select("relance_delays_hours")
+        .eq("organization_id", organizationId)
+        .eq("sales_project", data.lead.sales_project || "Fusion Leap")
+        .maybeSingle();
+      const delays = Array.isArray(settings?.relance_delays_hours) && settings.relance_delays_hours.length
+        ? settings.relance_delays_hours
+        : [8, 16, 24];
+      const delayHours = Number(delays[0]) || 8;
+      const jitter = Math.random() * 2;
+      const followUp = new Date(Date.now() + (delayHours + jitter) * 60 * 60 * 1000).toISOString();
+      let relanceBody =
+        "Bonjour, je me permets de revenir vers vous. Souhaitez-vous un échange rapide ?";
+      try {
+        const { generateRelanceBody } = await import("@/lib/ai/sales-agent/runtime");
+        relanceBody = await generateRelanceBody(supabase, organizationId, data.lead.id, 1);
+      } catch {
+        /* keep fallback */
+      }
       await supabase.from("outreach_relances").upsert({
         organization_id: organizationId,
         lead_id: data.lead.id,
         sequence: 1,
         status: "planned",
-        body: "Bonjour, je me permets de revenir vers vous. Souhaitez-vous que je vous montre rapidement comment Autolog peut simplifier votre suivi ?",
+        body: relanceBody,
         scheduled_for: followUp,
       }, { onConflict: "lead_id,sequence", ignoreDuplicates: true });
     }

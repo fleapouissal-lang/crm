@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/api/org-logos/") ||
     pathname.startsWith("/api/avatars/") ||
     pathname.startsWith("/api/webhooks/whatsapp-bridge") ||
+    pathname.startsWith("/api/cron/sales-agent") ||
     isMcpRoute ||
     isOAuthMetadataRoute ||
     pathname.includes(".");

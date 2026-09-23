@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { FileText, Pencil } from "lucide-react";
 import { useDict } from "@/components/shared/i18n-provider";
 import {
   STATUS_BADGE_CLASS,
@@ -21,11 +21,13 @@ export function ClientDetailDialog({
   onOpenChange,
   client,
   onEdit,
+  onOpenJournal,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: ClientRecord | null;
   onEdit: () => void;
+  onOpenJournal?: () => void;
 }) {
   const dict = useDict();
   const f = dict.fusion;
@@ -85,6 +87,19 @@ export function ClientDetailDialog({
           >
             {dict.common.cancel}
           </button>
+          {onOpenJournal ? (
+            <button
+              type="button"
+              className="fl-btn sm"
+              onClick={() => {
+                onOpenChange(false);
+                onOpenJournal();
+              }}
+            >
+              <FileText className="size-4" strokeWidth={2} />
+              {dict.clients.journalPdf}
+            </button>
+          ) : null}
           <button
             type="button"
             className="fl-btn primary sm"

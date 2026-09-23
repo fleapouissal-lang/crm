@@ -5,6 +5,7 @@ import { useTheme } from "@/components/shared/theme-provider";
 import { format } from "date-fns";
 import {
   Bell,
+  Bot,
   Building2,
   Loader2,
   LogOut,
@@ -55,8 +56,16 @@ import {
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n/types";
 import { WhatsAppConnectionPanel } from "@/components/settings/whatsapp-connection-panel";
+import { SalesAgentSettingsPanel } from "@/components/settings/sales-agent-settings-panel";
 
-type SettingsTab = "profile" | "account" | "workspace" | "whatsapp" | "appearance" | "notifications";
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "workspace"
+  | "whatsapp"
+  | "agent"
+  | "appearance"
+  | "notifications";
 
 function FlToggle({
   checked,
@@ -182,6 +191,11 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
                 key: "whatsapp" as const,
                 label: "WhatsApp",
                 icon: <MessageCircle className="size-3.5" />,
+              },
+              {
+                key: "agent" as const,
+                label: "AI Agent",
+                icon: <Bot className="size-3.5" />,
               },
             ]),
         { key: "appearance", label: s.appearance, icon: <Palette className="size-3.5" /> },
@@ -685,6 +699,17 @@ export function SettingsPageClient({ data }: { data: SettingsData }) {
 
       {activeTab === "whatsapp" && !platformAdmin && !isTeamMember ? (
         <WhatsAppConnectionPanel locale={locale} />
+      ) : null}
+
+      {activeTab === "agent" && !platformAdmin && !isTeamMember ? (
+        <div className="fl-card fl-pad">
+          <SalesAgentSettingsPanel
+            members={data.team.map((m) => ({
+              id: m.id,
+              full_name: m.full_name,
+            }))}
+          />
+        </div>
       ) : null}
 
       {activeTab === "notifications" && !platformAdmin && !isTeamMember ? (

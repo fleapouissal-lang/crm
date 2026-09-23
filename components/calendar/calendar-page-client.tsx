@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Task } from "@/types/database";
+import type { Appointment, Task } from "@/types/database";
 import { tasksVisibleOnDay } from "@/lib/tasks/due-filter";
 import { useDict, useI18n } from "@/components/shared/i18n-provider";
 import { getIntlLocale } from "@/lib/i18n/locale-utils";
@@ -60,7 +60,13 @@ function formatKey(date: Date): string {
 
 const EVENT_COLORS = ["ir", "gr", "go", "ro"] as const;
 
-export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
+export function CalendarPageClient({
+  tasks,
+  appointments = [],
+}: {
+  tasks: Task[];
+  appointments?: Appointment[];
+}) {
   const dict = useDict();
   const { locale } = useI18n();
   const intlLocale = getIntlLocale(locale);
@@ -83,6 +89,17 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
     }
     return map;
   }, [tasks]);
+
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    for (const apt of appointments) {
+      const key = formatKey(new Date(apt.starts_at));
+      const list = map.get(key) ?? [];
+      list.push(apt);
+      map.set(key, list);
+    }
+    return map;
+  }, [appointments]);
 
   const calDays = useMemo(
     () => buildMonthDays(cursor.getFullYear(), cursor.getMonth()),
@@ -157,6 +174,14 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
             ))}
             {calDays.map((day) => {
               const dayList = day.dim ? [] : (tasksByDate.get(day.key) ?? []);
+              const dayApts = day.dim ? [] : (appointmentsByDate.get(day.key) ?? []);
+              const events = [
+                ...dayApts.map((a) => ({
+                  id: a.id,
+                  title: a.lead?.title || a.lead?.contact_name || "RDV",
+                })),
+                ...dayList.map((t) => ({ id: t.id, title: t.title })),
+              ];
               return (
                 <button
                   key={day.key + String(day.dim)}
@@ -169,16 +194,16 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
                   }}
                 >
                   <div className="cnum">{day.n}</div>
-                  {dayList.slice(0, 2).map((task, i) => (
+                  {events.slice(0, 2).map((event, i) => (
                     <div
-                      key={task.id}
+                      key={event.id}
                       className={`cev ${EVENT_COLORS[i % EVENT_COLORS.length]}`}
                     >
-                      {task.title}
+                      {event.title}
                     </div>
                   ))}
-                  {dayList.length > 2 ? (
-                    <div className="cev ir">+{dayList.length - 2}</div>
+                  {events.length > 2 ? (
+                    <div className="cev ir">+{events.length - 2}</div>
                   ) : null}
                 </button>
               );
@@ -192,7 +217,25 @@ export function CalendarPageClient({ tasks }: { tasks: Task[] }) {
           <h3 className="capitalize">{todayLabel}</h3>
         </div>
         <div className="fl-pad flex flex-col gap-0.5">
-          {dayTasks.length === 0 ? (
+          {(appointmentsByDate.get(selectedKey) ?? []).map((apt) => (
+            <Link
+              key={apt.id}
+              href={`/leads/${apt.lead_id}`}
+              className="mb-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-2)]"
+            >
+              <b className="block truncate text-[13px]">
+                {apt.lead?.title || apt.lead?.contact_name || "RDV commercial"}
+              </b>
+              <p className="mt-0.5 text-[11px] fl-faint">
+                {new Date(apt.starts_at).toLocaleTimeString(intlLocale, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                · {apt.type} · {apt.status}
+              </p>
+            </Link>
+          ))}
+          {dayTasks.length === 0 && !(appointmentsByDate.get(selectedKey) ?? []).length ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
               <Clock className="size-5 text-[var(--muted)]" strokeWidth={1.75} />
               <p className="text-[13px] text-[var(--muted)]">{dict.tasks.noTasksDay}</p>

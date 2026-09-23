@@ -16,6 +16,7 @@ import {
   Bell,
   Settings,
   CreditCard,
+  LineChart,
 } from "lucide-react";
 
 export type NavBadge = "notifications" | "leads" | "quotes";
@@ -77,6 +78,7 @@ export const platformAdminNav: NavItem[] = [
 export const workspaceNav: NavItem[] = [
   { id: "dashboard", href: "/dashboard", icon: LayoutDashboard, labelKey: "dashboard", capability: "always" },
   { id: "leads", href: "/leads", icon: BarChart3, labelKey: "leads", badge: "leads", capability: "leads" },
+  { id: "sales", href: "/sales", icon: LineChart, labelKey: "sales", capability: "leads" },
   { id: "clients", href: "/clients", icon: Users, labelKey: "clients", capability: "clients" },
   { id: "projects", href: "/projects", icon: FolderKanban, labelKey: "projects", capability: "projects" },
   { id: "reports", href: "/reports", icon: BarChart3, labelKey: "reports", capability: "reports" },

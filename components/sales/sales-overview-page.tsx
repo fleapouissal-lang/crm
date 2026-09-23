@@ -61,13 +61,32 @@ export function SalesOverviewPage({
   const hasLeads = leads.length > 0;
 
   const sales = useMemo(() => {
-    const won = leads.filter((x) => x.stage === "won");
-    const lost = leads.filter((x) => x.stage === "lost");
+    const statusOf = (x: Lead) => x.sales_status || x.stage;
+    const won = leads.filter((x) => statusOf(x) === "won");
+    const lost = leads.filter((x) => statusOf(x) === "lost");
     const open = leads.filter(
-      (x) => x.stage !== "won" && x.stage !== "lost"
+      (x) => statusOf(x) !== "won" && statusOf(x) !== "lost"
     );
     const closed = won.length + lost.length;
     const winRate = closed === 0 ? 0 : Math.round((won.length / closed) * 100);
+
+    const contacted = leads.filter((x) =>
+      ["contacted", "message_sent", "reply_received", "qualified", "discussion", "meeting_proposed", "meeting_confirmed", "proposal_sent", "won", "lost", "follow_up"].includes(String(statusOf(x)))
+    ).length;
+    const replies = leads.filter((x) =>
+      ["reply_received", "qualified", "discussion", "meeting_proposed", "meeting_confirmed", "proposal_sent", "won"].includes(String(statusOf(x)))
+    ).length;
+    const qualified = leads.filter((x) =>
+      ["qualified", "discussion", "meeting_proposed", "meeting_confirmed", "proposal_sent", "won"].includes(String(statusOf(x)))
+    ).length;
+    const meetings = leads.filter((x) =>
+      ["meeting_proposed", "meeting_confirmed"].includes(String(statusOf(x)))
+    ).length;
+    const proposals = leads.filter((x) => statusOf(x) === "proposal_sent" || x.stage === "proposal").length;
+    const followUps = leads.filter((x) => statusOf(x) === "follow_up").length;
+    const replyRate = contacted === 0 ? 0 : Math.round((replies / contacted) * 100);
+    const qualifyRate = replies === 0 ? 0 : Math.round((qualified / replies) * 100);
+    const conversionRate = leads.length === 0 ? 0 : Math.round((won.length / leads.length) * 100);
 
     const q0 = quarterStart().getTime();
     const wonQ = won.filter((x) => new Date(x.updated_at).getTime() >= q0);
@@ -166,6 +185,20 @@ export function SalesOverviewPage({
         .sort((a, b) => b.value - a.value)
         .slice(0, 5),
       openCount: open.length,
+      agentKpis: {
+        total: leads.length,
+        contacted,
+        replies,
+        qualified,
+        meetings,
+        proposals,
+        followUps,
+        won: won.length,
+        lost: lost.length,
+        replyRate,
+        qualifyRate,
+        conversionRate,
+      },
     };
   }, [leads, profiles]);
 
@@ -238,6 +271,28 @@ export function SalesOverviewPage({
           <p className="text-[13px] text-[var(--muted)]">{empty}</p>
         </div>
       ) : null}
+
+      <div className="grid g-4">
+        {[
+          { label: "Prospects", value: String(sales.agentKpis.total) },
+          { label: "Contactés", value: String(sales.agentKpis.contacted) },
+          { label: "Réponses", value: String(sales.agentKpis.replies) },
+          { label: "Qualifiés", value: String(sales.agentKpis.qualified) },
+          { label: "RDV", value: String(sales.agentKpis.meetings) },
+          { label: "Propositions", value: String(sales.agentKpis.proposals) },
+          { label: "Taux réponse", value: `${sales.agentKpis.replyRate}%` },
+          { label: "Taux qualif.", value: `${sales.agentKpis.qualifyRate}%` },
+          { label: "Conversion", value: `${sales.agentKpis.conversionRate}%` },
+          { label: "À relancer", value: String(sales.agentKpis.followUps) },
+          { label: "Gagnés", value: String(sales.agentKpis.won) },
+          { label: "Perdus", value: String(sales.agentKpis.lost) },
+        ].map((k) => (
+          <div key={k.label} className="fl-card fl-pad">
+            <div className="k-label">{k.label}</div>
+            <StatLine value={k.value} />
+          </div>
+        ))}
+      </div>
 
       <div className="fl-card-head px-0.5">
         <div>

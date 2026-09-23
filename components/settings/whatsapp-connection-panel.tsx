@@ -166,7 +166,9 @@ export function WhatsAppConnectionPanel({ locale }: { locale: Locale }) {
               }}
             >
               <MessageCircle className="size-4" />
-              WhatsApp · {name}
+              {name === "Fusion Leap"
+                ? "WhatsApp · Fusion Leap (+ Evana)"
+                : `WhatsApp · ${name}`}
             </button>
           ))}
         </div>

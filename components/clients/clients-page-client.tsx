@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Plus, Eye, Pencil, Trash2, Search, X } from "lucide-react";
+import { Plus, Eye, FileText, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDict } from "@/components/shared/i18n-provider";
 import { DataPagination } from "@/components/shared/data-pagination";
@@ -10,6 +10,7 @@ import { RowActionsMenu, type RowActionItem } from "@/components/shared/row-acti
 import { CellMain, StatLine } from "@/components/fusion/primitives";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ClientDetailDialog } from "@/components/clients/client-detail-dialog";
+import { ClientJournalPdfDialog } from "@/components/clients/client-journal-pdf-dialog";
 import {
   STATUS_BADGE_CLASS,
   formatClientValue,
@@ -54,11 +55,13 @@ function ClientRowActions({
   client,
   onView,
   onEdit,
+  onJournal,
   onDelete,
 }: {
   client: ClientRecord;
   onView: () => void;
   onEdit: () => void;
+  onJournal: () => void;
   onDelete: () => void;
 }) {
   const dict = useDict();
@@ -75,6 +78,11 @@ function ClientRowActions({
       label: dict.common.edit,
       icon: <Pencil className="size-4" />,
       onClick: onEdit,
+    },
+    {
+      label: dict.clients.journalPdf,
+      icon: <FileText className="size-4" />,
+      onClick: onJournal,
     },
     { separator: true },
     {
@@ -139,6 +147,7 @@ export function ClientsPageClient({
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [activeClient, setActiveClient] = useState<ClientRecord | null>(null);
 
   useEffect(() => {
@@ -204,6 +213,11 @@ export function ClientsPageClient({
   function openView(client: ClientRecord) {
     setActiveClient(client);
     setDetailOpen(true);
+  }
+
+  function openJournal(client: ClientRecord) {
+    setActiveClient(client);
+    setJournalOpen(true);
   }
 
   async function handleSave(record: ClientRecord) {
@@ -419,6 +433,7 @@ export function ClientsPageClient({
                         client={client}
                         onView={() => openView(client)}
                         onEdit={() => openEdit(client)}
+                        onJournal={() => openJournal(client)}
                         onDelete={() => handleDelete(client.id)}
                       />
                     </td>
@@ -452,6 +467,13 @@ export function ClientsPageClient({
         onOpenChange={setDetailOpen}
         client={activeClient}
         onEdit={() => activeClient && openEdit(activeClient)}
+        onOpenJournal={() => activeClient && openJournal(activeClient)}
+      />
+
+      <ClientJournalPdfDialog
+        open={journalOpen}
+        onOpenChange={setJournalOpen}
+        client={activeClient}
       />
     </div>
   );

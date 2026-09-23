@@ -61,6 +61,8 @@ export interface QuoteRecord {
   templateId: string | null;
   notes: string;
   items: FinanceLineItem[];
+  /** Linked sales lead (AI proposal flow). */
+  leadId?: string | null;
   /** Uploaded external file — content is read-only. */
   isImported?: boolean;
   importFileName?: string | null;

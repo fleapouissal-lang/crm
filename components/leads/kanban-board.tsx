@@ -22,9 +22,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Building2, CalendarClock, Mail, MapPin, MessageCircle, Phone, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { updateLeadStage } from "@/lib/actions/leads";
-import type { Lead, LeadContactMethod, LeadStage } from "@/types/database";
-import { LEAD_STAGES } from "@/types/database";
+import { updateLeadSalesStatus } from "@/lib/actions/leads";
+import type { Lead, LeadContactMethod, LeadStage, SalesStatus } from "@/types/database";
+import { SALES_STATUSES } from "@/types/database";
 import { useDict } from "@/components/shared/i18n-provider";
 import { cn } from "@/lib/utils";
 import {
@@ -56,15 +56,26 @@ function whatsappUrl(phone: string) {
   return digits ? `https://wa.me/${digits}` : null;
 }
 
-const STAGE_DOT: Record<LeadStage, string> = {
+const STAGE_DOT: Record<string, string> = {
   new: "var(--text-faint)",
   contacted: "var(--sky)",
+  message_sent: "var(--sky)",
+  reply_received: "var(--iris)",
   qualified: "var(--sky)",
+  discussion: "var(--iris)",
+  meeting_proposed: "var(--gold)",
+  meeting_confirmed: "var(--gold)",
+  proposal_sent: "var(--gold)",
   proposal: "var(--gold)",
   negotiation: "var(--iris)",
   won: "var(--emerald)",
   lost: "var(--rose)",
+  follow_up: "var(--amber)",
 };
+
+function leadPipelineStatus(lead: Lead): SalesStatus {
+  return (lead.sales_status as SalesStatus) || (lead.stage as SalesStatus) || "new";
+}
 
 function LeadCard({
   lead,
@@ -82,7 +93,16 @@ function LeadCard({
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {lead.ai_score !== null && lead.ai_score !== undefined ? (
-          <span className="fl-badge b-iris text-[10px]">
+          <span
+            className={cn(
+              "fl-badge text-[10px]",
+              lead.ai_score >= 60
+                ? "b-green"
+                : lead.ai_score >= 40
+                  ? "b-gold"
+                  : "b-rose"
+            )}
+          >
             <Sparkles className="size-3" /> {lead.ai_score}/100
           </span>
         ) : null}
@@ -196,7 +216,7 @@ function PipelineColumn({
   leads,
   onOpen,
 }: {
-  stage: LeadStage;
+  stage: SalesStatus;
   leads: Lead[];
   onOpen: (lead: Lead) => void;
 }) {
@@ -210,6 +230,8 @@ function PipelineColumn({
   });
 
   const dict = useDict();
+  const label =
+    (dict.stages as Record<string, string>)[stage] || stage;
 
   return (
     <div
@@ -221,18 +243,18 @@ function PipelineColumn({
     >
       <div className="fl-kcol-head">
         <span className="kdot" style={{ background: STAGE_DOT[stage] }} />
-        <b>{dict.stages[stage]}</b>
-        <span className="kcount">{leads.length}</span>
+        <b>{label}</b>
+        <span className="kcount">{(leads ?? []).length}</span>
       </div>
       <SortableContext
-        items={leads.map((l) => l.id)}
+        items={(leads ?? []).map((l) => l.id)}
         strategy={verticalListSortingStrategy}
       >
         <div
           ref={setDropZoneRef}
           className="fl-kcards min-h-24 max-h-[calc(100vh-16rem)]"
         >
-          {leads.map((lead) => (
+          {(leads ?? []).map((lead) => (
             <SortableLeadCard key={lead.id} lead={lead} onOpen={onOpen} />
           ))}
         </div>
@@ -308,10 +330,11 @@ export function KanbanBoard({
 
   const byStage = useMemo(() => {
     const map = Object.fromEntries(
-      LEAD_STAGES.map((s) => [s, [] as Lead[]])
-    ) as Record<LeadStage, Lead[]>;
+      SALES_STATUSES.map((s) => [s, [] as Lead[]])
+    ) as Record<SalesStatus, Lead[]>;
     for (const lead of leads) {
-      map[lead.stage]?.push(lead);
+      const status = leadPipelineStatus(lead);
+      (map[status] ?? map.new).push(lead);
     }
     return map;
   }, [leads]);
@@ -334,37 +357,44 @@ export function KanbanBoard({
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
 
-    let newStage: LeadStage | null = null;
+    let newStatus: SalesStatus | null = null;
     const overId = String(over.id);
     const dropZoneStage = overId.endsWith("::dropzone")
       ? overId.slice(0, -"::dropzone".length)
       : null;
-    if (dropZoneStage && LEAD_STAGES.includes(dropZoneStage as LeadStage)) {
-      newStage = dropZoneStage as LeadStage;
-    } else if (LEAD_STAGES.includes(overId as LeadStage)) {
-      newStage = overId as LeadStage;
+    if (dropZoneStage && SALES_STATUSES.includes(dropZoneStage as SalesStatus)) {
+      newStatus = dropZoneStage as SalesStatus;
+    } else if (SALES_STATUSES.includes(overId as SalesStatus)) {
+      newStatus = overId as SalesStatus;
     } else {
       const overLead = leads.find((l) => l.id === overId);
-      if (overLead) newStage = overLead.stage;
+      if (overLead) newStatus = leadPipelineStatus(overLead);
     }
 
-    if (!newStage || newStage === lead.stage) return;
+    const current = leadPipelineStatus(lead);
+    if (!newStatus || newStatus === current) return;
 
-    if (newStage === "contacted") {
+    if (newStatus === "contacted") {
       setContactMove(lead);
       return;
     }
 
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, stage: newStage! } : l))
+      prev.map((l) =>
+        l.id === leadId ? { ...l, sales_status: newStatus!, stage: (newStatus as LeadStage) } : l
+      )
     );
 
     startTransition(async () => {
-      const result = await updateLeadStage(leadId, newStage!);
+      const result = await updateLeadSalesStatus(leadId, newStatus!);
       if (!result.success) {
         toast.error(result.error);
         setLeads((prev) =>
-          prev.map((l) => (l.id === leadId ? { ...l, stage: lead.stage } : l))
+          prev.map((l) =>
+            l.id === leadId
+              ? { ...l, stage: lead.stage, sales_status: lead.sales_status }
+              : l
+          )
         );
       }
     });
@@ -378,15 +408,21 @@ export function KanbanBoard({
     setLeads((prev) =>
       prev.map((item) =>
         item.id === lead.id
-          ? { ...item, stage: "contacted", last_contact_method: method, last_contacted_at: contactedAt }
+          ? {
+              ...item,
+              stage: "contacted",
+              sales_status: "contacted",
+              last_contact_method: method,
+              last_contacted_at: contactedAt,
+            }
           : item
       )
     );
     startTransition(async () => {
-      const result = await updateLeadStage(lead.id, "contacted", method);
+      const result = await updateLeadSalesStatus(lead.id, "contacted", method);
       if (!result.success) {
         toast.error(result.error);
-        setLeads((prev) => prev.map((item) => item.id === lead.id ? lead : item));
+        setLeads((prev) => prev.map((item) => (item.id === lead.id ? lead : item)));
       }
     });
   }
@@ -398,9 +434,9 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="fl-kanban fl-kanban--7">
-        {LEAD_STAGES.map((stage) => (
-          <PipelineColumn key={stage} stage={stage} leads={byStage[stage]} onOpen={setDetailLead} />
+      <div className="fl-kanban fl-kanban--sales">
+        {SALES_STATUSES.map((stage) => (
+          <PipelineColumn key={stage} stage={stage} leads={byStage[stage] ?? []} onOpen={setDetailLead} />
         ))}
       </div>
       <DragOverlay>

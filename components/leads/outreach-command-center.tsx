@@ -28,10 +28,12 @@ export function OutreachCommandCenter({
   initialMessages,
   role,
   project,
+  embedded = false,
 }: {
   initialMessages: OutreachMessage[];
   role: Role;
   project: string;
+  embedded?: boolean;
 }) {
   const dict = useDict();
   const labels = dict.leads;
@@ -99,7 +101,7 @@ export function OutreachCommandCenter({
   }
 
   return (
-    <section className="fl-card overflow-hidden">
+    <section className={cn(!embedded && "fl-card overflow-hidden")}>
       <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl text-white" style={{ background: "var(--grad-fusion)" }}>

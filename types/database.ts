@@ -13,6 +13,30 @@ export type LeadStage =
   | "won"
   | "lost";
 
+export type SalesStatus =
+  | "new"
+  | "contacted"
+  | "message_sent"
+  | "reply_received"
+  | "qualified"
+  | "discussion"
+  | "meeting_proposed"
+  | "meeting_confirmed"
+  | "proposal_sent"
+  | "won"
+  | "lost"
+  | "follow_up";
+
+export type AiConversationMode = "ai" | "human" | "paused";
+export type ConversationMessageRole = "prospect" | "assistant" | "human" | "system";
+export type AppointmentType = "online" | "onsite";
+export type AppointmentStatus =
+  | "proposed"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
 export type ContactPermission =
   | "unknown"
   | "legitimate_interest"
@@ -206,8 +230,18 @@ export interface Lead {
   next_follow_up_at: string | null;
   value: number;
   stage: LeadStage;
+  sales_status?: SalesStatus;
   notes: string | null;
   assigned_to: string | null;
+  client_id?: string | null;
+  memory_facts?: Record<string, string>;
+  client?: {
+    id: string;
+    name: string;
+    status_key: string;
+    location: string | null;
+    engagement: string | null;
+  } | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -284,7 +318,7 @@ export interface AiAgent {
   organization_id: string;
   profile_id: string | null;
   name: string;
-  provider: "anthropic";
+  provider: "anthropic" | "gemini";
   is_enabled: boolean;
   default_model_mode: AiModelMode;
   default_model: AiModel | null;
@@ -379,6 +413,156 @@ export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   negotiation: "Negotiation",
   won: "Won",
   lost: "Lost",
+};
+
+export const SALES_STATUSES: SalesStatus[] = [
+  "new",
+  "contacted",
+  "message_sent",
+  "reply_received",
+  "qualified",
+  "discussion",
+  "meeting_proposed",
+  "meeting_confirmed",
+  "proposal_sent",
+  "won",
+  "lost",
+  "follow_up",
+];
+
+export const SALES_STATUS_LABELS: Record<SalesStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  message_sent: "Message sent",
+  reply_received: "Reply received",
+  qualified: "Qualified",
+  discussion: "Discussion",
+  meeting_proposed: "Meeting proposed",
+  meeting_confirmed: "Meeting confirmed",
+  proposal_sent: "Proposal sent",
+  won: "Won",
+  lost: "Lost",
+  follow_up: "Follow up",
+};
+
+export interface SalesAgentSettings {
+  id: string;
+  organization_id: string;
+  sales_project: string;
+  enabled: boolean;
+  auto_first_touch: boolean;
+  auto_reply: boolean;
+  require_human_approval: boolean;
+  max_msgs_per_lead_day: number;
+  max_msgs_per_org_hour: number;
+  require_opt_in_mode: boolean;
+  handoff_assignee_id: string | null;
+  relance_delays_hours: number[];
+  project_playbook: Record<string, unknown>;
+  match_prospect_language: boolean;
+  reply_delay_min_sec: number;
+  reply_delay_max_sec: number;
+  first_touch_stagger_min_sec: number;
+  first_touch_stagger_max_sec: number;
+  daily_first_touch_limit?: number;
+  auto_discover?: boolean;
+  daily_discover_limit?: number;
+  discover_cities?: string[];
+  discover_sectors?: string[];
+  send_window_start_hour: number;
+  send_window_end_hour: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiConversation {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  sales_project: string;
+  mode: AiConversationMode;
+  handoff_reason: string | null;
+  assigned_to: string | null;
+  urgent: boolean;
+  clarify_count: number;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+  lead?: {
+    id: string;
+    title: string;
+    company: string | null;
+    contact_name: string | null;
+    sales_project: string;
+  } | null;
+}
+
+export interface ConversationMessage {
+  id: string;
+  organization_id: string;
+  conversation_id: string;
+  lead_id: string;
+  role: ConversationMessageRole;
+  body: string;
+  provider_message_id: string | null;
+  outreach_message_id: string | null;
+  outreach_reply_id: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  created_at: string;
+}
+
+export interface LeadQualification {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  need: string | null;
+  budget: string | null;
+  timeline: string | null;
+  service_interest: string | null;
+  interest_level: number | null;
+  objections: string[];
+  questions: string[];
+  availability: string | null;
+  score: number | null;
+  notes: string | null;
+  updated_by: "ai" | "human";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Appointment {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  starts_at: string;
+  ends_at: string;
+  reminder_at: string | null;
+  meet_url: string | null;
+  location: string | null;
+  notes: string | null;
+  created_by: string | null;
+  confirmed_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  lead?: Pick<Lead, "id" | "title" | "contact_name" | "company" | "phone"> | null;
+}
+
+export type AiActionLogInsert = {
+  organization_id: string;
+  lead_id?: string | null;
+  sales_project?: string | null;
+  action: string;
+  model?: string | null;
+  success?: boolean;
+  error_message?: string | null;
+  summary?: string | null;
+  metadata?: Record<string, unknown>;
 };
 
 export const TASK_STATUSES: TaskStatus[] = [
