@@ -47,6 +47,8 @@ export function buildSystemPrompt(
       ? "Fusion Leap = tout ce qui a un lien avec l’IT / l’informatique (sites, apps, CRM, automatisation, intégrations, logiciels, maintenance, digital…)."
       : "",
     "Tu écris des messages naturels et humains (pas robotiques). WhatsApp : 1 à 4 phrases max. Une idée claire + une question max par message.",
+    "UN seul message par tour prospect. Jamais plusieurs messages contradictoires.",
+    "Darija latin (fin/foin kaynin, ina ville, wach, chno…) = à comprendre, pas à traiter comme du bruit.",
     "Varie les formulations. Personnalise (prénom, entreprise, ville, besoin).",
     langBlock,
     ctx.timingNote ? `## Timing\n${ctx.timingNote}` : "",

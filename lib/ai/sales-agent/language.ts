@@ -7,7 +7,7 @@ export type ProspectLanguage =
   | "mixed";
 
 const DARIJA_LATIN =
-  /\b(wach|wash|kifach|kifach|bghit|bghiti|3andak|3ndi|chno|chhal|makaynch|mzyan|safi|wakha|bzzaf|lah|rjal|l3ibat|fin|mnin|daba|ghir|hna|hnta|nta|nti|yallah|sba7|mskin)\b/i;
+  /\b(wach|wash|kifach|kifash|bghit|bghiti|3andak|3ndi|chno|chhal|makaynch|mzyan|safi|wakha|bzzaf|lah|rjal|l3ibat|fin|foin|wen|wayn|win|kayn|kaynin|kaynin|ina|mnin|daba|ghir|hna|hnta|nta|nti|yallah|sba7|mskin|bghina|bghit|ach|ash|3lach|3lach|fayn|fein)\b/i;
 
 const DARIJA_AR =
   /واش|كيفاش|بغيت|عندك|شحال|ماكاينش|مزيان|صافي|واخا|بزاف|يلاه|دابا|غير|هنا|نتا|نتي/;
@@ -134,6 +134,68 @@ export function languageInstruction(lang: ProspectLanguage): string {
       return "Réponds UNIQUEMENT en français, ton WhatsApp naturel et court.";
     default:
       return "Détecte la langue dominante du dernier message prospect et réponds STRICTEMENT dans cette même langue (darija / arabe / français / espagnol / anglais). Ne mélange pas les langues.";
+  }
+}
+
+/** Normalize common latin-darija typos before LLM / intent checks. */
+export function normalizeDarijaLatin(text: string): string {
+  return String(text || "")
+    .replace(/\bfoin\b/gi, "fin")
+    .replace(/\bfein\b/gi, "fin")
+    .replace(/\bfayn\b/gi, "fin")
+    .replace(/\bwayn\b/gi, "fin")
+    .replace(/\bwen\b/gi, "fin")
+    .replace(/\bwin\b/gi, "fin")
+    .replace(/\bkayn\b/gi, "kaynin")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Prospect asks where we / the business is based. */
+export function isLocationAsk(text: string): boolean {
+  const t = normalizeDarijaLatin(text).toLowerCase();
+  return (
+    /\b(fin|kaynin|ina\s*ville|quelle?\s*ville|où\s*(êtes|etes|vous|êtes-vous|etes-vous)|where\s*(are|you)|location|adresse)\b/i.test(
+      t
+    ) || /فين|وين|كاينين|فين كاين/.test(text)
+  );
+}
+
+export function locationAnswer(
+  lang: ProspectLanguage,
+  project: string,
+  prospectCity?: string | null
+): string {
+  const city = (prospectCity || "").trim();
+  const cityBit =
+    city && lang === "darija"
+      ? ` Nti f ${city} —`
+      : city && lang === "fr"
+        ? ` Vous êtes à ${city} —`
+        : "";
+  if (project === "Evana") {
+    switch (lang) {
+      case "darija":
+        return `Hna Evana, kan khdmo online 3la Maghreb kamel (Casa, Marrakech…).${cityBit} bghiti n3awno l’hôtel f réservations / site / visibilité ?`;
+      case "ar":
+        return `نحن Evana، نعمل عن بُعد في المغرب كله.${city ? ` أنتم في ${city}.` : ""} هل تريدون مساعدة للفندق في الحجوزات أو الموقع؟`;
+      default:
+        return `On est Evana — équipe digitale, on travaille à distance partout au Maroc (Casa, Marrakech…).${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur réservations / site / visibilité de l’hôtel ?`;
+    }
+  }
+  if (project === "Autolog") {
+    switch (lang) {
+      case "darija":
+        return `Hna Autolog, kan khdmo 3la Maghreb.${cityBit} bghiti n3awno 3la flotte / location ?`;
+      default:
+        return `Autolog — on accompagne les flottes / locations au Maroc.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi exactement ?`;
+    }
+  }
+  switch (lang) {
+    case "darija":
+      return `Hna Fusion Leap (IT), base Casa o kan khdmo 3la distance f Maghreb.${cityBit} chno bghiti digitally (site, app, CRM…) ?`;
+    default:
+      return `Fusion Leap (IT) — basés à Casablanca, on travaille partout au Maroc.${city ? ` Vous êtes à ${city}.` : ""} Quel besoin digital vous intéresse ?`;
   }
 }
 

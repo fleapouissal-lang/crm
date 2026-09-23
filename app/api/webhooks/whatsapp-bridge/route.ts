@@ -47,6 +47,73 @@ function sameMoroccanPhone(a: string, b: string): boolean {
   return left === right || left.slice(-9) === right.slice(-9);
 }
 
+/** Debounce rapid WhatsApp bubbles (ex: "foin kaynin" + "ina ville") into one AI turn. */
+type PendingInbound = {
+  texts: string[];
+  timer: ReturnType<typeof setTimeout>;
+  organizationId: string;
+  leadId: string;
+  providerMessageId: string | null;
+  outreachReplyId: string | null;
+};
+const pendingByLead = new Map<string, PendingInbound>();
+
+function queueInboundDebounced(options: {
+  organizationId: string;
+  leadId: string;
+  text: string;
+  providerMessageId: string | null;
+  outreachReplyId: string | null;
+  waitMs?: number;
+}) {
+  const key = `${options.organizationId}:${options.leadId}`;
+  const existing = pendingByLead.get(key);
+  if (existing) {
+    clearTimeout(existing.timer);
+    existing.texts.push(options.text);
+    existing.providerMessageId =
+      options.providerMessageId || existing.providerMessageId;
+    existing.outreachReplyId = options.outreachReplyId || existing.outreachReplyId;
+    existing.timer = setTimeout(() => {
+      void flushPendingInbound(key);
+    }, options.waitMs ?? 4500);
+    return;
+  }
+  const entry: PendingInbound = {
+    texts: [options.text],
+    organizationId: options.organizationId,
+    leadId: options.leadId,
+    providerMessageId: options.providerMessageId,
+    outreachReplyId: options.outreachReplyId,
+    timer: setTimeout(() => {
+      void flushPendingInbound(key);
+    }, options.waitMs ?? 4500),
+  };
+  pendingByLead.set(key, entry);
+}
+
+async function flushPendingInbound(key: string) {
+  const entry = pendingByLead.get(key);
+  if (!entry) return;
+  pendingByLead.delete(key);
+  const combined = [...new Set(entry.texts.map((t) => t.trim()).filter(Boolean))].join(
+    "\n"
+  );
+  if (!combined) return;
+  const supabase = createAdminClient();
+  try {
+    await handleInboundMessage(supabase, entry.organizationId, entry.leadId, combined, {
+      providerMessageId: entry.providerMessageId,
+      outreachReplyId: entry.outreachReplyId,
+    });
+  } catch (error) {
+    console.error(
+      "[whatsapp-bridge] debounced agent failed",
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 export async function POST(request: Request) {
   const bridgeSecret = process.env.WA_BRIDGE_SECRET || "";
   const requestSecret =
@@ -185,14 +252,19 @@ export async function POST(request: Request) {
       .eq("lead_id", lead.id)
       .eq("status", "sent");
 
+    // Log reply immediately; debounce AI so multi-bubble darija = one answer
     try {
-      await handleInboundMessage(supabase, organizationId, lead.id, replyBody, {
+      queueInboundDebounced({
+        organizationId,
+        leadId: lead.id,
+        text: replyBody,
         providerMessageId,
         outreachReplyId: replyRow?.id ?? null,
+        waitMs: 4500,
       });
     } catch (error) {
       console.error(
-        "[whatsapp-bridge] agent failed",
+        "[whatsapp-bridge] agent queue failed",
         error instanceof Error ? error.message : error
       );
     }

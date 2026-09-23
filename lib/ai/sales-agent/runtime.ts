@@ -21,6 +21,9 @@ import {
   casablancaWallTime,
   isWithinSendWindow,
   randomIntInclusive,
+  isLocationAsk,
+  locationAnswer,
+  normalizeDarijaLatin,
 } from "./language";
 import { refreshLeadMemory } from "./memory";
 import { findSimilarExamples, retrieveOlderMessages } from "./examples";
@@ -612,18 +615,24 @@ async function decideInboundReply(
 
   const text = await generateSalesAgentChat({
     system: `${buildSystemPrompt(ctx, { prospectText: inboundText, forceLanguage: detected })}\n\nRéponds UNIQUEMENT en JSON valide:\n${AGENT_DECISION_SCHEMA}`,
-    maxTokens: 800,
+    maxTokens: 1024,
     messages: [
       ...history.slice(-20),
       {
         role: "user",
         content: [
-          "Nouveau message prospect:",
+          "Nouveau message prospect (peut être plusieurs lignes d’affilée — traite comme UN tour):",
           inboundText,
           "",
           `Langue détectée à respecter: ${detected}`,
           "",
-          `Clarifies déjà posées: ${ctx.clarifyCount}/2. Si tu n'es pas sûr → clarify (encore ${Math.max(0, 2 - ctx.clarifyCount)}) sinon unclear.`,
+          "RÈGLES RÉPONSE:",
+          "- UN seul message WhatsApp court (2–4 phrases max). Jamais 2 réponses pour le même tour.",
+          "- Si le prospect écrit en darija latin (fin/foin kaynin, ina ville, wach, chno…) → COMPRENDS et réponds en darija. Ne dis PAS que tu n’as pas compris.",
+          "- « fin/foin kaynin » / « ina ville » = où êtes-vous / quelle ville → réponds clairement (remote Maroc / Casa / Marrakech selon le projet), puis UNE question utile.",
+          "- N’invente pas d’incompréhension pour forcer un clarify.",
+          "",
+          `Clarifies déjà posées: ${ctx.clarifyCount}/2. Clarify UNIQUEMENT si vraiment ambigu après lecture darija.`,
           freeSlots.length
             ? `Créneaux libres à proposer (ne pas inventer): ${freeSlots.join(" · ")}`
             : "",
@@ -645,6 +654,55 @@ async function decideInboundReply(
     };
   }
   return parsed as unknown as AgentDecision;
+}
+
+async function cancelPendingAiReplies(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadId: string,
+  exceptId?: string | null
+) {
+  let q = supabase
+    .from("outreach_messages")
+    .update({
+      status: "failed",
+      error_message: "superseded_by_newer_reply",
+      scheduled_for: null,
+    })
+    .eq("organization_id", organizationId)
+    .eq("lead_id", leadId)
+    .eq("channel", "whatsapp")
+    .eq("status", "queued")
+    .not("scheduled_for", "is", null);
+  if (exceptId) q = q.neq("id", exceptId);
+  await q;
+}
+
+async function coalesceRecentProspectText(
+  supabase: SupabaseClient,
+  conversationId: string,
+  latest: string,
+  windowSec = 25
+): Promise<string> {
+  const since = new Date(Date.now() - windowSec * 1000).toISOString();
+  const { data } = await supabase
+    .from("conversation_messages")
+    .select("body, created_at")
+    .eq("conversation_id", conversationId)
+    .eq("role", "prospect")
+    .gte("created_at", since)
+    .order("created_at", { ascending: true });
+  const parts = (data || [])
+    .map((m) => String(m.body || "").trim())
+    .filter(Boolean);
+  if (!parts.length) return latest.trim();
+  // Dedupe while keeping order
+  const uniq: string[] = [];
+  for (const p of parts) {
+    if (!uniq.includes(p)) uniq.push(p);
+  }
+  if (!uniq.includes(latest.trim()) && latest.trim()) uniq.push(latest.trim());
+  return uniq.join("\n");
 }
 
 export async function handleInboundMessage(
@@ -716,6 +774,17 @@ export async function handleInboundMessage(
     return { handled: false, action: "skipped_no_outbound" };
   }
 
+  // Drop any older scheduled AI replies so we never flood 2–4 messages
+  await cancelPendingAiReplies(supabase, organizationId, leadId);
+
+  const combinedInbound = await coalesceRecentProspectText(
+    supabase,
+    conversation.id,
+    inboundText,
+    25
+  );
+  const normalizedInbound = normalizeDarijaLatin(combinedInbound);
+
   const researched = await researchLeadIfNeeded(supabase, organizationId, ctx.lead).catch(
     () => ctx.lead.research_notes
   );
@@ -743,22 +812,32 @@ export async function handleInboundMessage(
   const freeSlots = await nextFreeSlots(supabase, organizationId, 3);
   let decision: AgentDecision;
   try {
-    if (/vocal non transcrit/i.test(inboundText) && inboundText.length < 120) {
+    if (/vocal non transcrit/i.test(normalizedInbound) && normalizedInbound.length < 120) {
       const vocalAttempts = conversation.clarify_count || 0;
       decision =
         vocalAttempts < 2
           ? {
               action: "clarify",
-              message: vocalClarifyQuestion(detectProspectLanguage(inboundText), vocalAttempts),
+              message: vocalClarifyQuestion(
+                detectProspectLanguage(normalizedInbound),
+                vocalAttempts
+              ),
               handoff_reason: "Vocal non transcrit",
             }
           : { action: "unclear", handoff_reason: "Vocal WhatsApp non transcrit" };
+    } else if (isLocationAsk(normalizedInbound)) {
+      const lang = detectProspectLanguage(normalizedInbound);
+      decision = {
+        action: "reply",
+        message: locationAnswer(lang, ctx.lead.sales_project, ctx.lead.city),
+        sales_status: "discussion",
+      };
     } else {
       decision = await decideInboundReply(
         supabase,
         organizationId,
         ctx,
-        inboundText,
+        normalizedInbound,
         freeSlots.map((s) => s.label)
       );
     }
@@ -780,7 +859,7 @@ export async function handleInboundMessage(
   }
 
   await refreshLeadMemory(supabase, organizationId, leadId, {
-    inbound: inboundText,
+    inbound: normalizedInbound,
     action: decision.action,
     qualification: decision.qualification || ctx.qualification,
     previousSummary: ctx.lead.ai_summary,
@@ -789,7 +868,7 @@ export async function handleInboundMessage(
 
   const clarifyUsed = conversation.clarify_count || 0;
   if ((decision.action === "unclear" || decision.action === "noop") && clarifyUsed < 2) {
-    const lang = detectProspectLanguage(inboundText);
+    const lang = detectProspectLanguage(normalizedInbound);
     decision = {
       action: "clarify",
       message: decision.message?.trim() || clarifyQuestion(lang, clarifyUsed),
@@ -827,7 +906,7 @@ export async function handleInboundMessage(
       action: "unclear_escalated",
       success: true,
       summary: reason.slice(0, 240),
-      metadata: { inbound: inboundText.slice(0, 200) },
+      metadata: { inbound: normalizedInbound.slice(0, 200) },
     });
     return { handled: true, action: "unclear" };
   }
@@ -941,17 +1020,23 @@ export async function handleInboundMessage(
     (decision.action === "reply" || decision.action === "propose_meeting") &&
     decision.message?.trim()
   ) {
+    // One reply only — drop any other queued AI messages for this lead
+    await cancelPendingAiReplies(supabase, organizationId, leadId);
+
     const lastAssistant = [...ctx.history]
       .reverse()
       .find((m) => m.role === "assistant" || m.role === "human");
     const timing = computeCommercialDelaySec({
-      minSec: ctx.settings.reply_delay_min_sec ?? 45,
-      maxSec: ctx.settings.reply_delay_max_sec ?? 180,
+      minSec: Math.min(25, ctx.settings.reply_delay_min_sec ?? 45),
+      maxSec: Math.min(90, ctx.settings.reply_delay_max_sec ?? 180),
       startHour: ctx.settings.send_window_start_hour ?? 9,
       endHour: ctx.settings.send_window_end_hour ?? 21,
       lastAssistantAt: lastAssistant?.created_at,
     });
-    const delaySec = timing.delaySec;
+    // Location / clear intents: reply faster
+    const delaySec = isLocationAsk(normalizedInbound)
+      ? randomIntInclusive(8, 25)
+      : timing.delaySec;
     const sent = await enqueueAndSendWhatsApp(
       supabase,
       organizationId,
