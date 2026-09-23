@@ -175,11 +175,11 @@ export function locationAnswer(
         : "";
   switch (lang) {
     case "darija":
-      return `Hna Fusion Leap, société digitale f Marrakech, Maroc. Kankhdmo 3la digital o kolchi li 3ando 3alaqa b AI (sites, apps, CRM, automatisation…). Evana o Autolog projets mn bin les projets dyalna.${cityBit} chno bghiti n3awno fik ?`;
+      return `Hna Fusion Leap, société digitale f Marrakech, Maroc. Kankhdmo m3a les entreprises f Maroc o international. Digital + AI (sites, apps, CRM, automatisation…). Evana o Autolog projets mn bin les projets dyalna.${cityBit} chno bghiti n3awno fik ?`;
     case "ar":
-      return `نحن Fusion Leap، شركة رقمية في مراكش، المغرب. نعمل في الرقمي وكل ما يتعلق بالذكاء الاصطناعي. Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف يمكننا مساعدتكم؟`;
+      return `نحن Fusion Leap، شركة رقمية في مراكش، المغرب. نعمل مع شركات في المغرب وعلى المستوى الدولي. الرقمي والذكاء الاصطناعي. Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف يمكننا مساعدتكم؟`;
     default:
-      return `On est Fusion Leap — société digitale basée à Marrakech, Maroc. On travaille le digital et tout ce qui touche à l’IA. Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi concrètement ?`;
+      return `On est Fusion Leap — société digitale basée à Marrakech, Maroc. On travaille avec des entreprises au Maroc et à l’international. Digital + IA. Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Je peux vous aider sur quoi concrètement ?`;
   }
 }
 

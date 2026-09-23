@@ -153,7 +153,7 @@ export type ProjectPlaybook = {
 export const DEFAULT_PLAYBOOKS: Record<string, ProjectPlaybook> = {
   "Fusion Leap": {
     offer:
-      "Fusion Leap (Marrakech) : société digitale — digital + IA (sites, apps, CRM, automatisation, agents WhatsApp, outils métier). Evana et Autolog font partie de nos projets.",
+      "Fusion Leap (Marrakech) : société digitale — digital + IA. Clients au Maroc et à l’international. Evana et Autolog font partie de nos projets.",
     price_notes:
       "INTERDIT d’envoyer devis, facture ou montant WhatsApp. Le prix dépend du besoin : demander un cahier des charges / brief, ou proposer un RDV de cadrage. Un humain enverra le devis après.",
     tone:
@@ -170,12 +170,13 @@ export const DEFAULT_PLAYBOOKS: Record<string, ProjectPlaybook> = {
     ],
     value_props: [
       "Basés à Marrakech, Maroc",
+      "Clients Maroc + international",
       "Tout le digital + IA selon le besoin",
       "Plusieurs projets (Evana, Autolog…) sous Fusion Leap",
       "Accompagnement humain + livraison concrète",
     ],
     faq: [
-      "On est Fusion Leap à Marrakech — digital et IA.",
+      "On est Fusion Leap à Marrakech — on travaille Maroc et international.",
       "Evana / Autolog = projets parmi nos projets, pas des sociétés séparées.",
       "Le tarif dépend du besoin — brief ou RDV, puis devis humain.",
     ],

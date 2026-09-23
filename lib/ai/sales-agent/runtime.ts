@@ -342,7 +342,7 @@ export async function generateFirstTouchMessage(
       user: [
         "Rédige UNIQUEMENT le premier message WhatsApp personnalisé (pas de JSON).",
         "Tu te présentes TOUJOURS comme Fusion Leap (jamais Evana ou Autolog comme marque qui parle).",
-        "Base : Marrakech, Maroc. Activité : digital + IA.",
+        "Base : Marrakech, Maroc. On travaille avec des entreprises au Maroc et à l’international. Activité : digital + IA.",
         offerLine,
         "Ne liste pas tous les services. Reste focus sur le besoin du prospect.",
         "Utilise le brief prospect. Pas de template générique.",
