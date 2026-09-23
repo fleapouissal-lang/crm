@@ -28,6 +28,7 @@ import {
   locationAnswer,
   normalizeDarijaLatin,
   glossProspectMessage,
+  splitWhatsAppMessage,
 } from "./language";
 import { refreshLeadMemory } from "./memory";
 import { findSimilarExamples, retrieveOlderMessages } from "./examples";
@@ -195,6 +196,8 @@ async function enqueueAndSendWhatsApp(
   const scheduledFor =
     delaySec > 0 ? new Date(Date.now() + delaySec * 1000).toISOString() : null;
   const idempotencyKey = `ai-${leadId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const parts = splitWhatsAppMessage(body);
+  const bodyShort = parts.join("\n\n") || body;
   const { data: message, error } = await supabase
     .from("outreach_messages")
     .insert({
@@ -202,8 +205,8 @@ async function enqueueAndSendWhatsApp(
       lead_id: leadId,
       channel: "whatsapp",
       status: "queued",
-      body,
-      message_parts: [body],
+      body: bodyShort,
+      message_parts: parts.length ? parts : [bodyShort],
       scheduled_for: scheduledFor,
       created_by: createdBy,
       approved_by: createdBy,
@@ -347,7 +350,7 @@ export async function generateFirstTouchMessage(
         offerLine,
         "Ne liste pas tous les services. Reste focus sur le besoin du prospect.",
         "Utilise le brief prospect. Pas de template générique.",
-        "Le message DOIT faire 2 à 4 phrases : salutation + pourquoi tu contactes + UNE question concrète.",
+        "Le message DOIT être COURT: 2 phrases max + UNE question (idéalement < 200 caractères).",
         "Varie l'accroche (seed=" + seed + ").",
         "Si Maroc et langue inconnue : français pro OU darija légère — une seule langue, cohérente.",
         ctx.lead.research_notes
@@ -709,10 +712,11 @@ async function decideInboundReply(
           "4) Ne pas pitcher Fusion Leap / Evana / Autolog sauf si on te le demande ou si c’est nécessaire pour répondre.",
           "",
           "STYLE:",
-          "- Message court (2 phrases + 1 question max).",
+          "- TRÈS COURT: 1–2 phrases + 1 question (~max 180 car. si possible).",
           "- Une seule langue (darija latin OU français), ton WhatsApp humain.",
-          "- Interdit: « Ah d'accord 😊 », franglais cassé, entreprise inventée « STE ».",
+          "- Interdit: « Ah d'accord 😊 », franglais cassé, entreprise inventée « STE », pavés longs.",
           "- « ste/sté/cest » = « c'est ».",
+          "- Si 2 idées: phrase 1 puis phrase 2 (séparables) — jamais un mur de texte.",
           "",
           `Clarify UNIQUEMENT si vraiment illisible. Clarifies déjà: ${ctx.clarifyCount}/2.`,
           freeSlots.length

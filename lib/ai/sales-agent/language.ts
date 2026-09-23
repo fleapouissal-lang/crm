@@ -193,6 +193,57 @@ export function glossProspectMessage(text: string): string {
   return `Message normalisé: « ${raw} ». Lecture probable: ${hints.join(" · ")}.`;
 }
 
+/** Soft length for one WhatsApp bubble (~2–3 short sentences). */
+export const WHATSAPP_BUBBLE_SOFT_MAX = 220;
+
+/**
+ * Keep messages short; if still long, split into max 2 WhatsApp bubbles
+ * at a natural break (newline / sentence / space).
+ */
+export function splitWhatsAppMessage(
+  text: string,
+  softMax = WHATSAPP_BUBBLE_SOFT_MAX
+): string[] {
+  const clean = String(text || "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (!clean) return [];
+  if (clean.length <= softMax) return [clean];
+
+  // Prefer existing paragraph break near the middle
+  const mid = Math.floor(clean.length / 2);
+  const doubleNl = clean.indexOf("\n\n", Math.max(40, mid - 80));
+  if (doubleNl > 40 && doubleNl < clean.length - 20) {
+    return [clean.slice(0, doubleNl).trim(), clean.slice(doubleNl).trim()].filter(
+      Boolean
+    ).slice(0, 2);
+  }
+
+  const singleNl = clean.indexOf("\n", Math.max(40, mid - 60));
+  if (singleNl > 40 && singleNl < clean.length - 20) {
+    return [clean.slice(0, singleNl).trim(), clean.slice(singleNl + 1).trim()].filter(
+      Boolean
+    ).slice(0, 2);
+  }
+
+  // Sentence end near middle
+  const window = clean.slice(Math.max(0, mid - 100), Math.min(clean.length, mid + 100));
+  const sentenceMatch = window.match(/[.!?…](\s|$)/);
+  if (sentenceMatch && sentenceMatch.index != null) {
+    const cut = Math.max(0, mid - 100) + sentenceMatch.index + 1;
+    if (cut > 40 && cut < clean.length - 20) {
+      return [clean.slice(0, cut).trim(), clean.slice(cut).trim()].filter(Boolean).slice(0, 2);
+    }
+  }
+
+  // Last space before softMax for part 1
+  let cut = clean.lastIndexOf(" ", softMax);
+  if (cut < 60) cut = softMax;
+  return [clean.slice(0, cut).trim(), clean.slice(cut).trim()].filter(Boolean).slice(0, 2);
+}
+
 /** Prospect asks where we / the business is based. */
 export function isLocationAsk(text: string): boolean {
   const t = normalizeDarijaLatin(text).toLowerCase();
@@ -217,11 +268,11 @@ export function locationAnswer(
         : "";
   switch (lang) {
     case "darija":
-      return `Hna Fusion Leap, société digitale f Marrakech. Kankhdmo m3a les entreprises f Maroc o international (digital + AI). Evana o Autolog = projets dyalna.${cityBit} Chno bghiti n3awno fik ?`;
+      return `Hna Fusion Leap f Marrakech. Kankhdmo m3a entreprises f Maroc o international.${cityBit} Chno bghiti ?`;
     case "ar":
-      return `نحن Fusion Leap في مراكش. نعمل مع شركات في المغرب وعلى المستوى الدولي (رقمي + ذكاء اصطناعي). Evana و Autolog من مشاريعنا.${city ? ` أنتم في ${city}.` : ""} كيف نقدر نساعدكم؟`;
+      return `نحن Fusion Leap في مراكش. نعمل مع شركات في المغرب ودولياً.${city ? ` أنتم في ${city}.` : ""} كيف نساعدكم؟`;
     default:
-      return `Fusion Leap — société digitale à Marrakech. On accompagne des entreprises au Maroc et à l’international (digital + IA). Evana et Autolog font partie de nos projets.${city ? ` Vous êtes à ${city}.` : ""} Sur quoi puis-je vous aider concrètement ?`;
+      return `Fusion Leap, basée à Marrakech. On travaille avec des entreprises au Maroc et à l’international.${city ? ` Vous êtes à ${city}.` : ""} Sur quoi puis-je vous aider ?`;
   }
 }
 
