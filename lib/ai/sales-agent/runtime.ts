@@ -4,6 +4,9 @@ import {
   generateSalesAgentText,
   getSalesAgentModel,
   isSalesAgentConfigured,
+  isSalesOutboundPaused,
+  salesAgentTestLeadIds,
+  salesAgentTestPhones,
 } from "./client";
 import {
   buildAgentContext,
@@ -136,6 +139,30 @@ async function withinRateLimits(
   return leadDay < maxLeadDay && orgHour < maxOrgHour;
 }
 
+async function isTestLeadAllowed(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadId: string
+): Promise<boolean> {
+  if (salesAgentTestLeadIds().has(leadId)) return true;
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, phone, phone_normalized, source, memory_facts")
+    .eq("organization_id", organizationId)
+    .eq("id", leadId)
+    .maybeSingle();
+  if (!lead) return false;
+  const facts = (lead.memory_facts || {}) as Record<string, string>;
+  if (String(facts.test_lead || "").toLowerCase() === "true") return true;
+  if (lead.source === "manual_test") return true;
+  const digits = String(lead.phone_normalized || lead.phone || "").replace(/\D/g, "");
+  const allowed = salesAgentTestPhones();
+  for (const p of allowed) {
+    if (digits === p || digits.slice(-9) === p.slice(-9)) return true;
+  }
+  return false;
+}
+
 async function enqueueAndSendWhatsApp(
   supabase: SupabaseClient,
   organizationId: string,
@@ -148,6 +175,21 @@ async function enqueueAndSendWhatsApp(
   | { messageId: string; providerMessageId: null; scheduled: true; scheduledFor: string }
   | { error: string }
 > {
+  if (isSalesOutboundPaused()) {
+    const allowed = await isTestLeadAllowed(supabase, organizationId, leadId);
+    if (!allowed) {
+      await logAiAction(supabase, {
+        organization_id: organizationId,
+        lead_id: leadId,
+        sales_project: options?.salesProject || "Fusion Leap",
+        action: "outbound_paused",
+        success: true,
+        summary: "Outreach paused — non-test lead blocked",
+      });
+      return { error: "Outreach paused (test mode): non-test lead blocked" };
+    }
+  }
+
   const delaySec = Math.max(0, options?.delaySec ?? 0);
   const scheduledFor =
     delaySec > 0 ? new Date(Date.now() + delaySec * 1000).toISOString() : null;
@@ -226,6 +268,20 @@ export async function flushDueAiWhatsApp(
   let sent = 0;
   const errors: string[] = [];
   for (const row of due || []) {
+    if (isSalesOutboundPaused()) {
+      const allowed = await isTestLeadAllowed(supabase, organizationId, row.lead_id);
+      if (!allowed) {
+        await supabase
+          .from("outreach_messages")
+          .update({
+            status: "failed",
+            error_message: "cancelled_outreach_paused",
+            scheduled_for: null,
+          })
+          .eq("id", row.id);
+        continue;
+      }
+    }
     const result = await dispatchOutreachMessage(supabase, organizationId, row.id);
     if (!result.success) {
       errors.push(`${row.id}: ${result.error}`);
@@ -331,6 +387,12 @@ export async function sendFirstTouchAuto(
   actorId: string | null = null,
   options?: { delaySec?: number }
 ): Promise<{ success: true; messageId: string } | { success: false; error: string }> {
+  if (isSalesOutboundPaused()) {
+    const allowed = await isTestLeadAllowed(supabase, organizationId, leadId);
+    if (!allowed) {
+      return { success: false, error: "Outreach paused (test mode): first-touch blocked" };
+    }
+  }
   const ctx = await buildAgentContext(supabase, organizationId, leadId);
   if (!ctx.settings.enabled || !ctx.settings.auto_first_touch) {
     return { success: false, error: "Auto first-touch disabled" };
@@ -443,6 +505,15 @@ export async function processDailyAutoFirstTouch(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<{ queued: number; skipped: number; errors: string[]; limit: number; alreadyToday: number }> {
+  if (isSalesOutboundPaused()) {
+    return {
+      queued: 0,
+      skipped: 0,
+      errors: ["Outreach paused (test mode): auto first-touch disabled"],
+      limit: 0,
+      alreadyToday: 0,
+    };
+  }
   const errors: string[] = [];
   const { data: settingsRows } = await supabase
     .from("sales_agent_settings")

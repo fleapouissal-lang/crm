@@ -26,6 +26,30 @@ export function isSalesAgentConfigured(): boolean {
   return Boolean(geminiApiKey());
 }
 
+/** When true, AI WhatsApp only goes to explicit test leads (no mass outreach). */
+export function isSalesOutboundPaused(): boolean {
+  const raw = (process.env.SALES_AGENT_PAUSE_OUTREACH || "true").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+export function salesAgentTestLeadIds(): Set<string> {
+  return new Set(
+    String(process.env.SALES_AGENT_TEST_LEAD_IDS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+export function salesAgentTestPhones(): Set<string> {
+  return new Set(
+    String(process.env.SALES_AGENT_TEST_PHONES || "212680961521,0680961521")
+      .split(",")
+      .map((s) => s.replace(/\D/g, ""))
+      .filter((s) => s.length >= 9)
+  );
+}
+
 /** @deprecated use isSalesAgentConfigured — kept for call-site compatibility during migration */
 export function isAnthropicConfigured(): boolean {
   return isSalesAgentConfigured();
